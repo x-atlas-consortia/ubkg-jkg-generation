@@ -18,7 +18,7 @@ generation_framework/logs/*.log
 # binary dependencies of PheKnowLator
 generation_framework/pkt_kg/
 # SAB source files
-generation_framework/sab
+generation_framework/sab_source
 # JKG related files
 generation_framework/sab_jkg
 generation_framework/venv
