@@ -33,17 +33,34 @@ if [[ -d ${VENV} ]] ; then
     source ${VENV}/bin/activate
 else
     echo "*** Installing Python venv to ${VENV}"
-    python -m venv ${VENV}
-    python -m pip install --upgrade pip
+    python3 -m venv ${VENV}
     source ${VENV}/bin/activate
+    python -m pip install --upgrade pip
     echo "*** Installing required packages..."
     pip install -r requirements.txt
-    brew install wget
+    #brew install wget
     echo "*** Done installing python venv"
 fi
 
+# Ensure the virtual environment is activated
+if [[ -z "$VIRTUAL_ENV" ]]; then
+    echo "Virtual environment is NOT active!"
+    exit 1
+else
+    echo "Virtual environment is active: $VIRTUAL_ENV"
+fi
+
+echo "Python binary being used:"
+which python
+
+# Ensure pythonjsonlogger is installed
+if ! (pip show python-json-logger > /dev/null); then
+    echo 'Installing python-json-logger...'
+    pip install python-json-logger
+fi
+
 echo "Running ingest_sab.py in venv..."
-./ingest_sab.py "$@"
+python ./ingest_sab.py "$@"
 
 # Reset version to default
 #unset PYENV_VERSION

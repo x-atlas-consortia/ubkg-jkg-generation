@@ -7,7 +7,7 @@ from configparser import ConfigParser,ExtendedInterpolation
 import configparser
 import os
 
-import ubkg_logging as ulog
+import ubkg_utilities.ubkg_logging as ulog
 
 class ubkgConfigParser:
     def __init__(self, path: str, case_sensitive: bool = False):

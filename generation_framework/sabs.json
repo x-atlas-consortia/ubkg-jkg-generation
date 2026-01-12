@@ -1,0 +1,404 @@
+{
+  "4DN": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py 4DN",
+    "description": "Data Distillery 4DN"
+  },
+  "AZ": {
+    "source_type": "hra_do",
+    "execute": "./hra_digital_objects/hra_do.py AZ",
+    "description": "Azimuth-Cell Ontology mappings"
+  },
+  "BIOMARKER": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py BIOMARKER",
+    "description": "Data Distillery BIOMARKER"
+  },
+  "CEDAR": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py CEDAR",
+    "description": "CEDAR metadata"
+  },
+  "CEDAR_ENTITY": {
+    "source_type": "cedar_entity",
+    "execute": "./cedar_entity/cedar_entity.py",
+    "description": "CEDAR-Provenance Entity mapping"
+  },
+  "CHEBI": {
+    "source_type": "owl",
+    "owl_url": "http://purl.obolibrary.org/obo/chebi.owl.gz",
+    "description": "Chemical Entities of Biological Interest, zipped"
+  },
+  "CL": {
+    "source_type": "owl",
+    "owl_url": "http://purl.obolibrary.org/obo/cl/cl-base.owl",
+    "description": "Complete cell ontology, but with no imports or external axioms"
+  },
+  "CLINGEN": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py CLINGEN",
+    "description": "Data Distillery CLINGEN"
+  },
+  "CLINVAR": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py CLINVAR",
+    "description": "Data Distillery CLINVAR"
+  },
+  "CMAP": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py CMAP",
+    "description": "Data Distillery CMAP"
+  },
+  "DCTH": {
+    "source_type": "hra_do",
+    "execute": "./hra_digital_objects/hra_do.py DCTH",
+    "description": "DeepCellType annotations, obtained from the crosswalk CSV maintained by the Human Reference Atlas"
+  },
+  "DGN": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py DGN",
+    "description": "Data Distillery DisGenet"
+  },
+  "DOID": {
+    "source_type": "owl",
+    "owl_url": "http://purl.obolibrary.org/obo/doid.owl",
+    "description": "Human Disease Ontology"
+  },
+  "EDAM": {
+    "source_type": "owl",
+    "owl_url": "http://edamontology.org/EDAM.owl",
+    "description": "Ontology of bioscientific data analysis and data management"
+  },
+  "EFO": {
+    "source_type": "owl",
+    "owl_url": "https://data.bioontology.org/ontologies/EFO/submissions/262/download?apikey=8b5b7825-538d-40e0-9e9e-5ab9274a9aeb",
+    "description": "The Experimental Factor Ontology (EFO) is an application focused ontology modelling the experimental variables in multiple resources at the EBI and Open Targets."
+  },
+  "EMAPA": {
+    "source_type": "owl",
+    "owl_url": "http://purl.obolibrary.org/obo/emapa.owl",
+    "description": "Mouse Developmental Anatomy Ontology"
+  },
+  "ERCCREG": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py ERCCREG",
+    "description": "Data Distillery ERCC Regulatory Elements"
+  },
+  "ERCCRBP": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py ERCCRBP",
+    "description": "Data Distillery ERCC exRNA Remote Binding Proteins"
+  },
+  "ERCCRBS": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py ERCCRBS",
+    "description": "Data Distillery ERCC - Remote Binding Site"
+  },
+  "FALDO": {
+    "source_type": "owl",
+    "owl_url": "https://data.bioontology.org/ontologies/FALDO/submissions/18/download?apikey=8b5b7825-538d-40e0-9e9e-5ab9274a9aeb",
+    "description": "FALDO is the Feature Annotation Location Description Ontology. (Part of GlyGen ingestion)"
+  },
+  "FTU2D": {
+    "source_type": "ftu2d",
+    "execute": "./ftu2d/ftu2d.py FTU2D",
+    "description": "Human Reference Atlas 2D Functional Tissue Unit (FTU) ontology"
+  },
+  "GENCODE": {
+    "source_type": "gencode",
+    "execute": "./gencode/gencode.py",
+    "description": "Data from GenCode"
+  },
+  "GENCODEHSCLO": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py GENCODEHSCLO",
+    "description": "GENCODE - HSCLO mapping"
+  },
+  "GENCODE_VS": {
+    "source_type": "simpleknowledge",
+    "execute": "./skowlnets/skowlnets.py GENCODE_VS",
+    "description": "GenCode application ontology, obtained from input spreadsheet in SimpleKnowledge format"
+  },
+  "GLYCANS": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py GLYCANS",
+    "description": "Data Distillery GlyGen GLYCANS"
+  },
+  "GLYCORDF": {
+    "source_type": "owl",
+    "owl_url": "https://raw.githubusercontent.com/glycoinfo/GlycoRDF/master/ontology/glycan.rdf",
+    "description": "GlycoRDF OWL in RDF/XML"
+  },
+  "GLYCOCOO": {
+    "source_type": "owl",
+    "owl_url": "https://raw.githubusercontent.com/glycoinfo/GlycoCoO/master/ontology/glycocoo.owl",
+    "description": "GlycoCoO in Turtle"
+  },
+  "GTEXCOEXP": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py GTEXCOEXP",
+    "description": "Data Distillery GTEXCOEXP data in edges/nodes format"
+  },
+  "GTEXEQTL": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py GTEXEQTL",
+    "description": "Data Distillery GTEXEQTL data in edges/nodes format"
+  },
+  "GTEXEXP": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py GTEXEXP",
+    "description": "Data Distillery GTEXEXP data in edges/nodes format"
+  },
+  "HCOP": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py HCOP",
+    "description": "Data Distillery HCOPHGNC - human-mouse orthologs"
+  },
+  "HGNCHPO": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py HGNCHPO",
+    "description": "Data Distillery HGNCHPO - human genotype - phenotype mapping "
+  },
+  "HMAZ": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py HMAZ",
+    "description": "Data Distillery HuBMAP Azimuth"
+  },
+  "HMFIELD": {
+    "source_type": "hmfield",
+    "execute": "./hmfields/hmfields.py HMFIELD",
+    "description": "HuBMAP pre-CEDAR metadata"
+  },
+  "HPOMP": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py HPOMP",
+    "description": "Data Distillery HPOMP"
+  },
+  "HRA": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py HRA",
+    "description": "Human Reference Atlas"
+  },
+  "HRAVS": {
+    "source_type": "gzip_csv",
+    "description": "The value set for the Human Reference Atlas metadata records as part of the Human BioMolecular Atlas Program (HuBMAP)",
+    "execute": "./gzip_csv/gzip_csv_owlnets.py 'https://data.bioontology.org/ontologies/HRAVS/download?apikey=4983e1fe-1f54-412e-99bb-74764d659cb0&download_format=csv' HRAVS"
+  },
+  "HSAPDV": {
+    "source_type": "owl",
+    "owl_url": "http://purl.obolibrary.org/obo/hsapdv.owl",
+    "description": "Life cycle stages for Human"
+  },
+  "HSCLO": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py HSCLO",
+    "description": "Data Distillery HSCLO - Chromosome Location Ontology"
+  },
+  "HUBMAP": {
+    "source_type": "simpleknowledge",
+    "execute": "./skowlnets/skowlnets.py HUBMAP",
+    "description": "HubMAP application ontology, obtained from input spreadsheet in SimpleKnowledge format"
+  },
+  "IDGD": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py IDGD",
+    "description": "Data Distillery IDG - compound-disease interactions"
+  },
+  "IDGP": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py IDGP",
+    "description": "Data Distillery IDG - compound-protein interactions"
+  },
+  "KF": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py KF",
+    "description": "Data Distillery Gabriella Miller Kids First"
+  },
+  "LINCS": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py LINCS",
+    "description": "Data Distillery LINCS data in edges/nodes format"
+  },
+  "MI": {
+    "source_type": "owl",
+    "owl_url": "http://purl.obolibrary.org/obo/mi.owl",
+    "description": "A structured controlled vocabulary for the annotation of experiments concerned with protein-protein interactions"
+  },
+  "MONDO": {
+    "source_type": "owl",
+    "owl_url": "http://purl.obolibrary.org/obo/mondo.owl",
+    "description": "The Mondo Disease Ontology (MONDO): a global community effort to harmonize multiple disease resources to yield a coherent merged ontology"
+  },
+  "MONDO_SIMPLE": {
+    "source_type": "owl",
+    "owl_url": "http://purl.obolibrary.org/obo/mondo/mondo-simple.owl",
+    "description": "The Mondo Disease Ontology (MONDO): a global community effort to harmonize multiple disease resources to yield a coherent merged ontology"
+  },
+  "MOTRPAC": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py MOTRPAC",
+    "description": "Data Distillery MOTRPAC"
+  },
+  "MP": {
+    "source_type": "owl",
+    "owl_url": "http://purl.obolibrary.org/obo/mp.owl",
+    "description": "Standard terms for annotating mammalian phenotypic data"
+  },
+  "MPMGI": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py MPMGI",
+    "description": "Data Distillery HCOPMP - mouse_genotype_phenotype"
+  },
+  "MSIGDB": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py MSIGDB",
+    "description": "Data Distillery MSIGDB"
+  },
+  "MW": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py MW",
+    "description": "Data Distillery Metabolic Workbench"
+  },
+  "NPO": {
+    "source_type": "owl",
+    "owl_url": "https://data.bioontology.org/ontologies/NPOKB/submissions/14/download?apikey=8b5b7825-538d-40e0-9e9e-5ab9274a9aeb",
+    "description": "NPO in Turtle"
+  },
+  "NPOSKCAN": {
+    "source_type": "owl",
+    "owl_url": "https://github.com/SciCrunch/NIF-Ontology/releases/download/sckan-2023-04-29/npo-simple-sckan-merged.ttl",
+    "description": "NPO-SKCAN in Turtle"
+  },
+  "OBI": {
+    "source_type": "owl",
+    "owl_url": "http://purl.obolibrary.org/obo/obi.owl",
+    "description": "Ontology for Biomedical Investigations"
+  },
+  "OBIB": {
+    "source_type": "owl",
+    "owl_url": "http://purl.obolibrary.org/obo/obib.owl",
+    "description": "The ontology for Biobanking (OBIB) is an ontology built for annotation and modeling of biobank repository and biobanking administration."
+  },
+  "ORDO": {
+    "source_type": "owl",
+    "owl_url": "https://data.bioontology.org/ontologies/ORDO/submissions/28/download?apikey=8b5b7825-538d-40e0-9e9e-5ab9274a9aeb",
+    "description": "Orphanet Rare Disease Ontology",
+    "download_owl_url_to_file_name": "ordo.owl"
+  },
+  "OTG": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py OTG",
+    "description": "Data Distillery Open Target Genomics"
+  },
+  "PATO": {
+    "source_type": "owl",
+    "owl_url": "http://purl.obolibrary.org/obo/pato/pato-base.owl",
+    "description": "Phenotype And Trait Ontology - includes axioms linking to other ontologies, but no imports of those ontologies"
+  },
+  "PAZ": {
+    "source_type": "hra_do",
+    "execute": "./hra_digital_objects/hra_do.py PAZ",
+    "description": "Pan-organ Azimuth annotations, obtained from the crosswalk CSV maintained by the Human Reference Atlas"
+  },
+  "PCL": {
+    "source_type": "owl",
+    "owl_url": "https://purl.obolibrary.org/obo/pcl.owl",
+    "description": "Provisional Cell Ontology"
+  },
+  "PGO": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py PGO",
+    "comment": "Pseudogene - The XRDF file was converted to UBKG Edges/Nodes format"
+  },
+  "PROTEOFORM": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py PROTEOFORM",
+    "description": "Data Distillery GlyGen PROTEOFORM"
+  },
+  "RATHCOP": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py RATHCOP",
+    "description": "Data Distillery RATHCOP - human-rat ensemble orthologs"
+  },
+  "REACTOME": {
+    "source_type": "reactome",
+    "execute": "./reactome/reactome.py",
+    "description": "Reactome"
+  },
+  "REACTOME_VS": {
+    "source_type": "simpleknowledge",
+    "execute": "./skowlnets/skowlnets.py REACTOME_VS",
+    "description": "Reactome valueset, obtained from input spreadsheet in SimpleKnowledge format"
+  },
+  "RIBCA": {
+    "source_type": "hra_do",
+    "execute": "./hra_digital_objects/hra_do.py RIBCA",
+    "description": "RIBCA annotations, obtained from the crosswalk CSV maintained by the Human Reference Atlas"
+  },
+  "RO": {
+    "source_type": "owl",
+    "owl_url": "http://purl.obolibrary.org/obo/ro.owl",
+    "description": "This Relation Ontology should get relationships and inverses and the RO code where we want the name"
+  },
+  "SENNET": {
+    "source_type": "simpleknowledge",
+    "execute": "./skowlnets/skowlnets.py SENNET",
+    "description": "SenNet application ontology, obtained from input spreadsheet in SimpleKnowledge format"
+  },
+  "SBO": {
+    "source_type": "owl",
+    "owl_url": "http://purl.obolibrary.org/obo/sbo.owl",
+    "description": "Systems Biology Ontology"
+  },
+  "STELLAR": {
+    "source_type": "hra_do",
+    "execute": "./hra_digital_objects/hra_do.py STELLAR",
+    "description": "STELLAR annotations, obtained from the crosswalk CSV maintained by the Human Reference Atlas"
+  },
+  "STRING": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py STRING",
+    "description": "StringDB"
+  },
+  "UBERON": {
+    "source_type": "owl",
+    "url": "http://purl.obolibrary.org/obo/uberon/uberon-base.owl",
+    "description": "UBERON"
+  },
+  "UBERONEMAPA": {
+    "source_type": "owl",
+    "owl_url": "http://purl.obolibrary.org/obo/uberon/bridge/uberon-bridge-to-emapa.owl",
+    "description": "UBERON Anatomical Bridging Ontology to EMAPA"
+  },
+  "UBKGSOURCE": {
+    "source_type": "simpleknowledge",
+    "execute": "./skowlnets/skowlnets.py UBKGSOURCE",
+      "description": "UBKG source ontology, obtained from input spreadsheet in SimpleKnowledge format"
+  },
+  "UNIPROT": {
+    "source_type": "owl",
+    "owl_url": "https://ftp.uniprot.org/pub/databases/uniprot/current_release/rdf/core.owl",
+    "description": "UniProt"
+  },
+  "UNIPROTKB": {
+    "source_type": "uniprotkb",
+    "home_url": "https://www.uniprot.org/uniprot/?query=facets=reviewed%3Atrue&fil=organism%3A%22Homo+sapiens+%28Human%29+%5B9606%5D%22",
+    "execute": "./uniprotkb/uniprotkb_owlnets.py",
+    "description": "Data from UniProtKB exported to OWLNETS format. Supply -s argument to call to use existing UniProtKB data file."
+  },
+  "UO": {
+    "source_type": "owl",
+    "owl_url": "http://purl.obolibrary.org/obo/uo.owl",
+    "description": "Unit Ontology"
+  },
+  "VCCF": {
+    "source_type": "hra_do",
+    "execute": "./hra_digital_objects/hra_do.py VCCF",
+    "description": "VCCF annotations, obtained from the crosswalk CSV maintained by the Human Reference Atlas"
+  },
+  "WP": {
+    "source_type": "ubkg_edge_node",
+    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py WP",
+    "description": "WikiPathways"
+  }
+}
