@@ -7,28 +7,35 @@ from configparser import ConfigParser,ExtendedInterpolation
 import configparser
 import os
 
-import ubkg_utilities.ubkg_logging as ulog
+from ubkg_utilities.ubkg_logging import UbkgLogging
 
 class ubkgConfigParser:
+
     def __init__(self, path: str, case_sensitive: bool = False):
-        # Reads and validates the configuration file.
+        """
+        Read and validate the specified configuration file
+        :param path: full path to the configuration file
+        :param case_sensitive: whether the configuration file should be case-sensitive
+        """
+
+        self.ulog = UbkgLogging()
 
         self.config = ConfigParser(interpolation=ExtendedInterpolation())
         if case_sensitive:
             # Force case sensitivity.
             self.config.optionxform = str
 
-
         if not os.path.exists(path):
-            print(f'Missing configuration file: {path}')
+            self.ulog.print_and_logger_info(f'Missing configuration file: {path}')
             exit(1)
+
         try:
             self.config.read(path)
         except configparser.ParsingError as e:
-            ulog.print_and_logger_info(f'Error parsing config file {path}')
+            self.ulog.print_and_logger_info(f'Error parsing config file {path}')
             exit(1)
 
-        ulog.print_and_logger_info(f'Config file found at {path}')
+        self.ulog.print_and_logger_info(f'Config file found at {path}')
 
     def get_value(self,section: str, key:str)-> str:
 
@@ -36,7 +43,7 @@ class ubkgConfigParser:
         try:
             return self.config[section][key]
         except KeyError as e:
-            ulog.print_and_logger_info(f'Error reading configuration file: Missing key [{key}] in section [{section}]')
+            self.ulog.print_and_logger_info(f'Error reading configuration file: Missing key [{key}] in section [{section}]')
             exit(1)
 
     def get_section(self, section: str)-> dict:
@@ -50,7 +57,7 @@ class ubkgConfigParser:
             for key in sect:
                 dictreturn[key]=self.config[section][key]
         except configparser.NoSectionError as e:
-            ulog.print_and_logger_info(f'Error reading configuration file: Missing section [{section}]')
+            self.ulog.print_and_logger_info(f'Error reading configuration file: Missing section [{section}]')
             exit(1)
 
         return dictreturn

@@ -38,7 +38,6 @@ else
     python -m pip install --upgrade pip
     echo "*** Installing required packages..."
     pip install -r requirements.txt
-    #brew install wget
     echo "*** Done installing python venv"
 fi
 
