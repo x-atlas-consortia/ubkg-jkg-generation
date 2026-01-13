@@ -4,7 +4,7 @@
 """
 UbkgLogging: manages custom, centralized Python logging.
 
-Logs will be stored in the subdirectory 'logging' of the repo root.
+Logs will be stored in the subdirectory named 'logging' of the repository root.
 
 Uses a custom logging.ini file, located in the logging directory,
 to configure JSON logging.
@@ -12,15 +12,14 @@ to configure JSON logging.
 """
 import logging.config
 import os
-from ubkg_utilities.find_repo_root import find_repo_root
 
 class UbkgLogging:
 
-    def __init__(self):
+    def __init__(self, repo_root: str):
 
-        # ------
-        # Find the path to the log directory.
-        repo_root =  find_repo_root()
+        """
+        :param repo_root: repo root directory
+        """
 
         log_dir = os.path.join(repo_root,'logging')
         log_file = 'ubkg.log'
@@ -33,3 +32,7 @@ class UbkgLogging:
     def print_and_logger_info(self,message: str) -> None:
         print(message)
         self.logger.info(message)
+
+    def print_and_logger_error(self,message: str) -> None:
+        print(message)
+        self.logger.error(message)

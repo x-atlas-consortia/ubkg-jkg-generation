@@ -308,7 +308,7 @@
   "PGO": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py PGO",
-    "comment": "Pseudogene - The XRDF file was converted to UBKG Edges/Nodes format"
+    "description": "Pseudogene - The XRDF file was converted to UBKG Edges/Nodes format"
   },
   "PROTEOFORM": {
     "source_type": "ubkg_edge_node",
@@ -362,7 +362,7 @@
   },
   "UBERON": {
     "source_type": "owl",
-    "url": "http://purl.obolibrary.org/obo/uberon/uberon-base.owl",
+    "owl_url": "http://purl.obolibrary.org/obo/uberon/uberon-base.owl",
     "description": "UBERON"
   },
   "UBERONEMAPA": {
@@ -382,9 +382,9 @@
   },
   "UNIPROTKB": {
     "source_type": "uniprotkb",
-    "home_url": "https://www.uniprot.org/uniprot/?query=facets=reviewed%3Atrue&fil=organism%3A%22Homo+sapiens+%28Human%29+%5B9606%5D%22",
+    "execute_url": "https://www.uniprot.org/uniprot/?query=facets=reviewed%3Atrue&fil=organism%3A%22Homo+sapiens+%28Human%29+%5B9606%5D%22",
     "execute": "./uniprotkb/uniprotkb_owlnets.py",
-    "description": "Data from UniProtKB exported to OWLNETS format. Supply -s argument to call to use existing UniProtKB data file."
+    "description": "Data from UniProtKB exported to OWLNETS format."
   },
   "UO": {
     "source_type": "owl",
