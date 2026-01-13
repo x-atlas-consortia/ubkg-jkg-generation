@@ -12,15 +12,16 @@ from ubkg_utilities.ubkg_logging import UbkgLogging
 
 class ubkgConfigParser:
 
-    def __init__(self, path: str, repo_root: str, case_sensitive: bool = False):
+    def __init__(self, path: str, log_dir: str, log_file: str, case_sensitive: bool = False):
         """
         Read and validate the specified configuration file
         :param path: full path to the configuration file
-        :param repo_root: root directory of the repository
+        :param log_dir: logging directory
+        :param log_file: logging file
         :param case_sensitive: whether the configuration file should be case-sensitive
         """
 
-        self.ulog = UbkgLogging(repo_root=repo_root)
+        self.ulog = UbkgLogging(log_dir=log_dir, log_file=log_file)
 
         self.config = ConfigParser(interpolation=ExtendedInterpolation())
         if case_sensitive:

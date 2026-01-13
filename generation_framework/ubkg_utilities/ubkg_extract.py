@@ -18,9 +18,14 @@ import sys
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 
+# Centralized logging
+from ubkg_logging import UbkgLogging
+from find_repo_root import find_repo_root
 
-# UBKG logging utility
-import ubkg_logging as ulog
+repo_root = find_repo_root()
+log_dir = os.path.join(repo_root, 'generation_framework/builds/logs')
+ulog = UbkgLogging(log_dir=log_dir, log_file='ubkg.log')
+
 
 def download_file_from_github(share_url: str, download_full_path: str):
 
@@ -331,11 +336,11 @@ def getresponsejson(url: str) -> str:
         return response.json()
 
     except requests.exceptions.RequestException as e:
-        print(f'Error during GET request on {url}: {e}')
+        ulog.print_and_error_info(f'Error during GET request on {url}: {e}')
         exit(1)
 
     except ValueError as e:
 
-        print(f'Error decoding JSON: {e}')
+        ulog.print_and_error_info(f'Error decoding JSON: {e}')
         exit(1)
 

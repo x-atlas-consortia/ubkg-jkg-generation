@@ -15,14 +15,15 @@ import os
 
 class UbkgLogging:
 
-    def __init__(self, repo_root: str):
+    def __init__(self, log_dir: str, log_file:str):
 
         """
-        :param repo_root: repo root directory
+        :param log_dir: logging directory
+        :param log_file: logging file
         """
 
-        log_dir = os.path.join(repo_root,'logging')
-        log_file = 'ubkg.log'
+        #log_dir = os.path.join(repo_root,'generation_framework/builds/logs')
+        #log_file = 'ubkg.log'
         self.logger = logging.getLogger(__name__)
 
         # logging.ini to configure custom, centralized Python logging.

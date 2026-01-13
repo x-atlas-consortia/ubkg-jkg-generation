@@ -58,7 +58,7 @@ if ! (pip show python-json-logger > /dev/null); then
     pip install python-json-logger
 fi
 
-echo "Running ingest_sab.py in venv..."
+echo "Running ingest_sab.py in venv..."p
 python ./ingest_sab.py "$@"
 
 # Reset version to default

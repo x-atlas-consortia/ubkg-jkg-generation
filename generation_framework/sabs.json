@@ -373,7 +373,7 @@
   "UBKGSOURCE": {
     "source_type": "simpleknowledge",
     "execute": "./skowlnets/skowlnets.py UBKGSOURCE",
-      "description": "UBKG source ontology, obtained from input spreadsheet in SimpleKnowledge format"
+    "description": "UBKG source ontology, obtained from input spreadsheet in SimpleKnowledge format"
   },
   "UNIPROT": {
     "source_type": "owl",

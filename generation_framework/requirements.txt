@@ -16,11 +16,11 @@ pkt_kg==3.1.2
 # 2026 - In March 2023, the latest Python distribution supported by ray was 3.10.
 ray==2.53.0
 rdflib~=6.2.0
-lxml~=4.9.1
+lxml==6.0.2
 psutil==2.0
 tqdm==4.62.0
 # For downloading from Google Drive
-gdown==5.2.0
+gdown==5.2.1
 # March 2023
 # The PheKnowlator package uses NetworkX, and calls the write_pickle function.
 # The NetworkX package deprecated the write_pickle function in version 3.0.
