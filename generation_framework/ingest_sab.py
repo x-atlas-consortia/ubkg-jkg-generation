@@ -15,14 +15,10 @@ ETLs are configured via the sab.json file.
 """
 
 import os
-import shutil
 import time
-import re
-import subprocess
 from datetime import timedelta
 import json
 from typing import List
-import sys
 import argparse
 
 from ubkg_utilities.find_repo_root import find_repo_root
@@ -130,7 +126,7 @@ def fix_owlnets_metadata_file(repo_root: str, cfg: ubkgConfigParser, ulog: UbkgL
     ulog.print_and_logger_info(f"Running: {fix_owlnets_tsv_script}")
     usub.call_subprocess(fix_owlnets_tsv_script)
 
-def run_pheknowlator_for_sab(cfg: ubkgConfigParser, ulog: UbkgLogging, sab_source_dir: str, sab_jkg_dir: str, sab_json:dict, sab: str, repo_root: str, fetch_new:bool) -> None:
+def run_pheknowlator_for_sab(cfg: ubkgConfigParser, ulog: UbkgLogging, sab_source_dir: str, sab_jkg_dir: str, sab_json:dict, sab: str, repo_root: str) -> None:
     """
     Call PheKnowlator-related (OWLNETS) scripts to convert OWL files to JKG format.
     :param cfg: application configuration
@@ -140,8 +136,6 @@ def run_pheknowlator_for_sab(cfg: ubkgConfigParser, ulog: UbkgLogging, sab_sourc
     :param sab: SAB
     :param repo_root: repository root
     :param sab_json: SAB execution-specific information from sabs.json file
-
-    :param fetch_new: fetch new copy of source files, from runtime arguments
     :return:
     """
 
@@ -216,26 +210,31 @@ def main():
         sab_jkg_dir = os.path.join(repo_root, cfg.get_value(section='directories', key='sab_jkg_dir'))
 
         if source_type == 'owl':
-            # Use PheKnowLator to convert OWL files to OWLNETS files.
-            run_pheknowlator_for_sab(cfg=cfg,
-                                     ulog=ulog,
-                                     sab_source_dir=sab_source_dir,
-                                     sab_jkg_dir=sab_jkg_dir,
-                                     sab_json=sab_json,
-                                     sab=sab_name,
-                                     repo_root=repo_root,
-                                     fetch_new=args.fetch)
             if args.fetch:
+                # Use PheKnowLator to convert OWL files to OWLNETS files.
+                run_pheknowlator_for_sab(cfg=cfg,
+                                         ulog=ulog,
+                                         sab_source_dir=sab_source_dir,
+                                         sab_jkg_dir=sab_jkg_dir,
+                                         sab_json=sab_json,
+                                         sab=sab_name,
+                                         repo_root=repo_root)
+
                 owlnets_dir: str = os.path.join(sab_jkg_dir, sab_name)
                 fix_owlnets_metadata_file(repo_root=repo_root,
                                           ulog=ulog,
                                           owlnets_dir=owlnets_dir,
                                           cfg=cfg)
+
         elif source_type == 'simpleknowledge':
-            script: str = f'{sab_json[sab_name]['execute']} {sab_name}'
+            # Pass the value of the --fetchnew argument to the subprocess.
+            farg = ''
+            if args.fetch:
+                farg = '--fetchnew'
+
+            script: str = f'{sab_json[sab_name]['execute']} {farg}'
             ulog.print_and_logger_info(f"Running: {script}")
             usub.call_subprocess(script)
-
 
         # Add log entry for how long it took to do the processing...
         elapsed_time = time.time() - start_time
