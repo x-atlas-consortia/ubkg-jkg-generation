@@ -158,6 +158,7 @@ def download_owl(url: str, loc: str, working_file: str, force_empty=True) -> Non
     if args.verbose:
         ulog.print_and_logger_info(wgetResults_str)
 
+    working_file = working_file.split('&download_format')[0]
     md5: str = hashlib.md5(open(working_file, 'rb').read()).hexdigest()
     md5_file: str = f'{working_file}.md5'
     ulog.print_and_logger_info(f'MD5 for owl file {md5} saved to {md5_file}')
@@ -216,8 +217,10 @@ def log_files_and_sizes(dir: str) -> None:
 
 
 def look_for_none_in_node_metadata_file(dir: str) -> None:
+
+
     file: str = dir + os.path.sep + 'OWLNETS_node_metadata.txt'
-    ulog.print_and_logger_info(f'Searching {file}')
+    ulog.print_and_logger_info(f'Searching {file} for instances of "None"')
     # JAS 16 MAR 2023
     # Added parameters:
     #   engine='python' - use the Python parser engine instead of the C parser engine.
@@ -230,12 +233,15 @@ def look_for_none_in_node_metadata_file(dir: str) -> None:
     # TO DO: We will potentially find ontologies without synonyms.
     message: str = f"Total columns in {file}: {len(data['node_synonyms'])}"
     ulog.print_and_logger_info(message)
+
     node_synonyms_not_None = data[data['node_synonyms'].str.contains('None') == False]
     message: str = f"Columns in {file} where node_synonyms is not None: {len(node_synonyms_not_None)}"
     ulog.print_and_logger_info(message)
+
     node_dbxrefs_not_None = data[data['node_dbxrefs'].str.contains('None') == False]
     message: str = f"Columns in {file} where node_dbxrefs is not None: {len(node_dbxrefs_not_None)}"
     ulog.print_and_logger_info(message)
+
     both_not_None = node_synonyms_not_None[node_synonyms_not_None['node_dbxrefs'].str.contains('None') == False]
     ulog.print_and_logger_info(f"Columns where node_synonyms && node_dbxrefs is not None: {len(both_not_None)}")
 
@@ -364,6 +370,11 @@ elif not compare_file_md5(owl_file):
 # Some download URLs (e.g., many from NCBO BioPortal) are REST calls that result in file names like
 # download?apikey=8b5b7825-538d-40e0-9e9e-5ab9274a9aeb
 # If the downloaded OWL file does not have an extension, then rename it to the default: <SAB>.owl
+
+# 2026
+# Account for &download_format=xxx
+working_file = working_file.split('&download_format')[0]
+
 if '.' not in working_file[len(working_file)-5:len(working_file)]:
     working_file_new = args.owl_sab + '.OWL'
     ulog.print_and_logger_info(f'Renaming OWL file from {working_file} to {working_file_new}')
@@ -415,6 +426,7 @@ search_owl_file_for_imports(owl_file)
 # Attempt to parse in Turtle; serialize to RDF/XML; and then reparse the RDF/XML.
 try:
     graph = Graph().parse(owl_file, format='xml')
+
 except:
     # Note: If the file is not in RDF/XML, the exception will be from xml (ExpatError), not rdflib.
     # Exception handling does not seem able to catch this lower-level error, so this logic uses the generic
@@ -627,7 +639,7 @@ with open(relation_filename, 'w') as out:
             print_and_logger_error(f"entity_metadata['relations'][{x}] not found in: {entity_metadata['relations']}")
 
 log_files_and_sizes(working_dir)
-look_for_none_in_node_metadata_file(working_dir)
+#look_for_none_in_node_metadata_file(working_dir)
 
 # Add log entry for how long it took to do the processing...
 elapsed_time = time.time() - start_time

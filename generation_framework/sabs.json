@@ -308,7 +308,7 @@
   "PGO": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py PGO",
-    "description": "Pseudogene - The XRDF file was converted to UBKG Edges/Nodes format"
+    "description": "Pseudogene- see readme in ubkg_edges directory in repo"
   },
   "PROTEOFORM": {
     "source_type": "ubkg_edge_node",

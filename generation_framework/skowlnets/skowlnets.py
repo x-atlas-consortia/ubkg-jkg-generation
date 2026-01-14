@@ -55,7 +55,7 @@ from ubkg_logging import UbkgLogging
 # config file
 from ubkg_config import ubkgConfigParser
 
-def download_source_file(cfg: ubkgConfigParser, ulog: UbkgLogging, sab: str, sab_dir: str, sab_jkg_dir: str) -> str:
+def download_source_file(cfg: ubkgConfigParser, ulog: UbkgLogging, sab: str, sab_source_dir: str, sab_jkg_dir: str) -> str:
 
     """
     Obtains SimpleKnowledge source spreadsheet from either
@@ -64,19 +64,19 @@ def download_source_file(cfg: ubkgConfigParser, ulog: UbkgLogging, sab: str, sab
     :param cfg: application configuration
     :param ulog: logging object
     :param sab: SAB
-    :param sab_dir: SAB directory
+    :param sab_source_dir: SAB source directory
     :param sab_jkg_dir: SAB JKG directory
     :return:
     """
 
-    ulog.print_and_logger_info(f'Making directories {sab_dir} and {sab_jkg_dir}...')
+    ulog.print_and_logger_info(f'Making directories {sab_source_dir} and {sab_jkg_dir}...')
     # Create output folders for source files. Use the existing /sab_source and /sab_jkg folder structure.
-    os.system(f'mkdir -p {sab_dir}')
+    os.system(f'mkdir -p {sab_source_dir}')
     os.system(f'mkdir -p {sab_jkg_dir}')
 
     # Get the URL to the spreadsheet.
     url = cfg.get_value(section='URL',key=sab)
-    filepath = os.path.join(sab_dir,'SimpleKnowledge.xlsx')
+    filepath = os.path.join(sab_source_dir,'SimpleKnowledge.xlsx')
     ulog.print_and_logger_info(f'Downloading {url}...')
     if 'google' in url.lower():
         # Download Google sheet.
@@ -287,15 +287,16 @@ def main():
     # Get sab and sab_jkg directories.
     # The config file contains absolute paths to the parent directories in the local repo.
     # Affix the SAB to the paths.
-    sab_dir = os.path.join(os.path.dirname(os.getcwd()),skowlnets_config.get_value(section='Directories',key='sab_dir'),args.sab)
+    sab_source_dir = os.path.join(os.path.dirname(os.getcwd()),skowlnets_config.get_value(section='Directories',key='sab_source_dir'),args.sab)
     sab_jkg_dir = os.path.join(os.path.dirname(os.getcwd()),skowlnets_config.get_value(section='Directories',key='sab_jkg_dir'),args.sab)
 
     if args.fetchnew:
         # Download the SimpleKnowledge spreadsheet.
-        sk_file = download_source_file(cfg=skowlnets_config, ulog=ulog, sab=args.sab, sab_dir=sab_dir, sab_jkg_dir=sab_jkg_dir)
+        sk_file = download_source_file(cfg=skowlnets_config, ulog=ulog, sab=args.sab, sab_source_dir=sab_source_dir, sab_jkg_dir=sab_jkg_dir)
     else:
         # Use the existing SimpleKnowledge spreadsheet.
-        sk_file = os.path.join(sab_dir,'SimpleKnowledge.xlsx')
+        ulog.print_and_logger_info('Using existing SimpleKnowledge spreadsheet.')
+        sk_file = os.path.join(sab_source_dir,'SimpleKnowledge.xlsx')
 
     # Load SimpleKnowledge spreadsheet into a DataFrame.
     df_simpleknowledge = pd.read_excel(sk_file)
