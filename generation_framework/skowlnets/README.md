@@ -1,6 +1,6 @@
 # SimpleKnowledge to OWLNETS converter
 
-Uses the input spreadsheet for the SimpleKnowledge Editor to generate a set of text files that comply with the OWLNETS format, as described [here](https://github.com/callahantiff/PheKnowLator/blob/master/notebooks/OWLNETS_Example_Application.ipynb).
+Uses an input spreadsheet for the SimpleKnowledge Editor to generate a set of text files that comply with the OWLNETS format, as described [here](https://github.com/callahantiff/PheKnowLator/blob/master/notebooks/OWLNETS_Example_Application.ipynb).
 
 The user guide to build the SimpleKnowledge Editor spreadsheet can be found [here](https://github.com/x-atlas-consortia/SimpleKnowledge/blob/main/doc/EditorUserGuide.md).
 
@@ -23,12 +23,12 @@ The SimpleKnowledge spreadsheets that **skowlnets.py** uses are located in the *
    - ubkg_logging.py
    - ubkg_config.py
    - ubkg_parsetools.py
-2. An application configuration file named **gencode.ini.**
-3. A spreadsheet in SimpleKnowledge format stored as a Google Sheets document.
+2. An application configuration file named **skowlnets.ini.**
+3. Spreadsheet in SimpleKnowledge format stored either as Google Sheets documents or in the SimpleKnowledge repo.
 
 # To run
 1. Copy and modify **skowlnets.ini.example** to a file named **skowlnets.ini** in the current directory.
-2. Configure the **ontologies.json** file at the generation_framework root to call skowlnets.py with the appropriate SAB.
+2. Configure the **sabs.json** file at the generation_framework root to call skowlnets.py with the appropriate SAB.
 
 
 # Format of SimpleKnowledge Editor spreadsheet

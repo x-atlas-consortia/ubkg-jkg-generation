@@ -41,10 +41,6 @@ fpath = os.path.dirname(os.getcwd())
 fpath = os.path.join(fpath, 'generation_framework/ubkg_utilities')
 sys.path.append(fpath)
 
-# Centralized logging
-from find_repo_root import find_repo_root
-from ubkg_logging import UbkgLogging
-
 # argparser
 from ubkg_args import RawTextArgumentDefaultsHelpFormatter
 
