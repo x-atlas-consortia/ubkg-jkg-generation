@@ -1,4 +1,4 @@
-# Human Reference Atlas Cell Annotation Digitial Object  to OWLNETS converter
+# Human Reference Atlas Cell Annotation Digital Object  to OWLNETS converter
 
 Uses cell annotation Digital Objects in the [Human Reference Atlas](https://apps.humanatlas.io/kg-explorer/?do=ctann) (HRA) Knowledge Graph site
 to generate a set of text files that comply with the OWLNETS format, as described [here](https://github.com/callahantiff/PheKnowLator/blob/master/notebooks/OWLNETS_Example_Application.ipynb).

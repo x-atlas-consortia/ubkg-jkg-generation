@@ -226,7 +226,11 @@ def main():
                                           owlnets_dir=owlnets_dir,
                                           cfg=cfg)
 
-        elif source_type in ['simpleknowledge','ubkg_edge_node', 'hra_do', 'cedar_entity']:
+        elif source_type in ['simpleknowledge',
+                             'ubkg_edge_node',
+                             'hra_do',
+                             'cedar_entity',
+                             'ftu2d']:
             # Pass the value of the --fetchnew argument to the subprocess.
             farg = ''
             if args.fetch:
