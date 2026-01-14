@@ -2,6 +2,7 @@
 # coding: utf-8
 
 """
+2026
 Human Reference Atlas Digital Object cell annotation crosswalk CSV to OWLNETS converter
 
 Uses a crosswalk spreadsheet available in the Human Reference Atlast to generate a set of
@@ -252,6 +253,7 @@ def getargs()->argparse.Namespace:
     return args
 
 def main():
+
     # Locate the root directory of the repository for absolute
     # file paths.
     repo_root = find_repo_root()
@@ -259,6 +261,7 @@ def main():
     # Set up centralized logging.
     ulog = UbkgLogging(log_dir=log_dir, log_file='ubkg.log')
 
+    # Obtain runtime arguments.
     args = getargs()
 
     # Get application configuration.

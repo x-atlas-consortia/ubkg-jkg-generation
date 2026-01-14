@@ -21,7 +21,7 @@
   },
   "CEDAR_ENTITY": {
     "source_type": "cedar_entity",
-    "execute": "./cedar_entity/cedar_entity.py",
+    "execute": "./cedar_entity/cedar_entity.py CEDAR_ENTITY",
     "description": "CEDAR-Provenance Entity mapping"
   },
   "CHEBI": {
