@@ -1,11 +1,51 @@
 # Configuration for SKOWLNETS script
 
 [Directories]
+# Absolute Path in the local repo to which to download source files
+sab_source_dir=generation_framework/sab_source
+# Absolute Path in the local repo to which to store JKG files
+sab_jkg_dir=generation_framework/sab_jkg
 
-# Absolute Path in the local repo to which to copy ingestion files
-owlnets_dir=generation_framework/owlnets_output
+[PheKnowLator]
+pheknowlator_script_py=generation_framework/owlnets_script/pheknowlator.py
+# Absolute path in the local repo where the PheKnowLator owltools executable resides
+owltools_dir=generation_framework/pkt_kg/libs
 
 [Paths]
 # Local paths containing ingestion files
-
-SAB=local/path/to/ingestion/files/for/SAB
+LINCS=/Users/jas971/documents/globus/Import/LINCS/Updated_LINCS
+# NPO=/Users/jas971/documents/globus/sparc/npo/owl
+GTEXEXP=/Users/jas971/documents/globus/Import/GTEx/gtex_exp
+GTEXCOEXP=/Users/jas971/Documents/Globus/Import/GTEx/gtex_coexp
+GTEXEQTL=/Users/jas971/documents/globus/Import/GTEx/gtex_eqtl
+PGO=/Users/jas971/documents/globus/Import/PGO
+CLINVAR=/Users/jas971/documents/globus/Import/MAPPINGS/CLINVAR
+CMAP=/Users/jas971/documents/globus/Import/MAPPINGS/CMAP
+HPOMP=/Users/jas971/documents/globus/Import/MAPPINGS/HPOMP
+HGNCHPO=/Users/jas971/documents/globus/Import/MAPPINGS/HGNCHPO
+HCOP=/Users/jas971/documents/globus/Import/MAPPINGS/HCOP
+MPMGI=/Users/jas971/documents/globus/Import/MAPPINGS/MPMGI
+RATHCOP=/Users/jas971/documents/globus/Import/MAPPINGS/RATHCOP
+MSIGDB=/Users/jas971/documents/globus/Import/MAPPINGS/MSigDB
+HSCLO=/Users/jas971/documents/globus/Import/HSCLO
+GENCODEHSCLO=/Users/jas971/documents/globus/Import/MAPPINGS/GENCODE-HSCLO
+GLYCANS=/Users/jas971/documents/globus/Import/GlyGen/TAHA_GLYGEN/GLYCANS
+PROTEOFORM=/Users/jas971/documents/globus/Import/GlyGen/TAHA_GLYGEN/PROTEOFORM
+IDGP=/Users/jas971/documents/globus/Import/IDG/compound_protein_cleaned
+IDGD=/Users/jas971/documents/globus/Import/IDG/compound_disease_cleaned
+MW=/Users/jas971/documents/globus/Import/MW
+4DN=/Users/jas971/documents/globus/Import/4DN/4DN_Updated
+HRA=/Users/jas971/documents/globus/Import/HRA
+ERCCRBP=/Users/jas971/documents/globus/Import/ERCC/exRNA_RBP
+ERCCREG=/Users/jas971/documents/globus/Import/ERCC/Regulatory_Elements
+MOTRPAC=/Users/jas971/documents/globus/Import/MoTrPAC/CLEANED_FILES
+KF=/Users/jas971/documents/globus/Import/KF
+HMAZ=/Users/jas971/documents/globus/Import/HuBMAP/AZIMUTH_HEART_KIDNEY_LIVER_TOP_MARKER_GENES
+CEDAR=/Users/jas971/documents/globus/Import/CEDAR
+CLINGEN=/Users/jas971/documents/globus/Import/CLINGEN
+STRING=/Users/jas971/documents/globus/Import/STRING
+WP=/Users/jas971/documents/globus/Import/WP
+REACTOME=/Users/jas971/documents/globus/Import/REACTOME
+DGN=/Users/jas971/documents/globus/Import/DISGENET
+BIOMARKER=/Users/jas971/documents/globus/Import/BIOMARKER
+OTG=/Users/jas971/documents/globus/Import/OTG
