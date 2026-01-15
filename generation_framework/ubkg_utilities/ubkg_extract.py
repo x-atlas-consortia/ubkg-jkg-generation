@@ -190,6 +190,8 @@ def get_gzipped_file(gzip_url: str, zip_path: str, extract_path: str, zipfilenam
     # 2. The file is UTF-8 encoded.
 
     zip_full_path = os.path.join(zip_path, zipfilename)
+    print('url',gzip_url)
+    print('zip_full_path',zip_full_path)
 
     # Download GZIP file.
     download_file(url=gzip_url, download_full_path=zip_full_path, encoding='gzip', chunk_size=1024)

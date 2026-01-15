@@ -232,7 +232,8 @@ def main():
                              'cedar_entity',
                              'ftu2d',
                              'gencode',
-                             'hmfield']:
+                             'hmfield',
+                             'gzip_csv']:
             # Pass the value of the --fetchnew argument to the subprocess.
             farg = ''
             if args.fetch:

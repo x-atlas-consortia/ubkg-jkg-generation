@@ -182,7 +182,7 @@
   "HRAVS": {
     "source_type": "gzip_csv",
     "description": "The value set for the Human Reference Atlas metadata records as part of the Human BioMolecular Atlas Program (HuBMAP)",
-    "execute": "./gzip_csv/gzip_csv_owlnets.py 'https://data.bioontology.org/ontologies/HRAVS/download?apikey=4983e1fe-1f54-412e-99bb-74764d659cb0&download_format=csv' HRAVS"
+    "execute": "./gzip_csv/gzip_csv_owlnets.py HRAVS"
   },
   "HSAPDV": {
     "source_type": "owl",
