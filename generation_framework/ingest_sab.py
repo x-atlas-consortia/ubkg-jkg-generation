@@ -230,7 +230,8 @@ def main():
                              'ubkg_edge_node',
                              'hra_do',
                              'cedar_entity',
-                             'ftu2d']:
+                             'ftu2d',
+                             'gencode']:
             # Pass the value of the --fetchnew argument to the subprocess.
             farg = ''
             if args.fetch:
