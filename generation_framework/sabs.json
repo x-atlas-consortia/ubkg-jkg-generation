@@ -166,7 +166,7 @@
   },
   "HMFIELD": {
     "source_type": "hmfield",
-    "execute": "./hmfields/hmfields.py HMFIELD",
+    "execute": "./hmfield/hmfield.py HMFIELD",
     "description": "HuBMAP pre-CEDAR metadata"
   },
   "HPOMP": {
