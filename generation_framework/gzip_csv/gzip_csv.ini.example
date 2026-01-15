@@ -5,3 +5,6 @@
 sab_source_dir=generation_framework/sab_source
 # Absolute Path in the local repo to which to store JKG files
 sab_jkg_dir=generation_framework/sab_jkg
+
+[URL]
+HRAVS=https://data.bioontology.org/ontologies/HRAVS/download?apikey=4983e1fe-1f54-412e-99bb-74764d659cb0&download_format=csv
