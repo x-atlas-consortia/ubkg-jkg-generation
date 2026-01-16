@@ -27,7 +27,7 @@ sys.path.append(fpath)
 from ubkg_args import RawTextArgumentDefaultsHelpFormatter
 # Centralized logging module
 from find_repo_root import find_repo_root
-from ubkg_logging import UbkgLogging
+from ubkg_logging import ubkgLogging
 
 # config file
 from ubkg_config import ubkgConfigParser
@@ -101,10 +101,10 @@ def build_parent_node_list(sab: str, dict_index: dict) -> list:
     return list_nodes
 
 
-def build_node_list(ulog: UbkgLogging, sab: str, yaml_dict_field_nodes: dict, parent_node_idx: int, node_type: str, urlbase: str) -> list:
+def build_node_list(ulog: ubkgLogging, sab: str, yaml_dict_field_nodes: dict, parent_node_idx: int, node_type: str, urlbase: str) -> list:
     """
     Build a unique list of encoded, cross-referenced nodes for addition to the nodes file.
-    :param ulog: UbkgLogging object
+    :param ulog: ubkgLogging object
     :param sab: SAB for the ingest metadata vocabulary.
     :param yaml_dict_field_nodes: dictionary from one of the ingest metadata YAML files
     :param parent_node_idx: index for parent node in the ontology--i.e., root, field, schema, type
@@ -252,12 +252,12 @@ def add_nodes(path: str, list_nodes: list):
     return
 
 
-def initialize_file(ulog:UbkgLogging, path: str, file_type: str):
+def initialize_file(ulog:ubkgLogging, path: str, file_type: str):
     """
     Creates and writes header for edge file.
     The edge file will be built iteratively by translating each of the relationship YAML file content.
 
-    :param ulog:UbkgLogging object
+    :param ulog:ubkgLogging object
     :param path: path to edge file
     :param file_type: edge or node
     :return:
@@ -510,10 +510,10 @@ def get_concept_with_relationship(cui: str, rel: str, depth: int, urlbase: str, 
 
     return 'get_concept_with_relationship: no match'
 
-def add_assertions(ulog: UbkgLogging, path: str, dict_associations: dict, list_fields: list, list_objects: list, predicate: str):
+def add_assertions(ulog: ubkgLogging, path: str, dict_associations: dict, list_fields: list, list_objects: list, predicate: str):
     """
     Adds a set of assertions to the edge file.
-    :param ulog: UbkgLogging object
+    :param ulog: ubkgLogging object
     :param path: Path to edge file.
     :param dict_associations: dictionary of field associations built from one of the YAML files,
     used to identify subjects and objects.
@@ -551,7 +551,7 @@ def main():
     repo_root = find_repo_root()
     log_dir = os.path.join(repo_root, 'generation_framework/builds/logs')
     # Set up centralized logging.
-    ulog = UbkgLogging(log_dir=log_dir, log_file='ubkg.log')
+    ulog = ubkgLogging(log_dir=log_dir, log_file='ubkg.log')
 
     # Obtain runtime arguments.
     args = getargs()
