@@ -46,16 +46,16 @@ from ubkg_args import RawTextArgumentDefaultsHelpFormatter
 
 import ubkg_parsetools as uparse
 # Extraction module
-import ubkg_extract as uextract
+from ubkg_extract import ubkgExtract
 
 # Centralized logging module
 from find_repo_root import find_repo_root
-from ubkg_logging import UbkgLogging
+from ubkg_logging import ubkgLogging
 
 # config file
 from ubkg_config import ubkgConfigParser
 
-def download_source_file(cfg: ubkgConfigParser, ulog: UbkgLogging, sab: str, sab_source_dir: str, sab_jkg_dir: str) -> str:
+def download_source_file(cfg: ubkgConfigParser, ulog: ubkgLogging, uext: ubkgExtract, sab: str, sab_source_dir: str, sab_jkg_dir: str) -> str:
 
     """
     Obtains SimpleKnowledge source spreadsheet from either
@@ -63,6 +63,7 @@ def download_source_file(cfg: ubkgConfigParser, ulog: UbkgLogging, sab: str, sab
     - GitHub repository
     :param cfg: application configuration
     :param ulog: logging object
+    :param uext: UbkgExtract object
     :param sab: SAB
     :param sab_source_dir: SAB source directory
     :param sab_jkg_dir: SAB JKG directory
@@ -80,14 +81,14 @@ def download_source_file(cfg: ubkgConfigParser, ulog: UbkgLogging, sab: str, sab
     ulog.print_and_logger_info(f'Downloading {url}...')
     if 'google' in url.lower():
         # Download Google sheet.
-        uextract.download_file_from_google_drive(share_url=url, download_full_path=filepath)
+        uext.download_file_from_google_drive(share_url=url, download_full_path=filepath)
     else:
         # Download spreadsheet from GitHub repo.
-        uextract.download_file_from_github(share_url=url, download_full_path=filepath)
+        uext.download_file_from_github(share_url=url, download_full_path=filepath)
 
     return filepath
 
-def write_edges_file(df: pd.DataFrame, out_dir: str, ulog: UbkgLogging):
+def write_edges_file(df: pd.DataFrame, out_dir: str, ulog: ubkgLogging):
 
     """
     Writes an edges file in OWLNETS format.
@@ -164,7 +165,7 @@ def write_edges_file(df: pd.DataFrame, out_dir: str, ulog: UbkgLogging):
 
     return
 
-def write_nodes_file(df: pd.DataFrame, out_dir: str, ulog: UbkgLogging):
+def write_nodes_file(df: pd.DataFrame, out_dir: str, ulog: ubkgLogging):
 
     """
     Writes a nodes file in OWLNETS format.
@@ -212,7 +213,7 @@ def write_nodes_file(df: pd.DataFrame, out_dir: str, ulog: UbkgLogging):
 
     return
 
-def write_relations_file(df: pd.DataFrame, out_dir: str, ulog: UbkgLogging, sab:str):
+def write_relations_file(df: pd.DataFrame, out_dir: str, ulog: ubkgLogging, sab:str):
 
     """
     Writes a relations file in OWLNETS format.
@@ -274,7 +275,7 @@ def main():
     repo_root = find_repo_root()
     log_dir = os.path.join(repo_root, 'generation_framework/builds/logs')
     # Set up centralized logging.
-    ulog = UbkgLogging(log_dir=log_dir, log_file='ubkg.log')
+    ulog = ubkgLogging(log_dir=log_dir, log_file='ubkg.log')
 
     # Get runtime arguments.
     args = getargs()
@@ -290,9 +291,11 @@ def main():
     sab_source_dir = os.path.join(os.path.dirname(os.getcwd()),skowlnets_config.get_value(section='Directories',key='sab_source_dir'),args.sab)
     sab_jkg_dir = os.path.join(os.path.dirname(os.getcwd()),skowlnets_config.get_value(section='Directories',key='sab_jkg_dir'),args.sab)
 
+    uext = ubkgExtract(log_dir=log_dir, log_file='ubkg.log')
+
     if args.fetchnew:
         # Download the SimpleKnowledge spreadsheet.
-        sk_file = download_source_file(cfg=skowlnets_config, ulog=ulog, sab=args.sab, sab_source_dir=sab_source_dir, sab_jkg_dir=sab_jkg_dir)
+        sk_file = download_source_file(cfg=skowlnets_config, ulog=ulog, uext=uext, sab=args.sab, sab_source_dir=sab_source_dir, sab_jkg_dir=sab_jkg_dir)
     else:
         # Use the existing SimpleKnowledge spreadsheet.
         ulog.print_and_logger_info('Using existing SimpleKnowledge spreadsheet.')
