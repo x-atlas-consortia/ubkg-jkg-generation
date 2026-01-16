@@ -45,15 +45,15 @@ from ubkg_extract import ubkgExtract
 from ubkg_args import RawTextArgumentDefaultsHelpFormatter
 # Centralized logging module
 from find_repo_root import find_repo_root
-from ubkg_logging import UbkgLogging
+from ubkg_logging import ubkgLogging
 
 # config file
 from ubkg_config import ubkgConfigParser
 
-def download_source_file(cfg: ubkgConfigParser, ulog:UbkgLogging, uext:ubkgExtract, sab: str, sab_source_dir: str, sab_jkg_dir: str) -> str:
+def download_source_file(cfg: ubkgConfigParser, ulog:ubkgLogging, uext:ubkgExtract, sab: str, sab_source_dir: str, sab_jkg_dir: str) -> str:
     """
     Reads the 2D FTU CSV.
-    :param ulog: UbkgLogging object
+    :param ulog: ubkgLogging object
     :param cfg: an instance of the ubkgConfigParser class, which works with the application configuration file.
                 The config file should contain a URL that corresponds to the SimpleKnowledge spreadsheet
                 associated with the SAB.
@@ -79,12 +79,12 @@ def download_source_file(cfg: ubkgConfigParser, ulog:UbkgLogging, uext:ubkgExtra
 
     return filepath
 
-def write_edges_file(ulog:UbkgLogging, df: pd.DataFrame, parents: dict, sab_jkg_dir: str, sab:str):
+def write_edges_file(ulog:ubkgLogging, df: pd.DataFrame, parents: dict, sab_jkg_dir: str, sab:str):
 
     """
     Writes an edge file in OWLNETS format.
 
-    :param ulog: UbkgLogging object
+    :param ulog: ubkgLogging object
     :param df: DataFrame from a HRA cell type annotation CSV.
     :param sab_jkg_dir: output directory
     :param parents: dict of parent nodes
@@ -197,11 +197,11 @@ def write_edges_file(ulog:UbkgLogging, df: pd.DataFrame, parents: dict, sab_jkg_
                 out.write(subj + '\t' + predicate_uri + '\t' + str(obj) + '\n')
                 ftu_ftu_parts.get(ftu_label).append(ftu_part_node_id)
 
-def write_nodes_file(ulog:UbkgLogging, df: pd.DataFrame, sab_jkg_dir: str, parents: dict, sab:str):
+def write_nodes_file(ulog:ubkgLogging, df: pd.DataFrame, sab_jkg_dir: str, parents: dict, sab:str):
 
     """
     Writes a nodes file in OWLNETS format.
-    :param ulog: UBKGLogging object
+    :param ulog: ubkgLogging object
     :param df: DataFrame from a HRA cell type annotation CSV.
     :param sab_jkg_dir: output directory
     :param parents: dict of parent nodes
@@ -345,7 +345,7 @@ def main():
     repo_root = find_repo_root()
     log_dir = os.path.join(repo_root, 'generation_framework/builds/logs')
     # Set up centralized logging.
-    ulog = UbkgLogging(log_dir=log_dir, log_file='ubkg.log')
+    ulog = ubkgLogging(log_dir=log_dir, log_file='ubkg.log')
 
     # Obtain runtime arguments.
     args = getargs()
