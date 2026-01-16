@@ -25,15 +25,15 @@ from ubkg_args import RawTextArgumentDefaultsHelpFormatter
 
 # Centralized logging module
 from find_repo_root import find_repo_root
-from ubkg_logging import UbkgLogging
+from ubkg_logging import ubkgLogging
 
 # config file
 from ubkg_config import ubkgConfigParser
 
 # Calling subprocesses
 import ubkg_subprocess as usub
-# Extracting files
-import ubkg_extract as uextract
+# Extraction module
+from ubkg_extract import ubkgExtract
 
 def containsedgenodefiles(path: str) -> bool:
     # Checks files in a local path.
@@ -77,11 +77,12 @@ def getargs() -> argparse.Namespace:
 
     return args
 
-def unzipfiles(path: str, ulog: UbkgLogging) -> None:
+def unzipfiles(path: str, uext: ubkgExtract, ulog: ubkgLogging) -> None:
     """
     Decompresses all files in a folder path using Gzip.
     :param path: path to folder
-    :param ulog: UbkgLogging
+    :param uext: ubkgExtract object
+    :param ulog: ubkgLogging
     :return:
     """
 
@@ -93,7 +94,7 @@ def unzipfiles(path: str, ulog: UbkgLogging) -> None:
             funzip = os.path.join(path, fname.split('.gz')[0])
             # Decompress
             ulog.print_and_logger_info(f'Unzipping {fpath} to {funzip}')
-            funzippath = uextract.extract_from_gzip(zipfilename=fpath, outputpath=path, outfilename=funzip)
+            funzippath = uext.extract_from_gzip(zipfilename=fpath, outputpath=path, outfilename=funzip)
 
     return
 
@@ -104,7 +105,7 @@ def main():
     repo_root = find_repo_root()
     log_dir = os.path.join(repo_root, 'generation_framework/builds/logs')
     # Set up centralized logging.
-    ulog = UbkgLogging(log_dir=log_dir, log_file='ubkg.log')
+    ulog = ubkgLogging(log_dir=log_dir, log_file='ubkg.log')
 
     # Get runtime arguments.
     args = getargs()
@@ -131,7 +132,8 @@ def main():
     ulog.print_and_logger_info(f'Copying {frompath} to {sab_jkg_dir_sab}')
 
     # Decompress files if necessary.
-    unzipfiles(path=frompath, ulog=ulog)
+    uext = ubkgExtract(log_dir=log_dir, log_file='ubkg.log')
+    unzipfiles(path=frompath, uext=uext, ulog=ulog)
 
     if containsedgenodefiles(frompath):
 
