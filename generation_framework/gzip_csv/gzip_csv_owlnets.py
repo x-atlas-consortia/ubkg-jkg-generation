@@ -23,13 +23,13 @@ fpath = os.path.dirname(os.getcwd())
 fpath = os.path.join(fpath,'generation_framework/ubkg_utilities')
 sys.path.append(fpath)
 # Extraction module
-import ubkg_extract as uextract
+from ubkg_extract import ubkgExtract
 
 # argparser
 from ubkg_args import RawTextArgumentDefaultsHelpFormatter
 # Centralized logging module
 from find_repo_root import find_repo_root
-from ubkg_logging import UbkgLogging
+from ubkg_logging import ubkgLogging
 
 # config file
 from ubkg_config import ubkgConfigParser
@@ -37,7 +37,7 @@ from ubkg_config import ubkgConfigParser
 # Parser
 import ubkg_parsetools as uparse
 
-def getAPIKey()->str:
+def getAPIKey(ulog:ubkgLogging)->str:
 
     # Get an API key from a text file in the application directory.  (The file should be excluded from github via .gitignore.)
     # (To obtain an API key, create an account with NCBO. The API key is part of the account profile.)
@@ -51,11 +51,11 @@ def getAPIKey()->str:
 
     return apikey
 
-def translate_sab_property_label_to_ro_iri(ulog:UbkgLogging, apikey: str, sab: str, label: str)-> tuple[str,str]:
+def translate_sab_property_label_to_ro_iri(ulog:ubkgLogging, apikey: str, sab: str, label: str)-> tuple[str,str]:
 
     """
     Translates the label for a property from a SAB into the corresponding property from the Relations Ontology (RO).
-    :param ulog: UbkgLogging object
+    :param ulog: ubkgLogging object
     :param apikey: API key used to call the NCBO REST API
     :param sab: SAB
     :param label: label for a property in the ontology referenced by the SAB
@@ -102,7 +102,7 @@ def translate_sab_property_label_to_ro_iri(ulog:UbkgLogging, apikey: str, sab: s
     ulog.print_and_logger_info(f'In {sab}, the has_component property translates to {propIRI} ({proplbl}).')
     return (propIRI, proplbl)
 
-def get_ro_property(ulog: UbkgLogging, sab: str, col_header: str)-> tuple[str, str]:
+def get_ro_property(ulog: ubkgLogging, sab: str, col_header: str)-> tuple[str, str]:
 
     """
     Return information on the property in Relationship Ontology (RO) that corresponds to a column
@@ -111,7 +111,7 @@ def get_ro_property(ulog: UbkgLogging, sab: str, col_header: str)-> tuple[str, s
     The column header corresponds to the label of a relationship property in the ontology
     represented by the CSV.
 
-    :param ulog: UbkgLogging object
+    :param ulog: ubkgLogging object
     :param sab: SAB
     :param col_header: column header
     :return:
@@ -128,7 +128,7 @@ def get_ro_property(ulog: UbkgLogging, sab: str, col_header: str)-> tuple[str, s
 
     # Obtain the property's RO IRI with a call to the NCBO API.
     # Obtain an api key for the NCBO API.
-    apikey = getAPIKey()
+    apikey = getAPIKey(ulog=ulog)
     # Translate to an RO property.
     return translate_sab_property_label_to_ro_iri(ulog=ulog, apikey=apikey,sab=sab,label=col_header)
 
@@ -148,10 +148,10 @@ def getargs()->argparse.Namespace:
     args = parser.parse_args()
     return args
 
-def write_edges_file(ulog: UbkgLogging, df:pd.DataFrame, sab_jkg_dir: str, has_component_IRI: str,sab:str):
+def write_edges_file(ulog: ubkgLogging, df:pd.DataFrame, sab_jkg_dir: str, has_component_IRI: str,sab:str):
     """
 
-    :param ulog: UbkgLogging object
+    :param ulog: ubkgLogging object
     :param df: DataFrame of source data
     :param sab_jkg_dir: output directory
     :param has_component_IRI: IRI for the 'has_component' relationship
@@ -218,11 +218,11 @@ def write_edges_file(ulog: UbkgLogging, df:pd.DataFrame, sab_jkg_dir: str, has_c
                         out.write(subj + '\t' + predicate + '\t' + obj + '\n')
     return
 
-def write_nodes_file(ulog: UbkgLogging, df:pd.DataFrame, sab_jkg_dir: str, sab:str):
+def write_nodes_file(ulog: ubkgLogging, df:pd.DataFrame, sab_jkg_dir: str, sab:str):
 
     """
     Writes a nodes file in OWLNETS format.
-    :param ulog: UbkgLogging object
+    :param ulog: ubkgLogging object
     :param df: DataFrame of source information
     :param sab_jkg_dir: output directory
     :param sab: SAB
@@ -279,10 +279,11 @@ def write_nodes_file(ulog: UbkgLogging, df:pd.DataFrame, sab_jkg_dir: str, sab:s
                     node + '\t' + node_namespace + '\t' + node_label + '\t' + node_definition + '\t' + node_synonyms + '\t' + node_dbxrefs + '\n')
     return
 
-def getdfcsv(ulog: UbkgLogging, sab_source_dir: str, csv_file: str) -> pd.DataFrame:
+def getdfcsv(ulog: ubkgLogging, uext: ubkgExtract, sab_source_dir: str, csv_file: str) -> pd.DataFrame:
     """
     Read and prepare CSV file.
-    :param ulog: UbkgLogging object
+    :param ulog: ubkgLogging object
+    :param uext: UbkgExtract object
     :param sab_source_dir: path to the sab source file for the ontology
     :param csv_file: file name of the CSV
     :return: DataFrame of source information
@@ -290,7 +291,7 @@ def getdfcsv(ulog: UbkgLogging, sab_source_dir: str, csv_file: str) -> pd.DataFr
 
     csv_path = os.path.join(sab_source_dir, csv_file)
     ulog.print_and_logger_info(f'Reading {csv_path}...')
-    dfontology = uextract.read_csv_with_progress_bar(csv_path, on_bad_lines='skip', encoding='utf-8', sep=',')
+    dfontology = uext.read_csv_with_progress_bar(csv_path, on_bad_lines='skip', encoding='utf-8', sep=',')
     dfontology = dfontology.replace({'None': np.nan})
     dfontology = dfontology.replace({'': np.nan})
 
@@ -303,7 +304,7 @@ def main():
     repo_root = find_repo_root()
     log_dir = os.path.join(repo_root, 'generation_framework/builds/logs')
     # Set up centralized logging.
-    ulog = UbkgLogging(log_dir=log_dir, log_file='ubkg.log')
+    ulog = ubkgLogging(log_dir=log_dir, log_file='ubkg.log')
 
     # Obtain runtime arguments.
     args = getargs()
@@ -330,12 +331,15 @@ def main():
 
     owl_url = cfg.get_value(section='URL', key=args.sab)
 
+    # Instantiate UbkgExtract class
+    uext = ubkgExtract(log_dir=log_dir, log_file='ubkg.log')
+
     # Download GZipped file and extract the CSV.
     if args.fetchnew:
-        uextract.get_gzipped_file(gzip_url=owl_url, zip_path=sab_source_dir, extract_path=sab_source_dir, zipfilename=zip_filename,outfilename=csv_filename)
+        uext.get_gzipped_file(zip_url=owl_url, zip_path=sab_source_dir, extract_path=sab_source_dir, zipfilename=zip_filename,outfilename=csv_filename)
 
     # Load the CSV file.
-    dfontology = getdfcsv(ulog=ulog, sab_source_dir=sab_source_dir,csv_file=csv_filename)
+    dfontology = getdfcsv(ulog=ulog, uext=uext, sab_source_dir=sab_source_dir,csv_file=csv_filename)
 
     # Obtain the ontology-specific property that corresponds to the 'has_component' column.
     has_component_tuple=get_ro_property(ulog=ulog, sab=args.sab, col_header='has_component')
