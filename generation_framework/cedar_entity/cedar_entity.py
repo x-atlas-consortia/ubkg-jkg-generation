@@ -31,12 +31,12 @@ from ubkg_args import RawTextArgumentDefaultsHelpFormatter
 
 # Centralized logging module
 from find_repo_root import find_repo_root
-from ubkg_logging import UbkgLogging
+from ubkg_logging import ubkgLogging
 
 # config file
 from ubkg_config import ubkgConfigParser
 
-def initialize_file(path: str, ulog:UbkgLogging, file_type: str):
+def initialize_file(path: str, ulog:ubkgLogging, file_type: str):
     """
     Creates and writes header for edge and node file.
 
@@ -74,7 +74,7 @@ def main():
     repo_root = find_repo_root()
     log_dir = os.path.join(repo_root, 'generation_framework/builds/logs')
     # Set up centralized logging.
-    ulog = UbkgLogging(log_dir=log_dir, log_file='ubkg.log')
+    ulog = ubkgLogging(log_dir=log_dir, log_file='ubkg.log')
 
     # Obtain runtime arguments.
     args = getargs()
