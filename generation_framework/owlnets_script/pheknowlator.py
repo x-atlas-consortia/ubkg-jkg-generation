@@ -48,13 +48,9 @@ import ubkg_extract as uextract
 
 # Centralized logging
 from find_repo_root import find_repo_root
-from ubkg_logging import UbkgLogging
+from ubkg_logging import ubkgLogging
 
-class RawTextArgumentDefaultsHelpFormatter(
-    argparse.ArgumentDefaultsHelpFormatter,
-    argparse.RawTextHelpFormatter
-):
-    pass
+from ubkg_args import RawTextArgumentDefaultsHelpFormatter
 
 # https://docs.python.org/3/howto/argparse.html
 
@@ -115,7 +111,7 @@ def file_from_path(path_str: str) -> str:
     return None
 
 
-def download_owltools(loc: str) -> None:
+def download_owltools(ulog:ubkgLogging, loc: str) -> None:
 
     # OWLtools is a JAR package from PheKnowLator.
     owl_tools_url = 'https://github.com/callahantiff/PheKnowLator/raw/master/pkt_kg/libs/owltools'
@@ -294,7 +290,7 @@ def robot_merge(owl_url: str) -> None:
 # Set up centralized logging.
 repo_root = find_repo_root()
 log_dir = os.path.join(repo_root, 'generation_framework/builds/logs')
-ulog = UbkgLogging(log_dir=log_dir, log_file='ubkg.log')
+ulog = ubkgLogging(log_dir=log_dir, log_file='ubkg.log')
 
 if args.verbose is True:
     ulog.print_and_logger_info('Parameters:')
@@ -325,7 +321,7 @@ if args.robot is True:
     ulog.print_and_logger_info('Done! Elapsed time %s', "{:0>8}".format(str(timedelta(seconds=elapsed_time))))
     exit(0)
 
-download_owltools(args.owltools_dir)
+download_owltools(ulog=ulog, loc=args.owltools_dir)
 
 working_dir: str = os.path.join(args.owlnets_dir, args.owl_sab)
 ulog.print_and_logger_info(f"Making sure working directory {working_dir} exists", )
