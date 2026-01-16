@@ -14,7 +14,7 @@ fpath = os.path.dirname(os.getcwd())
 fpath = os.path.join(fpath, 'generation_framework/ubkg_utilities')
 sys.path.append(fpath)
 # Centralized logging
-from ubkg_logging import UbkgLogging
+from ubkg_logging import ubkgLogging
 
 class ubkgConfigParser:
 
@@ -27,7 +27,7 @@ class ubkgConfigParser:
         :param case_sensitive: whether the configuration file should be case-sensitive
         """
 
-        self.ulog = UbkgLogging(log_dir=log_dir, log_file=log_file)
+        self.ulog = ubkgLogging(log_dir=log_dir, log_file=log_file)
 
         self.config = ConfigParser(interpolation=ExtendedInterpolation())
         if case_sensitive:

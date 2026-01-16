@@ -238,7 +238,7 @@ def getparticipantedges(base_url: str, event_id: str) -> list:
     # Call the referenceEntities endpoint.
     url = base_url + f'participants/{event_id.replace("REACTOME:","")}/referenceEntities'
     time.sleep(0.1)
-    participantjson = uextract.getresponsejson(url)
+    participantjson = uextract.getresponsejson(url=url)
     listedges = []
     if participantjson is not None:
         for p in participantjson:

@@ -22,19 +22,20 @@ sys.path.append(fpath)
 from ubkg_args import RawTextArgumentDefaultsHelpFormatter
 # Centralized logging module
 from find_repo_root import find_repo_root
-from ubkg_logging import UbkgLogging
+from ubkg_logging import ubkgLogging
 
 # config file
 from ubkg_config import ubkgConfigParser
 
 # Extraction module
-import ubkg_extract as uextract
+from ubkg_extract import ubkgExtract
 # -----------------------------
 
-def download_source_files(cfg: ubkgConfigParser, sab_source_dir: str, sab_jkg_dir: str) -> list[str]:
+def download_source_files(cfg: ubkgConfigParser, uext:ubkgExtract, sab_source_dir: str, sab_jkg_dir: str) -> list[str]:
     """
     Obtains source files from the GENCODE FTP site.
     :param cfg: an instance of the ubkgConfigParser class, which works with the application configuration file.
+    :param uext: an instance of the UbkgExtract class
     :param sab_source_dir: location of downloaded GenCode GZIP files
     :param sab_jkg_dir:  location of extracted GenCode GTF files
     :return:
@@ -51,16 +52,17 @@ def download_source_files(cfg: ubkgConfigParser, sab_source_dir: str, sab_jkg_di
         url = cfg.get_value(section='URL', key=key)
         # The URL contains the filename.
         zipfilename = url.split('/')[-1]
-        list_gtf.append(uextract.get_gzipped_file(gzip_url=url, zip_path=sab_source_dir, extract_path=sab_jkg_dir, zipfilename=zipfilename))
+        list_gtf.append(uext.get_gzipped_file(zip_url=url, zip_path=sab_source_dir, extract_path=sab_jkg_dir, zipfilename=zipfilename))
 
     return list_gtf
 
 
-def load_gtf_into_dataframe(ulog:UbkgLogging, file_pattern: str, path: str, skip_lines: int=0, rows_to_read: int=0) -> pd.DataFrame:
+def load_gtf_into_dataframe(ulog:ubkgLogging, uext:ubkgExtract, file_pattern: str, path: str, skip_lines: int=0, rows_to_read: int=0) -> pd.DataFrame:
 
     """
     Loads a GTF file into a Pandas DataFrame, showing a progress bar.
-    :param ulog: UbkgLogging instance
+    :param ulog: ubkgLogging instance
+    :param uext: UbkgExtract instance
     :param file_pattern: portion of a name of a GTF file--e.g., "annotation"
     :param path: path to folder containing GTF files.
     :param skip_lines: number of lines to skip
@@ -74,7 +76,7 @@ def load_gtf_into_dataframe(ulog:UbkgLogging, file_pattern: str, path: str, skip
         if file_pattern in filename:
             gtffile = os.path.join(path, filename)
             ulog.print_and_logger_info(f'Reading {gtffile}')
-            return uextract.read_csv_with_progress_bar(path=gtffile, rows_to_read=rows_to_read, comment='#', sep='\t')
+            return uext.read_csv_with_progress_bar(path=gtffile, rows_to_read=rows_to_read, comment='#', sep='\t')
 
     # ERROR condition
     ulog.print_and_logger_info(f'Error: missing file with name that includes \'{file_pattern}\'.')
@@ -211,14 +213,15 @@ def filter_columns(cfg: ubkgConfigParser, df: pd.DataFrame) -> pd.DataFrame:
         df = df[cols]
         return df
 
-def build_annotation_dataframe(cfg: ubkgConfigParser, ulog: UbkgLogging, path: str) -> pd.DataFrame:
+def build_annotation_dataframe(cfg: ubkgConfigParser, ulog: ubkgLogging, uext: ubkgExtract, path: str) -> pd.DataFrame:
 
     """
     Builds a DataFrame that translates the GenCode annotation GTF file.
     The specification of GTF files is at https://www.gencodegenes.org/pages/data_format.html
 
-    :param ulog: UbkgLogging instance
+    :param ulog: ubkgLogging instance
     :param cfg: an instance of the ubkgConfigParser class, which works with the application configuration file.
+    :param uext: UbkgExtract instance
     :param path: path to folder containing GTF files.
     :return: DataFrame
     """
@@ -228,7 +231,7 @@ def build_annotation_dataframe(cfg: ubkgConfigParser, ulog: UbkgLogging, path: s
     # search on a file pattern.
     # The first five rows of the annotation file are comments.
 
-    df_gtf = load_gtf_into_dataframe(ulog=ulog, file_pattern="annotation", path=path, skip_lines=5)
+    df_gtf = load_gtf_into_dataframe(ulog=ulog, uext=uext, file_pattern="annotation", path=path, skip_lines=5)
 
     # The GTF file does not have column headers. Add these with values from the specification.
     df_gtf.columns = cfg.get_value(section='GTF_columns', key='columns').split(',')
@@ -293,13 +296,14 @@ def build_annotation_dataframe(cfg: ubkgConfigParser, ulog: UbkgLogging, path: s
     return df_gtf
 
 
-def build_metadata_dataframe(ulog: UbkgLogging, file_pattern: str, path: str, column_headers: list[str]) -> pd.DataFrame:
+def build_metadata_dataframe(ulog: ubkgLogging, uext:ubkgExtract, file_pattern: str, path: str, column_headers: list[str]) -> pd.DataFrame:
 
     """
     Builds a DataFrame that translates one of the GenCode metadata files.
     The specification of metadata files is at https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_41/_README.TXT
 
-    :param ulog: UbkgLogging instance
+    :param ulog: ubkgLogging instance
+    :param uext: UbkgExtract instance
     :param file_pattern: relevant portion of a filename.
     [The GenCode version is part of the file name (e.g., gencode.v41.annotation.gtf), so search on the pattern.]
     :param path: path to folder containing GTF files.
@@ -309,7 +313,7 @@ def build_metadata_dataframe(ulog: UbkgLogging, file_pattern: str, path: str, co
     # Load the "raw" version of the GTF file into a DataFrame.
 
     # search on a file pattern.
-    df_gtf = load_gtf_into_dataframe(ulog=ulog, file_pattern=file_pattern, path=path)
+    df_gtf = load_gtf_into_dataframe(ulog=ulog, uext=uext, file_pattern=file_pattern, path=path)
 
     # The GTF file does not have column headers. Add these with values from the specification.
     df_gtf.columns = column_headers
@@ -317,7 +321,7 @@ def build_metadata_dataframe(ulog: UbkgLogging, file_pattern: str, path: str, co
     return df_gtf
 
 
-def build_translated_annotation_dataframe(cfg: ubkgConfigParser, ulog: UbkgLogging, path: str, outfile: str) -> pd.DataFrame:
+def build_translated_annotation_dataframe(cfg: ubkgConfigParser, ulog: ubkgLogging, uext: ubkgExtract, path: str, outfile: str) -> pd.DataFrame:
 
     """
     Builds a DataFrame that:
@@ -325,7 +329,8 @@ def build_translated_annotation_dataframe(cfg: ubkgConfigParser, ulog: UbkgLoggi
     2. Combines translated GTF annotation data with metadata, joining by transcript_id.
 
     :param cfg: UbkgConfigParser class, which works with the application configuration file.
-    :param ulog: UbkgLogging instance
+    :param ulog: ubkgLogging instance
+    :param uext: UbkgExtract instance
     :param path: full path to the source GTF file
     :param outfile: output file name
     :return:
@@ -335,21 +340,21 @@ def build_translated_annotation_dataframe(cfg: ubkgConfigParser, ulog: UbkgLoggi
 
     ulog.print_and_logger_info('** BUILDING TRANSLATED GTF ANNOTATION FILE **')
     # Load and translate annotation file.
-    df_annotation = build_annotation_dataframe(cfg=cfg, ulog=ulog, path=path)
+    df_annotation = build_annotation_dataframe(cfg=cfg, ulog=ulog, uext=uext, path=path)
 
     # Metadata
     # Entrez file
-    df_entrez = build_metadata_dataframe(ulog=ulog, file_pattern='EntrezGene', path=path,
+    df_entrez = build_metadata_dataframe(ulog=ulog, uext=uext, file_pattern='EntrezGene', path=path,
                                         column_headers=['transcript_id', 'Entrez_Gene_id'])
     # RefSeq file
-    df_refseq = build_metadata_dataframe(ulog=ulog, file_pattern='RefSeq', path=path,
+    df_refseq = build_metadata_dataframe(ulog=ulog, uext=uext, file_pattern='RefSeq', path=path,
                                         column_headers=['transcript_id', 'RefSeq_RNA_id', 'RefSeq_protein_id'])
     # SwissProt file
-    df_swissprot = build_metadata_dataframe(ulog=ulog, file_pattern='SwissProt', path=path,
+    df_swissprot = build_metadata_dataframe(ulog=ulog, uext=uext, file_pattern='SwissProt', path=path,
                                            column_headers=['transcript_id', 'UNIPROTKB_SwissProt_AN',
                                                            'UNIPROTKB_SwissProt_AN2'])
     # TrEMBL file
-    df_trembl = build_metadata_dataframe(ulog=ulog, file_pattern='TrEMBL', path=path,
+    df_trembl = build_metadata_dataframe(ulog=ulog, uext=uext, file_pattern='TrEMBL', path=path,
                                         column_headers=['transcript_id', 'UNIPROTKB_TrEMBL_AN', 'UNIPROTKB_TrEMBL_AN2'])
 
     # Join Metadata files to Annotation file.
@@ -365,7 +370,7 @@ def build_translated_annotation_dataframe(cfg: ubkgConfigParser, ulog: UbkgLoggi
     # Write translated annotation file.
     outfile_ann = os.path.join(path, outfile)
     ulog.print_and_logger_info(f'-- Writing to {outfile_ann}')
-    uextract.to_csv_with_progress_bar(df=df_annotation, path=outfile_ann)
+    uext.to_csv_with_progress_bar(df=df_annotation, path=outfile_ann)
     return df_annotation
 
 
@@ -393,11 +398,11 @@ def get_ensembl_version(ensembl: str) -> str:
     # Obtains the version number from an ENSEMBL ID.
     return ensembl.split('.')[1]
 
-def write_edges_file(ulog: UbkgLogging, df: pd.DataFrame, path: str, vs_path: str):
+def write_edges_file(ulog: ubkgLogging, uext: ubkgExtract, df: pd.DataFrame, path: str, vs_path: str):
 
     """
     Translates the content of a GTF annotation file to OWLNETS format.
-    :param ulog: UbkgLogging object
+    :param ulog: ubkgLogging object
     :param df: DataFrame of annotated GTF information.
     :param path: export path of OWLNETS files
     :param vs_path: path to the directory containing OWLNETS files related to the ingestion of the GENCODE_VS ontology
@@ -420,7 +425,7 @@ def write_edges_file(ulog: UbkgLogging, df: pd.DataFrame, path: str, vs_path: st
     # Pandas sets the type of a column for which the first row is null to float.
 
     # Read the node information from GENCODE_VS.
-    df_gencode_vs = get_gencode_vs(ulog=ulog, path=vs_path)
+    df_gencode_vs = get_gencode_vs(ulog=ulog, uext=uext, path=vs_path)
 
     edgelist_path: str = os.path.join(path, 'OWLNETS_edgelist.txt')
     ulog.print_and_logger_info('Building: ' + os.path.abspath(edgelist_path))
@@ -551,11 +556,11 @@ def write_edges_file(ulog: UbkgLogging, df: pd.DataFrame, path: str, vs_path: st
 
     return
 
-def write_nodes_file(ulog: UbkgLogging, df: pd.DataFrame, path: str):
+def write_nodes_file(ulog: ubkgLogging, df: pd.DataFrame, path: str):
 
     """
     Writes a nodes file in OWLNETS format.
-    :param ulog: UbkgLogging object
+    :param ulog: ubkgLogging object
     :param df: DataFrame of source information
     :param path: output directory
     :return:
@@ -710,7 +715,7 @@ def write_nodes_file(ulog: UbkgLogging, df: pd.DataFrame, path: str):
 
     return
 
-def write_relations_file(ulog:UbkgLogging, path: str):
+def write_relations_file(ulog:ubkgLogging, path: str):
 
     """
     Writes a relations file in OWLNETS format.
@@ -758,10 +763,11 @@ def write_relations_file(ulog:UbkgLogging, path: str):
         out.write(relation9_id + '\t' + 'GENCODE' + '\t' + relation9_label + '\t' + '' + '\n')
     return
 
-def get_gencode_vs(ulog: UbkgLogging, path: str) -> pd.DataFrame:
+def get_gencode_vs(ulog: ubkgLogging, uext: ubkgExtract, path: str) -> pd.DataFrame:
     """
 
-    :param ulog: UbkgLogging
+    :param ulog: ubkgLogging
+    :param uext: UbkgExtract
     :param path: path to the GENCODE_VS directory in the repository
     :return:
     """
@@ -773,7 +779,7 @@ def get_gencode_vs(ulog: UbkgLogging, path: str) -> pd.DataFrame:
     nodefile = os.path.join(path, 'OWLNETS_node_metadata.txt')
 
     try:
-        return uextract.read_csv_with_progress_bar(nodefile, sep='\t')
+        return uext.read_csv_with_progress_bar(nodefile, sep='\t')
     except FileNotFoundError:
         ulog.print_and_logger_info('GENCODE depends on the prior ingestion of information '
                                    'from the GENCODE_VS SAB. Run .build_csv.sh for GENCODE_VS prior '
@@ -787,7 +793,7 @@ def main():
     repo_root = find_repo_root()
     log_dir = os.path.join(repo_root, 'generation_framework/builds/logs')
     # Set up centralized logging.
-    ulog = UbkgLogging(log_dir=log_dir, log_file='ubkg.log')
+    ulog = ubkgLogging(log_dir=log_dir, log_file='ubkg.log')
 
     # Obtain runtime arguments.
     args = getargs()
@@ -810,21 +816,24 @@ def main():
     # Obtain output name for the translated annotation file.
     ann_file = cfg.get_value(section='AnnotationFile', key='filename')
 
+    # Instantiate UbkgExtract class
+    uext = ubkgExtract(log_dir=log_dir, log_file='ubkg.log')
     if args.fetchnew:
+
         # Download and decompress GZIP files of GENCODE content from FTP site.
-        lst_gtf = download_source_files(cfg=cfg, sab_source_dir=sab_source_dir, sab_jkg_dir=sab_jkg_dir)
+        lst_gtf = download_source_files(cfg=cfg, uext=uext, sab_source_dir=sab_source_dir, sab_jkg_dir=sab_jkg_dir)
         # Build the DataFrame that combines translated GTF annotation data with metadata.
-        df_annotation = build_translated_annotation_dataframe(cfg=cfg, ulog=ulog, path=sab_jkg_dir, outfile=ann_file)
+        df_annotation = build_translated_annotation_dataframe(cfg=cfg, ulog=ulog, uext=uext, path=sab_jkg_dir, outfile=ann_file)
     else:
         # Read previously generated annotation CSV.
         path = os.path.join(sab_jkg_dir, ann_file)
         ann_rows=0
-        df_annotation = uextract.read_csv_with_progress_bar(path=path, rows_to_read=ann_rows)
+        df_annotation = uext.read_csv_with_progress_bar(path=path, rows_to_read=ann_rows)
 
     df_annotation = df_annotation.replace(np.nan, '')
 
-    write_edges_file(ulog=ulog, df=df_annotation, path=sab_jkg_dir, vs_path=gencode_vs_dir)
-    write_nodes_file(ulog=ulog,df=df_annotation, path=sab_jkg_dir)
+    write_edges_file(ulog=ulog, uext=uext, df=df_annotation, path=sab_jkg_dir, vs_path=gencode_vs_dir)
+    write_nodes_file(ulog=ulog, df=df_annotation, path=sab_jkg_dir)
     #write_relations_file(ulog=ulog, path=sab_jkg_dir)
 
 if __name__ == "__main__":

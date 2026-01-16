@@ -39,7 +39,7 @@ fpath = os.path.join(fpath, 'generation_framework/ubkg_utilities')
 sys.path.append(fpath)
 import ubkg_parsetools as uparse
 # Extraction module
-import ubkg_extract as uextract
+from ubkg_extract import ubkgExtract
 
 # argparser
 from ubkg_args import RawTextArgumentDefaultsHelpFormatter
@@ -50,13 +50,14 @@ from ubkg_logging import UbkgLogging
 # config file
 from ubkg_config import ubkgConfigParser
 
-def download_source_file(cfg: ubkgConfigParser, ulog:UbkgLogging, sab: str, sab_source_dir: str, sab_jkg_dir: str) -> str:
+def download_source_file(cfg: ubkgConfigParser, ulog:UbkgLogging, uext:ubkgExtract, sab: str, sab_source_dir: str, sab_jkg_dir: str) -> str:
     """
     Reads the 2D FTU CSV.
     :param ulog: UbkgLogging object
     :param cfg: an instance of the ubkgConfigParser class, which works with the application configuration file.
                 The config file should contain a URL that corresponds to the SimpleKnowledge spreadsheet
                 associated with the SAB.
+    :param uext: ubkgExtract object
     :param sab: SAB for the annotation file--e.g., FTU
     :param sab_source_dir: location of downloaded crosswalk files in the local repo
     :param sab_jkg_dir: location of OWLNETS files in the local repo
@@ -74,7 +75,7 @@ def download_source_file(cfg: ubkgConfigParser, ulog:UbkgLogging, sab: str, sab_
     filename = os.path.basename(parsed_url.path)
     filepath = os.path.join(sab_source_dir, filename)
     ulog.print_and_logger_info(f'Downloading file {filepath}')
-    uextract.download_file(url=url, download_full_path=filepath)
+    uext.download_file(url=url, download_full_path=filepath)
 
     return filepath
 
@@ -362,8 +363,9 @@ def main():
                                args.sab)
 
     if args.fetchnew:
+        uext = ubkgExtract(log_dir=log_dir, log_file='ubkg.log')
         # Download the HRA digital object spreadsheet.
-        crosswalk_file = download_source_file(ulog=ulog, cfg=cfg, sab=args.sab, sab_source_dir=sab_source_dir, sab_jkg_dir=sab_jkg_dir)
+        crosswalk_file = download_source_file(ulog=ulog, cfg=cfg, uext=uext, sab=args.sab, sab_source_dir=sab_source_dir, sab_jkg_dir=sab_jkg_dir)
     else:
         crosswalk_file = os.path.join(sab_source_dir, '2d-ftu-parts.csv')
 

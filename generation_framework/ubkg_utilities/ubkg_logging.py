@@ -13,7 +13,7 @@ to configure JSON logging.
 import logging.config
 import os
 
-class UbkgLogging:
+class ubkgLogging:
 
     def __init__(self, log_dir: str, log_file:str):
 
