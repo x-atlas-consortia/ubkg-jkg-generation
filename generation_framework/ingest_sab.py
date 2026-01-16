@@ -233,7 +233,8 @@ def main():
                              'ftu2d',
                              'gencode',
                              'hmfield',
-                             'gzip_csv']:
+                             'gzip_csv',
+                             'reactome']:
             # Pass the value of the --fetchnew argument to the subprocess.
             farg = ''
             if args.fetch:

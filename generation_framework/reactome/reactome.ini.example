@@ -1,0 +1,20 @@
+# Reactome configuration
+[Directories]
+# Absolute Path in the local repo to which to download source files
+sab_source_dir=generation_framework/sab_source/GENCODE
+# Absolute Path in the local repo to which to store JKG files
+sab_jkg_dir=generation_framework/sab_jkg/GENCODE
+# Absolute path in the local repo to valueset information for GENCODE
+vs_dir=generation_framework/sab_jkg/REACTOME_VS
+
+
+[Species]
+# NCBI Taxon IDs for species used in calls to the Reactome Content Services API
+human=9606
+mouse=10090
+#rat=10116
+
+[URL]
+# URLs to the Reactome Content Services API
+base_url=https://reactome.org/ContentService/data/
+url_events=https://reactome.org/ContentService/data/eventsHierarchy/${Species:human}?pathwaysOnly=false&resource=TOTAL&interactors=false&importableOnly=false

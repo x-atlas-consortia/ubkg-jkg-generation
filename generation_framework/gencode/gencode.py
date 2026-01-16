@@ -781,6 +781,7 @@ def get_gencode_vs(ulog: UbkgLogging, path: str) -> pd.DataFrame:
         exit(1)
 
 def main():
+
     # Locate the root directory of the repository for absolute
     # file paths.
     repo_root = find_repo_root()
