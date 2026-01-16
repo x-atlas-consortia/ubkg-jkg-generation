@@ -43,17 +43,17 @@ sys.path.append(fpath)
 from ubkg_args import RawTextArgumentDefaultsHelpFormatter
 # Centralized logging module
 from find_repo_root import find_repo_root
-from ubkg_logging import UbkgLogging
+from ubkg_logging import ubkgLogging
 
 # config file
 from ubkg_config import ubkgConfigParser
 
 import ubkg_parsetools as uparse
 # Extraction module
-import ubkg_extract as uextract
+from ubkg_extract import ubkgExtract
 
 
-def download_source_file(cfg:ubkgConfigParser, ulog:UbkgLogging, sab: str, sab_source_dir: str, sab_jkg_dir: str) -> str:
+def download_source_file(cfg:ubkgConfigParser, ulog:ubkgLogging, uext:ubkgExtract, sab: str, sab_source_dir: str, sab_jkg_dir: str) -> str:
 
     """
     Obtains a cell annotation crosswalk spreadsheet from the Human Reference Atlas's Digital Objects site.
@@ -61,7 +61,7 @@ def download_source_file(cfg:ubkgConfigParser, ulog:UbkgLogging, sab: str, sab_s
     :param cfg: an instance of the ubkgConfigParser class, which works with the application configuration file.
                 The config file should contain a URL that corresponds to the SimpleKnowledge spreadsheet
                 associated with the SAB.
-    :param: ulog: UbkgLogging object
+    :param: ulog: ubkgLogging object
     :param sab: SAB for the annotation file--e.g., AZ, PAZ
     :param sab_source_dir: location of downloaded crosswalk files in the local repo
     :param sab_jkg_dir: location of OWLNETS files in the local repo
@@ -79,7 +79,7 @@ def download_source_file(cfg:ubkgConfigParser, ulog:UbkgLogging, sab: str, sab_s
     parsed_url = urlparse(url)
     filename = os.path.basename(parsed_url.path)
     filepath = os.path.join(sab_source_dir,filename)
-    uextract.download_file(url=url, download_full_path=filepath)
+    uext.download_file(url=url, download_full_path=filepath)
 
     return filepath
 
@@ -100,12 +100,12 @@ def encode_organ_level_nodes(df: pd.DataFrame, parents: dict, sab:str) -> pd.Dat
 
     return dforgan[['Organ_Level','Organ_ID','Organ_AZ_code']]
 
-def write_edges_file(ulog: UbkgLogging, df: pd.DataFrame, parents: dict, dforgan: pd.DataFrame, sab_jkg_dir: str, sab:str):
+def write_edges_file(ulog: ubkgLogging, df: pd.DataFrame, parents: dict, dforgan: pd.DataFrame, sab_jkg_dir: str, sab:str):
 
     """
     Writes an edge file in OWLNETS format.
 
-    :param ulog: UbkgLogging object
+    :param ulog: ubkgLogging object
     :param df: DataFrame from a HRA cell type annotation CSV.
     :param sab_jkg_dir: output directory
     :param parents: dict of parent nodes
@@ -164,11 +164,11 @@ def write_edges_file(ulog: UbkgLogging, df: pd.DataFrame, parents: dict, dforgan
                 predicate_uri = 'located_in'
                 out.write(subject + '\t' + predicate_uri + '\t' + str(objcode) + '\n')
 
-def write_nodes_file(ulog: UbkgLogging, df: pd.DataFrame, sab_jkg_dir: str, parents: dict, dforgan: pd.DataFrame, sab:str):
+def write_nodes_file(ulog: ubkgLogging, df: pd.DataFrame, sab_jkg_dir: str, parents: dict, dforgan: pd.DataFrame, sab:str):
 
     """
     Writes a nodes file in OWLNETS format.
-    :param ulog: UbkgLogging object
+    :param ulog: ubkgLogging object
     :param df: DataFrame from a HRA cell type annotation CSV.
     :param sab_jkg_dir: output directory
     :param parents: dict of parent nodes
@@ -259,7 +259,7 @@ def main():
     repo_root = find_repo_root()
     log_dir = os.path.join(repo_root, 'generation_framework/builds/logs')
     # Set up centralized logging.
-    ulog = UbkgLogging(log_dir=log_dir, log_file='ubkg.log')
+    ulog = ubkgLogging(log_dir=log_dir, log_file='ubkg.log')
 
     # Obtain runtime arguments.
     args = getargs()
@@ -275,8 +275,10 @@ def main():
     sab_jkg_dir = os.path.join(os.path.dirname(os.getcwd()),cfg.get_value(section='Directories',key='sab_jkg_dir'),args.sab)
 
     if args.fetchnew:
+        # Instantiate UbkgExtract class
+        uext = ubkgExtract(log_dir=log_dir, log_file='ubkg.log')
         # Download the HRA digital object spreadsheet.
-        crosswalk_file = download_source_file(cfg=cfg, ulog=ulog, sab=args.sab, sab_source_dir=sab_source_dir,
+        crosswalk_file = download_source_file(cfg=cfg, ulog=ulog, uext=uext, sab=args.sab, sab_source_dir=sab_source_dir,
                                               sab_jkg_dir=sab_jkg_dir)
     else:
         # Use the existing spreadsheet.
