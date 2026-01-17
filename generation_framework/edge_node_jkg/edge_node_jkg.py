@@ -20,11 +20,10 @@ sys.path.append(fpath)
 from ubkg_args import RawTextArgumentDefaultsHelpFormatter
 # Centralized logging module
 from find_repo_root import find_repo_root
-from ubkg_logging import UbkgLogging
+from ubkg_logging import ubkgLogging
 
 # config file
 from ubkg_config import ubkgConfigParser
-
 
 def getargs() -> argparse.Namespace:
 
@@ -38,7 +37,16 @@ def getargs() -> argparse.Namespace:
     return args
 
 def main():
+    # Locate the root directory of the repository for absolute
+    # file paths.
+    repo_root = find_repo_root()
+    log_dir = os.path.join(repo_root, 'generation_framework/builds/logs')
+    # Set up centralized logging.
+    ulog = ubkgLogging(log_dir=log_dir, log_file='edge_node_jkg.log')
+
     getargs()
+
+
 
 if __name__ == "__main__":
     main()
