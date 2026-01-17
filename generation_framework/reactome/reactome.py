@@ -24,13 +24,13 @@ sys.path.append(fpath)
 from ubkg_args import RawTextArgumentDefaultsHelpFormatter
 # Centralized logging module
 from find_repo_root import find_repo_root
-from ubkg_logging import UbkgLogging
+from ubkg_logging import ubkgLogging
 
 # config file
 from ubkg_config import ubkgConfigParser
 
 # Extraction module
-import ubkg_extract as uextract
+from ubkg_extract import ubkgExtract
 
 def getargs() -> argparse.Namespace:
 
@@ -90,7 +90,7 @@ def gethierarchyedges(dictevent:dict, taxon: str, df_vs: pd.DataFrame)->list:
 
     return listret
 
-def getspeciesedges(ulog: UbkgLogging, base_url: str, species_id:str, df_vs:pd.DataFrame) -> list:
+def getspeciesedges(ulog: ubkgLogging, uext: ubkgExtract, base_url: str, species_id:str, df_vs:pd.DataFrame) -> list:
 
     """
     Builds a set of edge assertions for a species.
@@ -107,7 +107,8 @@ def getspeciesedges(ulog: UbkgLogging, base_url: str, species_id:str, df_vs:pd.D
     nested dictionaries. Each dictionary in the list (a "PathwayBrowserNode object" in the Reactome model) can contain a "children"
     object, itself a list of PathwayBrowernode objects. Translating an event hierarchy requires recursion through the generations of PathwayBrowserNode objects.
 
-    :param ulog: UbkgLogging
+    :param ulog: ubkgLogging
+    :param uext: ubkgExtract
     :param base_url: base URL for Reactome Content Services API
     :param species_id: NCBI Taxon ID for a species.
     :param df_vs: valueset from REACTOME_VS ingestion.
@@ -116,7 +117,7 @@ def getspeciesedges(ulog: UbkgLogging, base_url: str, species_id:str, df_vs:pd.D
     # Get hierarchical data for the species from the Reactome Content Service API.
     url = base_url + f'eventsHierarchy/{species_id}?pathwaysOnly=false&resource=TOTAL&interactors=false&importableOnly=false'
     time.sleep(0.1)
-    listevent = uextract.getresponsejson(url)
+    listevent = uext.getresponsejson(url)
     listedges = []
 
     ulog.print_and_logger_info('Building hierarchy edges...')
@@ -127,10 +128,10 @@ def getspeciesedges(ulog: UbkgLogging, base_url: str, species_id:str, df_vs:pd.D
 
     # Add property edges.
     ulog.print_and_logger_info('Building property edges...')
-    listedges = listedges + getpropertyedges(ulog=ulog, listhierarchyedges=listedges, base_url=base_url, species_id=species_id)
+    listedges = listedges + getpropertyedges(ulog=ulog, uext=uext, listhierarchyedges=listedges, base_url=base_url, species_id=species_id)
     return listedges
 
-def getpropertyedges(ulog: UbkgLogging, listhierarchyedges:list, base_url: str, species_id: str) -> list:
+def getpropertyedges(ulog: ubkgLogging, uext: ubkgExtract, listhierarchyedges:list, base_url: str, species_id: str) -> list:
     """
     Builds property assertions for Reactome events, including:
     1. taxon
@@ -139,7 +140,8 @@ def getpropertyedges(ulog: UbkgLogging, listhierarchyedges:list, base_url: str, 
     4. preceding events
     5. physical entities (proteins, chemicals, transcripts)
 
-    :param ulog: UbkgLogging
+    :param ulog: ubkgLogging
+    :param uext: ubkgExtract
     :param listhierarchyedges: a list of Reactome events from the event hierarchy for a species
     :param species_id: NCBI Taxon code for the species
     :param base_url: base URL for Reactome Content Services API
@@ -172,7 +174,7 @@ def getpropertyedges(ulog: UbkgLogging, listhierarchyedges:list, base_url: str, 
         # Remove the SAB from the code for the event.
         url = base_url + f'query/enhanced/{id.replace("REACTOME:","")}'
         time.sleep(0.1)
-        queryjson = uextract.getresponsejson(url)
+        queryjson = uext.getresponsejson(url)
 
         # GO biological process
         # Per the Gene Ontology Annotation (GOA) documentation, the default relationship for the Biological Process
@@ -221,11 +223,11 @@ def getpropertyedges(ulog: UbkgLogging, listhierarchyedges:list, base_url: str, 
 
     for rid in tqdm(listreactionids):
         # Merge the participant edge list with the edge list instead of appending it.
-        listpropertyedges = listpropertyedges + getparticipantedges(base_url=base_url, event_id=rid)
+        listpropertyedges = listpropertyedges + getparticipantedges(uext=uext, base_url=base_url, event_id=rid)
 
     return listpropertyedges
 
-def getparticipantedges(base_url: str, event_id: str) -> list:
+def getparticipantedges(uext: ubkgExtract, base_url: str, event_id: str) -> list:
     """
     Builds a list of edges that describe the "participants" in a Reactome event--proteins or chemicals.
 
@@ -233,12 +235,13 @@ def getparticipantedges(base_url: str, event_id: str) -> list:
     to the gene product (UniProtKB) or molecule (CHEBI, ENSEMBL) ("Reference entities").
 
     :param base_url: base URL for Reactome Content Services API
+    :param uext: Reactome extract object
     :param event_id: Reactome stable ID for an event.
     """
     # Call the referenceEntities endpoint.
     url = base_url + f'participants/{event_id.replace("REACTOME:","")}/referenceEntities'
     time.sleep(0.1)
-    participantjson = uextract.getresponsejson(url=url)
+    participantjson = uext.getresponsejson(url=url)
     listedges = []
     if participantjson is not None:
         for p in participantjson:
@@ -253,11 +256,12 @@ def getparticipantedges(base_url: str, event_id: str) -> list:
             listedges.append({'subject': event_id, 'predicate': pred, 'object': obj})
     return listedges
 
-def getallspeciesedges(ulog:UbkgLogging, cfg: ubkgConfigParser, df_vs: pd.DataFrame) -> pd.DataFrame:
+def getallspeciesedges(ulog:ubkgLogging, cfg: ubkgConfigParser, uext: ubkgExtract,df_vs: pd.DataFrame) -> pd.DataFrame:
     """
     Build edges for a set of specified species.
 
-    :param ulog: UbkgLogging object
+    :param ulog: ubkgLogging object
+    :param uext: ubkgExtract object
     :param cfg: application configuration object, which includes a list of species
     :param df_vs: DataFrame of the REACTOME_VS valueset.
 
@@ -272,17 +276,18 @@ def getallspeciesedges(ulog:UbkgLogging, cfg: ubkgConfigParser, df_vs: pd.DataFr
         species_id = cfg.get_value(section='Species', key=species)
         ulog.print_and_logger_info(f'Building edges for species={species_id} ({species})...')
         # Add the list of assertions for the species. Merge lists instead of append.
-        listallspeciesedges = listallspeciesedges + getspeciesedges(ulog=ulog, base_url=base_url, species_id=species_id, df_vs=df_vs)
+        listallspeciesedges = listallspeciesedges + getspeciesedges(ulog=ulog, uext=uext, base_url=base_url, species_id=species_id, df_vs=df_vs)
 
     # Convert list of assertions to a DataFrame.
     dfret = pd.DataFrame(listallspeciesedges)
     return dfret
 
-def getnodesfromedges(ulog: UbkgLogging, cfg: ubkgConfigParser, df:pd.DataFrame) -> pd.DataFrame:
+def getnodesfromedges(ulog: ubkgLogging, uext: ubkgExtract, cfg: ubkgConfigParser, df:pd.DataFrame) -> pd.DataFrame:
     """
     Builds a set of unique nodes.
 
-    :param ulog: UbkgLogging object
+    :param ulog: ubkgLogging object
+    :param uext: ubkgExtract object
     :param cfg: application configuration object
     :param df: DataFrame of assertions. This should be the DataFrame that corresponds to the edge file.
     :return: DataFrame of node information
@@ -313,7 +318,7 @@ def getnodesfromedges(ulog: UbkgLogging, cfg: ubkgConfigParser, df:pd.DataFrame)
         # Remove the REACTOME SAB from the ID.
         url = base_url + f'query/enhanced/{node_id.replace("REACTOME:", "")}'
         time.sleep(0.1)
-        queryjson = uextract.getresponsejson(url)
+        queryjson = uext.getresponsejson(url)
         node_label = queryjson.get('displayName','')
         #summation = queryjson.get('summation')
         node_definition = ''
@@ -332,7 +337,7 @@ def getnodesfromedges(ulog: UbkgLogging, cfg: ubkgConfigParser, df:pd.DataFrame)
     dfret = pd.DataFrame(listnodes)
     return dfret
 
-def getvs(ulog: UbkgLogging, path: str) -> pd.DataFrame:
+def getvs(ulog: ubkgLogging, uext:ubkgExtract, path: str) -> pd.DataFrame:
 
     # Responses from the Reactome Content Services API have values that have been encoded as nodes in the REACTOME_VS
     # set of assertions.
@@ -341,7 +346,7 @@ def getvs(ulog: UbkgLogging, path: str) -> pd.DataFrame:
     nodefile = os.path.join(path, 'OWLNETS_node_metadata.txt')
 
     try:
-        return uextract.read_csv_with_progress_bar(nodefile, sep='\t')
+        return uext.read_csv_with_progress_bar(nodefile, sep='\t')
     except FileNotFoundError:
         ulog.print_and_logger_info('REACTOME depends on the prior ingestion of information '
                                    'from the REACTOME_VS SAB. Run .build_csv.sh for REACTOME_VS prior '
@@ -356,7 +361,7 @@ def main():
     repo_root = find_repo_root()
     log_dir = os.path.join(repo_root, 'generation_framework/builds/logs')
     # Set up centralized logging.
-    ulog = UbkgLogging(log_dir=log_dir, log_file='ubkg.log')
+    ulog = ubkgLogging(log_dir=log_dir, log_file='ubkg.log')
 
     # Obtain runtime arguments.
     args = getargs()
@@ -378,14 +383,17 @@ def main():
     if not args.fetchnew:
         exit(0)
 
+        # Instantiate UbkgExtract class
+    uext = ubkgExtract(log_dir=log_dir, log_file='ubkg.log')
+
     # Obtain the REACTOME_VS valueset.
-    df_vs = getvs(ulog=ulog, path=vs_dir)
+    df_vs = getvs(ulog=ulog, uext=uext, path=vs_dir)
 
     # Build the edges for the specified set of species.
-    dfedges = getallspeciesedges(ulog=ulog, cfg=cfg, df_vs=df_vs)
+    dfedges = getallspeciesedges(ulog=ulog, uext=uext, cfg=cfg, df_vs=df_vs)
 
     # Build the nodes file, using the edge DataFrame.
-    dfnodes = getnodesfromedges(ulog=ulog, cfg=cfg, df=dfedges)
+    dfnodes = getnodesfromedges(ulog=ulog, uext=uext, cfg=cfg, df=dfedges)
 
     # Write edges to file.
     dfedges = dfedges[['subject', 'predicate', 'object']]

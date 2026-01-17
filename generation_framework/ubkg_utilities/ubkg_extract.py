@@ -90,7 +90,7 @@ class ubkgExtract:
         gdown.download_folder(url=folder_url, output=download_full_path)
         return
 
-    def download_file(self, url: str, download_full_path: str, encoding: str = 'UTF-8', contentType: str = '', chunk_size: int = 1024):
+    def download_file(self, url: str, download_full_path: str, encoding: str = 'UTF-8', chunk_size: int = 1024):
 
         """
         Downloads a file, displaying a TQDM progress bar.
@@ -112,32 +112,18 @@ class ubkgExtract:
         # Passing gzip encoding will trigger automatic gzip decompression.
         headers = {}
         if encoding != '':
-            # headers = {'Accept-encoding': encoding}
             headers['Accept-encoding'] = encoding
 
-        """
-        if contentType == 'xlsx':
-            headers['content-type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        elif contentType== 'xls':
-            headers['content-type'] = 'application/vnd.ms-excel'
-        elif contentType == 'csv':
-            headers['content-type'] = 'text/csv'
-        elif contentType == 'docx':
-            headers['content-type'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        elif contentType == 'doc':
-            headers['content-type'] = 'application/msword'
-        elif contentType == 'pdf':
-            headers['content-type'] = 'application/pdf'
-        else:
-            headers['content-type'] = contentType
-        """
-
         response = requests.get(url, stream=True, headers=headers)
+
         if response.status_code != 200:
             response.raise_for_status()
 
         # Get the size of the response (downloaded file).
         total = int(response.headers.get('content-length', 0))
+
+        # Handle case where total size is unknown
+        disable_progress = (total == 0)
 
         # Download the file in chunks, updating the progress bar.
         self.ulog.print_and_logger_info(f'Downloading...')
@@ -147,10 +133,12 @@ class ubkgExtract:
             unit='iB',
             unit_scale=True,
             unit_divisor=chunk_size, # 1024 updates progress for each MB downloaded
+            disable=disable_progress,
         ) as bar:
             for data in response.iter_content(chunk_size=chunk_size):
                 size = file.write(data)
                 bar.update(size)
+                bar.refresh()
 
         return
 

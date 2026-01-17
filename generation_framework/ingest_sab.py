@@ -234,7 +234,8 @@ def main():
                              'gencode',
                              'hmfield',
                              'gzip_csv',
-                             'reactome']:
+                             'reactome',
+                             'uniprotkb']:
             # Pass the value of the --fetchnew argument to the subprocess.
             farg = ''
             if args.fetch:

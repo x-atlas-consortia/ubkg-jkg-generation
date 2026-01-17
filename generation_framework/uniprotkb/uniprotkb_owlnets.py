@@ -24,13 +24,14 @@ from tqdm import tqdm
 fpath = os.path.dirname(os.getcwd())
 fpath = os.path.join(fpath, 'generation_framework/ubkg_utilities')
 sys.path.append(fpath)
+
 # Extraction module
-import ubkg_extract as uextract
+from ubkg_extract import ubkgExtract
 # argparser
 from ubkg_args import RawTextArgumentDefaultsHelpFormatter
 # Centralized logging module
 from find_repo_root import find_repo_root
-from ubkg_logging import UbkgLogging
+from ubkg_logging import ubkgLogging
 
 # config file
 from ubkg_config import ubkgConfigParser
@@ -38,7 +39,7 @@ from ubkg_config import ubkgConfigParser
 import ubkg_parsetools as uparse
 # -----------------------------
 
-def getuniprotkb(cfg: ubkgConfigParser, ulog: UbkgLogging, sab_source_dir: str, sab_jkg_dir: str) -> pd.DataFrame:
+def getuniprotkb(cfg: ubkgConfigParser, ulog: ubkgLogging, uext:ubkgExtract, sab_source_dir: str, sab_jkg_dir: str) -> pd.DataFrame:
 
     """
     Executes queries in the UNIPROTKB API that downloads GZip files of UNIPROTKB data.
@@ -47,7 +48,8 @@ def getuniprotkb(cfg: ubkgConfigParser, ulog: UbkgLogging, sab_source_dir: str, 
     Consolidates DataFrames into a single TSV if more than one organism was specified in the query.
 
     :param cfg: an instance of the ubkgConfigParser class, which works with the application configuration file.
-    :param ulog: UbkgLogging instance
+    :param ulog: ubkgLogging instance
+    :param uext: UbkgExtract instance
     :param sab_source_dir: directory to which to download the GZIP file.
     :param sab_jkg_dir: directory to which to extract the contents of the GZIP--a TSV file.
     :return:
@@ -81,12 +83,12 @@ def getuniprotkb(cfg: ubkgConfigParser, ulog: UbkgLogging, sab_source_dir: str, 
         tsvfilename = f'UNIPROTKB_{org}.tsv'
 
         url = base_url+organism+rev
-        uextract.get_gzipped_file(gzip_url=url, zip_path=sab_source_dir, extract_path=sab_jkg_dir, zipfilename=zipfilename,
+        uext.get_gzipped_file(zip_url=url, zip_path=sab_source_dir, extract_path=sab_jkg_dir, zipfilename=zipfilename,
                                   outfilename=tsvfilename)
 
         # Load the extracted TSV file into a DataFrame.
         tsvpath = os.path.join(sab_jkg_dir, tsvfilename)
-        list_org.append(uextract.read_csv_with_progress_bar(path=tsvpath, sep='\t', on_bad_lines='skip'))
+        list_org.append(uext.read_csv_with_progress_bar(path=tsvpath, sep='\t', on_bad_lines='skip'))
 
         # Select only manually curated (SwissProt) proteins.
         # df = df[df['Reviewed'] == 'reviewed'].dropna(subset=['Gene Names']).reset_index(drop=True)
@@ -97,15 +99,15 @@ def getuniprotkb(cfg: ubkgConfigParser, ulog: UbkgLogging, sab_source_dir: str, 
 
     ulog.print_and_logger_info('Writing consolidated TSV UNIPROTKB_all.tsv')
     path_consolidated = os.path.join(sab_jkg_dir, 'UNIPROTKB_all.tsv')
-    uextract.to_csv_with_progress_bar(df=df, path=path_consolidated, sep='\t')
+    uext.to_csv_with_progress_bar(df=df, path=path_consolidated, sep='\t')
     return df
 
 
-def getallhgncid(cfg: ubkgConfigParser, ulog:UbkgLogging, sab_source_dir: str) -> pd.DataFrame:
+def getallhgncid(cfg: ubkgConfigParser, ulog:ubkgLogging, uext:ubkgExtract, sab_source_dir: str) -> pd.DataFrame:
     """
     Downloads all HGNC IDs from genenames.org.
     :param cfg:  an instance of the ubkgConfigParser class, which works with the application configuration file.
-    :param ulog: UbkgLogging instance
+    :param ulog: ubkgLogging instance
     :param sab_source_dir: directory to which to download the GZIP file.
     :return:
     """
@@ -115,9 +117,9 @@ def getallhgncid(cfg: ubkgConfigParser, ulog:UbkgLogging, sab_source_dir: str) -
     url = cfg.get_value(section='HGNC', key='URL')
 
     hgnc_path = os.path.join(sab_source_dir, 'HGNC.TSV')
-    uextract.download_file(url=url, download_full_path=hgnc_path)
+    uext.download_file(url=url, download_full_path=hgnc_path)
 
-    return uextract.read_csv_with_progress_bar(path=hgnc_path, sep='\t')
+    return uext.read_csv_with_progress_bar(path=hgnc_path, sep='\t')
 
 
 def gethgncid(hgnc_acronym: str):
@@ -194,7 +196,7 @@ def write_go_annotation_edges(subject: str, go_column: str, go_aspect: str, out)
         out.write(subject + '\t' + pred + '\t' + goid + '\n')
 
 
-def write_edges_file(df: pd.DataFrame, ulog: UbkgLogging, dfhgnc:pd.DataFrame, sab_jkg_dir: str):
+def write_edges_file(df: pd.DataFrame, ulog: ubkgLogging, dfhgnc:pd.DataFrame, sab_jkg_dir: str):
 
     """
     Writes an edges file in OWLNETS format.
@@ -246,12 +248,12 @@ def write_edges_file(df: pd.DataFrame, ulog: UbkgLogging, dfhgnc:pd.DataFrame, s
 
     return
 
-def write_nodes_file(df: pd.DataFrame,  ulog: UbkgLogging, sab_jkg_dir: str):
+def write_nodes_file(df: pd.DataFrame,  ulog: ubkgLogging, sab_jkg_dir: str):
 
     """
     Writes a nodes file in OWLNETS format.
     :param df: DataFrame of source information
-    :param ulog: UbkgLogging object
+    :param ulog: ubkgLogging object
     :param sab_jkg_dir:
     :return:
     """
@@ -342,7 +344,7 @@ def main():
     repo_root = find_repo_root()
     log_dir = os.path.join(repo_root, 'generation_framework/builds/logs')
     # Set up centralized logging.
-    ulog = UbkgLogging(log_dir=log_dir, log_file='ubkg.log')
+    ulog = ubkgLogging(log_dir=log_dir, log_file='ubkg.log')
 
     args = getargs()
 
@@ -358,28 +360,35 @@ def main():
     sab_jkg_dir = os.path.join(os.path.dirname(os.getcwd()), cfg.get_value(section='Directories', key='sab_jkg_dir'),
                                'UNIPROTKB')
 
-    if not args.fetchnew:
+    # Instantiate UbkgExtract class
+    uext = ubkgExtract(log_dir=log_dir, log_file='ubkg.log')
+
+    # Make the subdirectories.
+    os.system(f'mkdir -p {sab_jkg_dir}')
+    os.system(f'mkdir -p {sab_source_dir}')
+
+    if args.fetchnew:
         # Download file from UNIPROTKB.
-        dfuniprotkb = getuniprotkb(cfg=cfg, ulog=ulog, sab_source_dir=sab_source_dir, sab_jkg_dir=sab_jkg_dir)
+        dfuniprotkb = getuniprotkb(cfg=cfg, ulog=ulog, uext=uext, sab_source_dir=sab_source_dir, sab_jkg_dir=sab_jkg_dir)
         # Get latest list of HGNC IDs from genenames.org
-        dfhgnc = getallhgncid(cfg=cfg, ulog=ulog, sab_source_dir=sab_source_dir)
+        dfhgnc = getallhgncid(cfg=cfg, ulog=ulog, uext=uext, sab_source_dir=sab_source_dir)
 
     else:
 
         # Read previously downloaded file.
         filepath = os.path.join(os.path.join(sab_jkg_dir, 'UNIPROTKB_all.tsv'))
-        dfuniprotkb = uextract.read_csv_with_progress_bar(filepath, sep='\t')
+        dfuniprotkb = uext.read_csv_with_progress_bar(filepath, sep='\t')
         dfuniprotkb = dfuniprotkb.replace(np.nan, '', regex=True)
 
         # Read previously downloaded HGNC information.
         hgncpath = os.path.join(sab_jkg_dir, 'HGNC.TSV')
-        dfhgnc = uextract.read_csv_with_progress_bar(hgncpath, sep='\t')
+        dfhgnc = uext.read_csv_with_progress_bar(hgncpath, sep='\t')
         dfhgnc = dfhgnc.replace(np.nan, '', regex=True)
 
 
     # Build OWLNETS text files.
     write_edges_file(df=dfuniprotkb, ulog=ulog, dfhgnc=dfhgnc, sab_jkg_dir=sab_jkg_dir)
-    write_nodes_file(df=dfuniprotkb, sab_jkg_dir=sab_jkg_dir)
+    write_nodes_file(df=dfuniprotkb, ulog=ulog, sab_jkg_dir=sab_jkg_dir)
 
 if __name__ == "__main__":
     main()
