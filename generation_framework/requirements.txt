@@ -37,5 +37,7 @@ flatten-json==0.1.14
 python-json-logger==4.0.0
 
 wget==3.2
+jsonschema==4.26.0
+loky==3.5.6
 
 

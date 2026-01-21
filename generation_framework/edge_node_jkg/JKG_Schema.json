@@ -1,0 +1,353 @@
+{
+    "$schema" : "https://json-schema.org/draft/2020-12/schema",
+    "$id" : "",
+    "title" : "JSON Knowledge Graph",
+    "type" : "object",
+    "description" : "A knowledge graph schema in JavaScript Object Notation",
+    "required": [ "nodes", "rels" ],
+    "additionalProperties": true,
+    "properties" : {
+        "nodes" : {
+            "type" : "array",
+            "description" : "The list of nodes in the knowledge graph",
+            "minItems": 2,
+            "uniqueItems": true,
+            "additionalItems": true,
+            "items": {
+                "type": "object",
+                "description": "A node in the knowledge graph",
+                "required": [ "labels", "properties" ],
+                "additionalProperties": true,
+                "properties": {
+                    "labels" : {
+                        "type": "array",
+                        "description": "A node type label is one of Source, Node_Label, Rel_Label, Term, or Concept. If the type is Concept, the labels list may also include other strings as node labels. It is recommended, but not enforced, that each are declared as a Node_Label semantic type label.",
+                        "uniqueItems": true,
+                        "additionalItems": false,
+                        "contains": {
+                            "enum" : [ "Source", "Node_Label", "Rel_Label", "Term", "Concept" ]
+                        },
+                        "minContains": 1,
+                        "maxContains": 1,
+                        "if" : {
+                            "not" : { "contains" : { "const" : "Concept" } }
+                        },
+                        "then" : {
+                            "maxItems" : 1
+                        },
+                        "items": {
+                            "type" : "string",
+                            "description" : "A node label"
+                        }
+                    },
+                    "properties" : {
+                        "type" : "object",
+                        "description": "These are the properties of a node that will be ingested into the knowledge graph.",
+                        "additionalProperties" : true,
+                        "properties" : {
+                            "node_label" : {
+                                "type" : "string",
+                                "pattern" : "^[A-Z]+.*",
+                                "$comment" : "regular expression for matching any string that starts with one uppercase letter followed by zero or more of any characters",
+                                "description" : "The unique label of one Node_Label node."
+                            },
+                            "rel_label" : {
+                                "type" : "string",
+                                "pattern" : "^[a-z][a-z0-9_]*$",
+                                "$comment" : "Regex pattern for starting with lower case letter and only allowing lower case letters, numbers, and underscores",
+                                "description" : "The unique label of one Rel_Label node."
+                            },
+                            "name" : {
+                                "type" : "string",
+                                "description" : "This is the name of the source when node label array item is Source."
+                            },
+                            "sab" : {
+                                "type" : "string",
+                                "pattern" : "[^:]",
+                                "$comment" : "Regex pattern for no colon in string",
+                                "description" : "This is the source abbreviation of the Source in which this node is asserted. It is requred for all nodes except for Term nodes."
+                            },
+                            "def" : {
+                                "type" : "string",
+                                "description" : "This is the definition of the label when node label array item is Rel_Lebel or Node_Label."
+                            },
+                            "pref_term" : {
+                                "type" : "string",
+                                "description" : "This is the required preferred term for a Concept node. It is recommended that for each Concept node, a Concept-Term Relationship (type CODE) is also asserted with properties including the id of the Concept as the codeid, PT as the tty, and sab of the Source from which the Concept came."
+                            }
+                        }
+                    }
+                },
+                "allOf" : [
+                    {
+                        "if": {
+                            "properties" : {
+                                "labels" : {
+                                    "items" : {
+                                        "not" : { "enum" : [ "Term" ] }
+                                    }
+                                }
+                            }
+                        },
+                        "then": {
+                            "properties" : {
+                                "properties" : {
+                                    "properties" : {
+                                        "id" : {
+                                            "type" : "string",
+                                            "pattern" : ".*:.*",
+                                            "$comment" : "regex for a CURIE (contains a colon in the middle)",
+                                            "description" : "The unique id of the node used for relationships. For Terms this is any string (in else below). For all other node types (labels) this is a CURIE like Source:Code."
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "else" : {
+                            "properties" : {
+                                "properties" : {
+                                    "required" : ["id"],
+                                    "properties" : {
+                                        "id" : {
+                                            "type" : "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "if": {
+                            "properties" : {
+                                "labels" : {
+                                    "items" : {
+                                        "enum" : [ "Source" ]
+                                    }
+                                }
+                            }
+                        },
+                        "then": {
+                            "properties" : {
+                                "properties" : {
+                                    "required" : ["id", "name", "sab"]
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "if": {
+                            "properties" : {
+                                "labels" : {
+                                    "items" : {
+                                        "enum" : [ "Node_Label" ]
+                                    }
+                                }
+                            }
+                        },
+                        "then": {
+                            "properties" : {
+                                "properties" : {
+                                    "required" : ["id", "node_label", "sab", "def"]
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "if": {
+                            "properties" : {
+                                "labels" : {
+                                    "items" : {
+                                        "enum" : [ "Rel_Label" ]
+                                    }
+                                }
+                            }
+                        },
+                        "then": {
+                            "properties" : {
+                                "properties" : {
+                                    "required" : ["id", "rel_label", "sab", "def"]
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "if": {
+                            "properties" : {
+                                "labels" : {
+                                    "items" : {
+                                        "$comment" : "For Concept label lists",
+                                        "not" : {
+                                            "enum" : [ "Source", "Node_Label", "Rel_Label", "Term" ]
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "then": {
+                            "properties" : {
+                                "properties" : {
+                                    "required" : ["id", "pref_term", "sab"]
+                                }
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        "rels" : {
+            "type" : "array",
+            "description" : "The list of relationships in the knowledge graph",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+                "type": "object",
+                "description": "A relationship in the knowledge graph",
+                "required": [ "properties", "start", "end", "label" ],
+                "additionalProperties": true,
+                "properties" : {
+                    "label" : {
+                        "type" : "string",
+                        "description" : "The one relationship type from among Rel_Label or CODE."
+                    },
+                    "start" : {
+                        "type" : "object",
+                        "description" : "This is the subject node of the relationship.",
+                        "required" : [ "properties" ],
+                        "additionalProperties": true,
+                        "properties" : {
+                            "properties" : {
+                                "type" : "object",
+                                "descriptoin" : "These are the ingested properties of the start node.",
+                                "required" : [ "id" ],
+                                "additionalProperties": true,
+                                "properties" : {
+                                    "id" : {
+                                        "type" : "string",
+                                        "pattern" : ".*:.*",
+                                        "$comment" : "regex for a CURIE (contains a colon in the middle)",
+                                        "description" : "This is the id (CURIE) of the subject node of the relationship."
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "end" : {
+                        "type" : "object",
+                        "description" : "This is the object node of the relationship.",
+                        "required" : [ "properties" ],
+                        "additionalProperties": true,
+                        "properties" : {
+                            "properties" : {
+                                "type" : "object",
+                                "descriptoin" : "These are the ingested properties of the end node.",
+                                "required" : [ "id" ],
+                                "additionalProperties": true,
+                                "properties" : {
+                                }
+                            }
+                        }
+                    },
+                    "properties" : {
+                        "type" : "object",
+                        "description" : "These are the properties of the relationship that will be ingested into the knowledge graph (in addition to the relationship type label, start node id and end node id).",
+                        "additionalProperties": true,
+                        "properties" : {
+                            "sab" : {
+                                "type" : "string",
+                                "pattern" : "[^:]",
+                                "description" : "This is the source abbreviation of the source from which this relationship is asserted."
+                            },
+                            "def" : {
+                                "type" : "string",
+                                "description" : "This is a definition of the Concept node when relationship type label is CODE."
+                            },
+                            "codeid" : {
+                                "type" : "string",
+                                "pattern" : ".*:.*",
+                                "description" : "This is a CURIE for a Code from a Source as sab:code, typiclly a equivalence class of the Concept id (dbxref) of the Concept node when relationship type label is CODE."
+                            },
+                            "tty" : {
+                                "type" : "string",
+                                "description" : "This is typically an abbreviated Term Type (in UMLS a tty, typically PT for preferred term or SYN for synonym) for a Code from a Source when relationship type label is CODE."
+                            },
+                            "attribute" : {
+                                "type" : "string",
+                                "description" : "This is used to enhance the detail of a relationship by asserting additional information as an attribute-value with values as strings or numeric ranges or point estimates with units asserted. For example, one might utilize it for external reference regarding the precise relationship and attribute may be url whereas valuestr may be the actual url. This process allows unlimited support to an assertion by creating many relationships between the same two nodes with the same relationship type label from the same source with different attributes and value elements. As a specific numeric example, one can assert the attribute as frequency, a value as a count during an interval with a lower bound and an uppoer bound of the interval and unit stated as count during specified time units."
+                            },
+                            "valuestr" : {
+                                "type" : "string",
+                                "description" : "This is a string type of value for an attribute. Attribute must also be not null if it is used."
+                            },
+                            "value" : {
+                                "type" : "number",
+                                "description" : "This is a numeric point estimate value for an attribute."
+                            },
+                            "upperbound" : {
+                                "type" : "number",
+                                "description" : "This is a numeric upper bound for a range type of value for an attribute."
+                            },
+                            "lowerbount" : {
+                                "type" : "number",
+                                "description" : "This is a numeric lower bound for a range type of value for an attribute."
+                            },
+                            "unit" : {
+                                "type" : "string",
+                                "description" : "This is the unit with which a value, upper bound, and or lower bound is measured for a numeric attribute."
+                            }
+                        },
+                        "$comment" : "The lines below ensure that if the value-related items are used the attribute is also present.",
+                        "dependentRequired": { "valuestr" : [ "attribute" ] },
+                        "dependentRequired": { "value" : [ "attribute" ] },
+                        "dependentRequired": { "upperbound" : [ "attribute" ] },
+                        "dependentRequired": { "lowerbount" : [ "attribute" ] },
+                        "dependentRequired": { "unit" : [ "attribute" ] }
+                    }
+                },
+                "if": {
+                    "properties" : {
+                        "label" : { "const" : "CODE" }
+                    }
+                },
+                "then": {
+                    "properties" : {
+                        "properties" : {
+                            "required": [ "sab", "codeid", "tty" ]
+                        },
+                        "end" : {
+                            "properties" : {
+                                "properties" : {
+                                    "properties" : {
+                                        "id" : {
+                                            "type" : "string",
+                                            "description" : "This is the id (CURIE or Term when CODE relationship) of the object node of the relationship."
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "else" : {
+                    "properties" : {
+                        "properties" : {
+                            "required": [ "sab" ]
+                        },
+                        "end" : {
+                            "properties" : {
+                                "properties" : {
+                                    "properties" : {
+                                        "id" : {
+                                            "type" : "string",
+                                            "pattern" : ".*:.*",
+                                            "description" : "This is the id (CURIE or Term when CODE relationship) of the object node of the relationship."
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
