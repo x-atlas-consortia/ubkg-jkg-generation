@@ -3,9 +3,8 @@
 
 # UBKG functions for cleaning CSV files.
 
-import pandas as pd
-import ubkg_extract as uextract
-import ubkg_logging as ulog
+from generation_framework.utilities.classes import ubkg_extract as uextract, ubkg_logging as ulog
+
 
 def remove_duplicates(csvpath: str):
 

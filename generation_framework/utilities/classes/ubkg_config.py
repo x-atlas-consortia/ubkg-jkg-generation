@@ -10,11 +10,11 @@ import sys
 
 # The following allows for an absolute import from an adjacent script directory--i.e., up and over instead of down.
 # Find the absolute path. (This assumes that this script is being called from build_csv.py.)
-fpath = os.path.dirname(os.getcwd())
-fpath = os.path.join(fpath, 'generation_framework/ubkg_utilities')
-sys.path.append(fpath)
+#fpath = os.path.dirname(os.getcwd())
+#fpath = os.path.join(fpath, 'generation_framework/ubkg_utilities')
+#sys.path.append(fpath)
 # Centralized logging
-from ubkg_logging import ubkgLogging
+from .ubkg_logging import ubkgLogging
 
 class ubkgConfigParser:
 

@@ -5,7 +5,6 @@ import pandas as pd
 import os
 
 # UBKG logging utility
-import ubkg_logging as ulog
 
 # UBKG utilities for parsing
 

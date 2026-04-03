@@ -1,0 +1,10 @@
+# Configuration for SKOWLNETS script
+
+[Directories]
+# Absolute Path in the local repo to which to download source files
+sab_source_dir=generation_framework/sab_source
+# Absolute Path in the local repo to which to store JKG files
+sab_jkg_dir=generation_framework/sab_jkg
+
+[Paths]
+CEDAR=/Users/jas971/documents/globus/Import/CEDAR/edges.tsv

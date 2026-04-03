@@ -3,8 +3,8 @@
 # arguments
 argparse==1.4.0
 # for analysis of tabular data
-pandas==1.5.0
-numpy==1.23.5
+pandas==2.3.0
+numpy==2.1.0
 # to download data from online sources
 requests~=2.26.0
 # to work with Excel spreadsheets
@@ -13,7 +13,6 @@ openpyxl==3.0.10
 # ------
 # PheKnowLator package and its dependencies
 pkt_kg==3.1.2
-# 2026 - In March 2023, the latest Python distribution supported by ray was 3.10.
 ray==2.53.0
 rdflib~=6.2.0
 lxml==6.0.2
@@ -21,14 +20,14 @@ psutil==2.0
 tqdm==4.62.0
 # For downloading from Google Drive
 gdown==5.2.1
-# March 2023
+
 # The PheKnowlator package uses NetworkX, and calls the write_pickle function.
 # The NetworkX package deprecated the write_pickle function in version 3.0.
 # Downgrade NetworkX to a stable previous version.
 networkx==2.8
 
 # For reading YAML
-pyyaml==6.0
+pyyaml==6.0.3
 
 # For flattening JSON recursively
 flatten-json==0.1.14
@@ -37,7 +36,6 @@ flatten-json==0.1.14
 python-json-logger==4.0.0
 
 wget==3.2
-jsonschema==4.26.0
-loky==3.5.6
+
 
 

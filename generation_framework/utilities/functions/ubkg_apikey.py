@@ -3,7 +3,8 @@
 
 # Code for obtaining api keys from text files.
 import os
-import ubkg_logging as ulog
+from generation_framework.utilities.classes import ubkg_logging as ulog
+
 
 def getapikey()->str:
 

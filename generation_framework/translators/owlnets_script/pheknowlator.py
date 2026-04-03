@@ -41,16 +41,16 @@ import pandas as pd
 # The following allows for an absolute import from an adjacent script directory--i.e., up and over instead of down.
 # Find the absolute path. (This assumes that this script is being called from build_csv.py.)
 fpath = os.path.dirname(os.getcwd())
-fpath = os.path.join(fpath, 'generation_framework/ubkg_utilities')
+fpath = os.path.join(fpath, 'generation_framework/utilities')
 sys.path.append(fpath)
 # Extracting files
-import ubkg_extract as uextract
+import classes.ubkg_extract as uextract
 
 # Centralized logging
-from find_repo_root import find_repo_root
-from ubkg_logging import ubkgLogging
+from functions.find_repo_root import find_repo_root
+from classes.ubkg_logging import ubkgLogging
 
-from ubkg_args import RawTextArgumentDefaultsHelpFormatter
+from classes.ubkg_args import RawTextArgumentDefaultsHelpFormatter
 
 # https://docs.python.org/3/howto/argparse.html
 

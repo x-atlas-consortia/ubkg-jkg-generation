@@ -19,11 +19,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 
 # Centralized logging
-from ubkg_logging import ubkgLogging
-from find_repo_root import find_repo_root
-
-# Centralized logging
-from ubkg_logging import ubkgLogging
+from .ubkg_logging import ubkgLogging
 
 class ubkgExtract:
 

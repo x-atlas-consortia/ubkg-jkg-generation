@@ -5,4 +5,4 @@ to translate OWL files into OWLNETS format.
 
 **pheknowlator.py** is the latest version.
 
-This script explicitly downloads the JAR file in the _pkk_kg_ directory.
+This script explicitly downloads the JAR file in the _pkt_kg_ directory.

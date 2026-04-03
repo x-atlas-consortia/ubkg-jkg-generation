@@ -1,0 +1,21 @@
+# ingest_sab.ini
+
+[sabs]
+# Absolute path to the sabs.json file
+sab_json_file=generation_framework/sources.json
+# Expected keys in the sabs.json file.
+sab_json_keys=[source_type,execute_url,owl_url, description, sab, download_owl_url_to_file_name, execute]
+
+[directories]
+# Absolute path in the local repo to which to download source files
+sab_source_dir=generation_framework/sab_source
+# Absolute path in the local repo to which to store intermediary JKG files
+sab_jkg_dir=generation_framework/sab_jkg
+# Absolute path in the local repo where the PheKnowLator owltools executable resides
+owltools_dir=generation_framework/pkt_kg/libs
+
+[owlnets]
+owlnets_script_py=generation_framework/translators/owlnets_script/pheknowlator.py
+fix_owlnets_tsv_script_py=generation_framework/translators/owlnets_script/fix_tsv_file.py
+validation_script=generation_framework/translators/owlnets-script/blackbox_validation/__main__.py
+
