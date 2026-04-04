@@ -279,7 +279,6 @@ def main():
 
     # Get runtime arguments.
     args = getargs()
-    print(args)
 
     # Get application configuration.
     cfgpath = os.path.join(os.path.dirname(os.getcwd()), 'generation_framework/skowlnets/skowlnets.ini')

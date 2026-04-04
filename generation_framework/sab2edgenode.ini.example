@@ -17,5 +17,3 @@ owltools_dir=generation_framework/pkt_kg/libs
 [owlnets]
 owlnets_script_py=generation_framework/translators/owlnets_script/pheknowlator.py
 fix_owlnets_tsv_script_py=generation_framework/translators/owlnets_script/fix_tsv_file.py
-validation_script=generation_framework/translators/owlnets-script/blackbox_validation/__main__.py
-
