@@ -2,12 +2,16 @@
   "4DN": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py 4DN",
-    "description": "Data Distillery 4DN"
+    "name": "Data Distillery Partnership - 4D Nucleome",
+    "description": "Chromatin loops called from Hi-C experiments performed in select cell lines.",
+    "version": "2023-AUG-24"
   },
   "AZ": {
     "source_type": "hra_do",
     "execute": "./hra_digital_objects/hra_do.py AZ",
-    "description": "Azimuth-Cell Ontology mappings"
+    "name": "Azimuth-Cell Ontology mappings",
+    "description": "Maps the cell type annotations from Azimuth (Hao et al. 2021) to Cell Ontology",
+    "version": "v1.2"
   },
   "BIOMARKER": {
     "source_type": "ubkg_edge_node",
