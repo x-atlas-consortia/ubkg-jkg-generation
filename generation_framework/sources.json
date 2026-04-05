@@ -2,7 +2,7 @@
   "4DN": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py 4DN",
-    "name": "Data Distillery Partnership - 4D Nucleome",
+    "name": "Data Distillery: 4D Nucleome (4DN)",
     "description": "Chromatin loops called from Hi-C experiments performed in select cell lines.",
     "version": "2023-AUG-24"
   },
@@ -10,399 +10,518 @@
     "source_type": "hra_do",
     "execute": "./hra_digital_objects/hra_do.py AZ",
     "name": "Azimuth-Cell Ontology mappings",
-    "description": "Maps the cell type annotations from Azimuth (Hao et al. 2021) to Cell Ontology",
+    "description": "Maps of cell type annotations from Azimuth (Hao et al. 2021) to Cell Ontology, obtained from the crosswalk CSV maintained by the Human Reference Atlas",
     "version": "v1.2"
   },
   "BIOMARKER": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py BIOMARKER",
-    "description": "Data Distillery BIOMARKER"
+    "name": "Data Distillery: Biomarker",
+    "description": "Biomarker Partnership Project",
+    "version": "2025-APR-03"
   },
   "CEDAR": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py CEDAR",
-    "description": "CEDAR metadata"
+    "name": "CEDAR",
+    "description": "Export of CEDAR research metadata templates for HuBMAP",
+    "version": "2025-JUNE-06"
   },
   "CEDAR_ENTITY": {
     "source_type": "cedar_entity",
     "execute": "./cedar_entity/cedar_entity.py CEDAR_ENTITY",
-    "description": "CEDAR-Provenance Entity mapping"
+    "name": "CEDAR-ENTITY",
+    "description": "CEDAR-HuBMAP Provenance Entity mappings",
+    "version": "2024-DEC-15"
   },
   "CHEBI": {
     "source_type": "owl",
     "owl_url": "http://purl.obolibrary.org/obo/chebi.owl.gz",
-    "description": "Chemical Entities of Biological Interest, zipped"
+    "name": "Chemical Entities of Biological Interest",
+    "description": "Chemical Entities of Biological Interest",
+    "version": "v246"
   },
   "CL": {
     "source_type": "owl",
     "owl_url": "http://purl.obolibrary.org/obo/cl/cl-base.owl",
-    "description": "Complete cell ontology, but with no imports or external axioms"
+    "name": "Cell Ontology",
+    "description": "Complete cell ontology, but with no imports or external axioms",
+    "version": "2025-NOV-25"
   },
   "CLINGEN": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py CLINGEN",
-    "description": "Data Distillery CLINGEN"
+    "name": "Data Distillery: Clinical Genome (ClinGen)",
+    "description": "Clinical Genome selected datasets",
+    "version": "2024-JAN-26"
   },
   "CLINVAR": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py CLINVAR",
-    "description": "Data Distillery CLINVAR"
+    "name": "Data Distillery: ClinVar",
+    "description": "Extract from ClinVar of associations between genes and diseases or phenotypes",
+    "version": "2023-APR-07"
   },
   "CMAP": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py CMAP",
-    "description": "Data Distillery CMAP"
+    "name": "Data Distillery: Connectivity Map",
+    "description": "Extract from CMAP of associations between genes and chemicals or drugs",
+    "version": "2023-APR-07"
   },
   "DCTH": {
     "source_type": "hra_do",
     "execute": "./hra_digital_objects/hra_do.py DCTH",
-    "description": "DeepCellType annotations, obtained from the crosswalk CSV maintained by the Human Reference Atlas"
+    "name": "DeepCellType (DCTH) annotations",
+    "description": "DeepCellType (DCTH) annotations",
+    "version": "v1.0"
   },
   "DGN": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py DGN",
-    "description": "Data Distillery DisGenet"
+    "name": "Data Distillery: DisGeNET",
+    "description": "A database of gene disease associations",
+    "version": "2024-APR-12"
   },
   "DOID": {
     "source_type": "owl",
     "owl_url": "http://purl.obolibrary.org/obo/doid.owl",
-    "description": "Human Disease Ontology"
+    "name": "Human Disease Ontology (DOID)",
+    "description": "An ontology for describing the classification of human diseases organized by etiology.",
+    "version": "2025-NOV-25"
   },
   "EDAM": {
     "source_type": "owl",
     "owl_url": "http://edamontology.org/EDAM.owl",
-    "description": "Ontology of bioscientific data analysis and data management"
+    "name": "EDAM",
+    "description": "Ontology of bioscientific data analysis and data management",
+    "version": "dev (1.26)"
   },
   "EFO": {
     "source_type": "owl",
     "owl_url": "https://data.bioontology.org/ontologies/EFO/submissions/262/download?apikey=8b5b7825-538d-40e0-9e9e-5ab9274a9aeb",
-    "description": "The Experimental Factor Ontology (EFO) is an application focused ontology modelling the experimental variables in multiple resources at the EBI and Open Targets."
+    "name": "Experimental Factor Ontology (EFO)",
+    "description": "The Experimental Factor Ontology (EFO) is an application focused ontology modelling the experimental variables in multiple resources at the EBI and Open Targets.",
+    "version": "v3.65.0"
   },
   "EMAPA": {
     "source_type": "owl",
     "owl_url": "http://purl.obolibrary.org/obo/emapa.owl",
-    "description": "Mouse Developmental Anatomy Ontology"
+    "name": "Mouse Developmental Anatomy Ontology (EMAPA)",
+    "description": "An ontology for mouse anatomy covering embryonic development and postnatal stages",
+    "version": "2023-NOV-14"
   },
   "ERCCREG": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py ERCCREG",
-    "description": "Data Distillery ERCC Regulatory Elements"
+    "name": "Data Distillery: ERCC Regulatory Elements (ERCCREG)",
+    "description": "exRNA Research Portal Regulatory Elements",
+    "version": "2023-JUN-23"
   },
   "ERCCRBP": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py ERCCRBP",
-    "description": "Data Distillery ERCC exRNA Remote Binding Proteins"
-  },
-  "ERCCRBS": {
-    "source_type": "ubkg_edge_node",
-    "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py ERCCRBS",
-    "description": "Data Distillery ERCC - Remote Binding Site"
+    "name": "Data Distillery: ERCC exRNA Remote Binding Proteins (ERCCRBP)",
+    "description" : "exRNA Research Portal RNA Binding Proteins",
+    "version": "2024-JUL-10"
   },
   "FALDO": {
     "source_type": "owl",
     "owl_url": "https://data.bioontology.org/ontologies/FALDO/submissions/18/download?apikey=8b5b7825-538d-40e0-9e9e-5ab9274a9aeb",
-    "description": "FALDO is the Feature Annotation Location Description Ontology. (Part of GlyGen ingestion)"
+    "name": "Feature Annotation Location Description Ontology (FALDO)",
+    "description": "FALDO is the Feature Annotation Location Description Ontology",
+    "version": "2022-SEP-07"
   },
   "FTU2D": {
     "source_type": "ftu2d",
     "execute": "./ftu2d/ftu2d.py FTU2D",
-    "description": "Human Reference Atlas 2D Functional Tissue Unit (FTU) ontology"
+    "name": "Human Reference Atlas 2D Functional Tissue Unit (FTU) ontology",
+    "description": "A summarized view of the number of anatomical structures and cell types per functional tissue unit.",
+    "version": "v2.3"
+
   },
   "GENCODE": {
     "source_type": "gencode",
     "execute": "./gencode/gencode.py",
-    "description": "Data from GenCode"
+    "name": "Data Distillery: GenCode",
+    "description": "Extract of annotation data from GenCode",
+    "version": "version 41 (GRCh38 Ensembl 107) 2022-MAY-12"
   },
   "GENCODEHSCLO": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py GENCODEHSCLO",
-    "description": "GENCODE - HSCLO mapping"
+    "name": "Data Distillery: GENCODE - HSCLO mapping",
+    "description": "GenCode - HSCLO mapping",
+    "version": "2024-JAN-26"
   },
   "GENCODE_VS": {
     "source_type": "simpleknowledge",
     "execute": "./skowlnets/skowlnets.py GENCODE_VS",
-    "description": "GenCode application ontology, obtained from input spreadsheet in SimpleKnowledge format"
+    "name": "Data Distillery: GenCode valuesets",
+    "description": "Categorical valuesets of data from GenCode (e.g., biotypes)",
+    "version": "2025-JUN-03"
   },
   "GLYCANS": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py GLYCANS",
-    "description": "Data Distillery GlyGen GLYCANS"
+    "name": "Data Distillery: GlyGen GLYCANS",
+    "description": "Glycans data",
+    "version": "2024-FEB-06"
   },
   "GLYCORDF": {
     "source_type": "owl",
     "owl_url": "https://raw.githubusercontent.com/glycoinfo/GlycoRDF/master/ontology/glycan.rdf",
-    "description": "GlycoRDF OWL in RDF/XML"
+    "name": "GlycoRDF",
+    "description": "GlycoRDF is a standard representation for storing Glycomics data (glycan structures publication information biological source information experimental data) in RDF",
+    "version": "2013-FEB-10"
   },
   "GLYCOCOO": {
     "source_type": "owl",
     "owl_url": "https://raw.githubusercontent.com/glycoinfo/GlycoCoO/master/ontology/glycocoo.owl",
-    "description": "GlycoCoO in Turtle"
+    "name": "GlycoCoO",
+    "description":"Standard ontology for glycoconjugate data (glycoprotein/glycolipid structures publication information biological source information experimental data)",
+    "version": "2018-OCT-26"
   },
   "GTEXCOEXP": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py GTEXCOEXP",
-    "description": "Data Distillery GTEXCOEXP data in edges/nodes format"
+    "name": "Data Distillery: GTEXCOEXP",
+    "description": "GTEX Coexpression",
+    "version": "2025-AUG-14"
   },
   "GTEXEQTL": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py GTEXEQTL",
-    "description": "Data Distillery GTEXEQTL data in edges/nodes format"
+    "name": "Data Distillery: GTEXEQTL",
+    "description": "GTEX Expression quantitative trait loci (eQTL)",
+    "version": "2025-AUG-14"
   },
   "GTEXEXP": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py GTEXEXP",
-    "description": "Data Distillery GTEXEXP data in edges/nodes format"
+    "name": "Data Distillery: GTEXEXP",
+    "description": "GTEX expression",
+    "version": "2025-AUG-14"
   },
   "HCOP": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py HCOP",
-    "description": "Data Distillery HCOPHGNC - human-mouse orthologs"
+    "name": "Data Distillery: HCOPHGNC",
+    "description": "Associations between genes in the Mouse Genome Database (MGD) and genes in HGNC",
+    "version": "2024-JAN-20"
   },
   "HGNCHPO": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py HGNCHPO",
-    "description": "Data Distillery HGNCHPO - human genotype - phenotype mapping "
+    "name": "Data Distillery: HGNCHPO",
+    "description": "Associations between gene codes in HGNC and codes in the Human Phenotype Ontology (HPO)",
+    "version": "2024-JAN-20"
   },
   "HMAZ": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py HMAZ",
-    "description": "Data Distillery HuBMAP Azimuth"
+    "name": "Data Distillery: HuBMAP Azimuth",
+    "description": "HuBMAP Azimuth Cell Expression Summary",
+    "version": "2023-AUG-23"
   },
   "HMFIELD": {
     "source_type": "hmfield",
     "execute": "./hmfield/hmfield.py HMFIELD",
-    "description": "HuBMAP pre-CEDAR metadata"
+    "name": "HuBMAP legacy field metadata",
+    "description": "HuBMAP pre-CEDAR metadata",
+    "version": "2024-JUN-14"
   },
   "HPOMP": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py HPOMP",
-    "description": "Data Distillery HPOMP"
+    "name": "Data Distillery: HPOMP",
+    "description": "Human Phenotype Ontology to Mammalian Phenotype Ontology mapping",
+    "version": "2024-JAN-20"
   },
   "HRA": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py HRA",
-    "description": "Human Reference Atlas"
+    "name": "Human Reference Atlas",
+    "description": "Human Reference Atlas data exported to UBKG format",
+    "version": "v2.4"
   },
   "HRAVS": {
     "source_type": "gzip_csv",
-    "description": "The value set for the Human Reference Atlas metadata records as part of the Human BioMolecular Atlas Program (HuBMAP)",
-    "execute": "./gzip_csv/gzip_csv_owlnets.py HRAVS"
+    "execute": "./gzip_csv/gzip_csv_owlnets.py HRAVS",
+    "name": "HuBMAP Research Attributes Value Set",
+    "description": "HuBMAP Research Attributes Value Set",
+    "version": "v2.14.10"
   },
   "HSAPDV": {
     "source_type": "owl",
     "owl_url": "http://purl.obolibrary.org/obo/hsapdv.owl",
-    "description": "Life cycle stages for Human"
+    "name": "Human Developmental Stages",
+    "description": "Life cycle stages for Human",
+    "version": "2025-JAN-23"
   },
   "HSCLO": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py HSCLO",
-    "description": "Data Distillery HSCLO - Chromosome Location Ontology"
+    "name": "Data Distillery: Homo sapiens Chromosomal Location Ontology",
+    "description": "A knowledge-graph-ready framework for connecting genomic features at multiple resolutions",
+    "version": "2024-JUL-09"
   },
   "HUBMAP": {
     "source_type": "simpleknowledge",
     "execute": "./skowlnets/skowlnets.py HUBMAP",
-    "description": "HubMAP application ontology, obtained from input spreadsheet in SimpleKnowledge format"
+    "name": "Human Biomedical Atlas Project application ontology",
+    "description": "Human Biomedical Atlas Project application ontology"
   },
   "IDGD": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py IDGD",
-    "description": "Data Distillery IDG - compound-disease interactions"
+    "name": "Data Distillery: IDGD",
+    "description": "Illuminating the Druggable Genome Compound to Drug Interactions",
+    "version": "2024-MAY-23"
   },
   "IDGP": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py IDGP",
-    "description": "Data Distillery IDG - compound-protein interactions"
+    "name": "Data Distillery: IDGP",
+    "description": "Illuminating the Druggable Genome Compound to Protein Interactions",
+    "version": "2024-MAY-23"
   },
   "KF": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py KF",
-    "description": "Data Distillery Gabriella Miller Kids First"
+    "name": "Data Distillery: Kids First",
+    "description": "Gabriella Miller Kids First",
+    "version": "2024-JAN-20"
   },
   "LINCS": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py LINCS",
-    "description": "Data Distillery LINCS data in edges/nodes format"
+    "name": "Data Distillery: LINCS",
+    "description": "Library of Integrated Network Based Cellular Signatures",
+    "version": "2023-SEP-19"
   },
   "MI": {
     "source_type": "owl",
     "owl_url": "http://purl.obolibrary.org/obo/mi.owl",
-    "description": "A structured controlled vocabulary for the annotation of experiments concerned with protein-protein interactions"
-  },
-  "MONDO": {
-    "source_type": "owl",
-    "owl_url": "http://purl.obolibrary.org/obo/mondo.owl",
-    "description": "The Mondo Disease Ontology (MONDO): a global community effort to harmonize multiple disease resources to yield a coherent merged ontology"
+    "name": "Molecular Interactions Controlled Vocabulary",
+    "description": "A structured controlled vocabulary for the annotation of experiments concerned with protein-protein interactions",
+    "version": "CVversion 2.5.5"
   },
   "MONDO_SIMPLE": {
     "source_type": "owl",
     "owl_url": "http://purl.obolibrary.org/obo/mondo/mondo-simple.owl",
-    "description": "The Mondo Disease Ontology (MONDO): a global community effort to harmonize multiple disease resources to yield a coherent merged ontology"
+    "name": "The Mondo Disease Ontology (MONDO)",
+    "description": "A global community effort to harmonize multiple disease resources to yield a coherent merged ontology"
   },
   "MOTRPAC": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py MOTRPAC",
-    "description": "Data Distillery MOTRPAC"
+    "name": "Data Distillery: MoTrPAC",
+    "description": "Molecular Transducers of Physical Activity Consortium (MoTrPAC)",
+    "version": "2023-SEP-12"
   },
   "MP": {
     "source_type": "owl",
     "owl_url": "http://purl.obolibrary.org/obo/mp.owl",
-    "description": "Standard terms for annotating mammalian phenotypic data"
+    "name": "Mammalian Phenotype Ontology",
+    "description": "Standard terms for annotating mammalian phenotypic data",
+    "version": "2025-NOV-19"
   },
   "MPMGI": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py MPMGI",
-    "description": "Data Distillery HCOPMP - mouse_genotype_phenotype"
+    "name": "Data Distillery: MPMGI",
+    "description": "Associations between genes in the Mouse Genome Database (MGD) and phenotypes in MP",
+    "version": "2024-JAN-20"
   },
   "MSIGDB": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py MSIGDB",
-    "description": "Data Distillery MSIGDB"
+    "name": "Data Distillery: Molecular Signatures Database (MSIGDB)",
+    "description": "Annotated gene sets for use with Gene Set Enrichment Analysis (GSEA)",
+    "version": "2024-JAN-26"
   },
   "MW": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py MW",
-    "description": "Data Distillery Metabolic Workbench"
+    "name": "Data Distillery: Metabolic Workbench (MW)",
+    "description": "Metabolics Workbench",
+    "version": "2024-JUL-11"
   },
   "NPO": {
     "source_type": "owl",
     "owl_url": "https://data.bioontology.org/ontologies/NPOKB/submissions/14/download?apikey=8b5b7825-538d-40e0-9e9e-5ab9274a9aeb",
-    "description": "NPO in Turtle"
+    "name": "Neuron Phenotype Ontology (NPO)",
+    "description": "Neuron Phenotype Ontology",
+    "version": "2024-MAR-04"
   },
   "NPOSKCAN": {
     "source_type": "owl",
     "owl_url": "https://github.com/SciCrunch/NIF-Ontology/releases/download/sckan-2023-04-29/npo-simple-sckan-merged.ttl",
-    "description": "NPO-SKCAN in Turtle"
+    "name": "NPO-SKCAN",
+    "description": "NPO-SKCAN",
+    "version": "2024-MAR-04"
   },
   "OBI": {
     "source_type": "owl",
     "owl_url": "http://purl.obolibrary.org/obo/obi.owl",
-    "description": "Ontology for Biomedical Investigations"
+    "name": "Ontology for Biomedical Investigations (OBI)",
+    "description": "The Ontology for Biomedical Investigations (OBI) project is developing an integrated ontology for the description of life science and clinical investigations.",
+    "version": "2025-OCT-14"
   },
   "OBIB": {
     "source_type": "owl",
     "owl_url": "http://purl.obolibrary.org/obo/obib.owl",
-    "description": "The ontology for Biobanking (OBIB) is an ontology built for annotation and modeling of biobank repository and biobanking administration."
+    "name": "Ontology for Biobanking (OBIB)",
+    "description": "An ontology built for annotation and modeling of biobank repository and biobanking administration.",
+    "version": "2023-APR-05"
   },
   "ORDO": {
     "source_type": "owl",
     "owl_url": "https://data.bioontology.org/ontologies/ORDO/submissions/28/download?apikey=8b5b7825-538d-40e0-9e9e-5ab9274a9aeb",
-    "description": "Orphanet Rare Disease Ontology",
+    "name": "Orphanet Rare Disease Ontology (ORDO)",
+    "description": "Jointly developed by Orphanet and the EBI to provide a structured vocabulary for rare diseases capturing relationships between diseases genes and other relevant features which will form a useful resource for the computational analysis of rare diseases.",
+    "version": "2025-NOV-30",
     "download_owl_url_to_file_name": "ordo.owl"
   },
   "OTG": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py OTG",
-    "description": "Data Distillery Open Target Genomics"
+    "name": "Data Distillery: Open Target Genomics (OTG)",
+    "description": "Human genetics and genomics data for systematic drug target identification and prioritisation",
+    "version": "2024_10_24"
   },
   "PATO": {
     "source_type": "owl",
     "owl_url": "http://purl.obolibrary.org/obo/pato/pato-base.owl",
-    "description": "Phenotype And Trait Ontology - includes axioms linking to other ontologies, but no imports of those ontologies"
+    "name": "Phenotype And Trait Ontology (PATO)",
+    "description": "Phenotypic qualities (properties)",
+    "version": "2025-MAY-14"
   },
   "PAZ": {
     "source_type": "hra_do",
     "execute": "./hra_digital_objects/hra_do.py PAZ",
-    "description": "Pan-organ Azimuth annotations, obtained from the crosswalk CSV maintained by the Human Reference Atlas"
-  },
-  "PCL": {
-    "source_type": "owl",
-    "owl_url": "https://purl.obolibrary.org/obo/pcl.owl",
-    "description": "Provisional Cell Ontology"
+    "name": "Pan-organ Azimuth annotations",
+    "description": "Pan-organ Azimuth annotations",
+    "version": "v1.0"
   },
   "PGO": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py PGO",
-    "description": "Pseudogene- see readme in ubkg_edges directory in repo"
+    "name": "Pseudogene (PGO)",
+    "description": "Pseudogene",
+    "version": "v1.0"
   },
   "PROTEOFORM": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py PROTEOFORM",
-    "description": "Data Distillery GlyGen PROTEOFORM"
+    "name": "Data Distillery: GlyGen PROTEOFORM",
+    "description": "Proteoform",
+    "version": "2023-JUNE-23"
   },
   "RATHCOP": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py RATHCOP",
-    "description": "Data Distillery RATHCOP - human-rat ensemble orthologs"
+    "name": "Data Distillery: RATHCOP",
+    "description": "ENSEMBL human to ENSEMBL Rat ortholog",
+    "version": "2023-SEP-12"
   },
   "REACTOME": {
     "source_type": "reactome",
     "execute": "./reactome/reactome.py",
-    "description": "Reactome"
+    "name": "Reactome",
+    "description": "Extract of pathway information from Reactome",
+    "version": "2025-DEC-02"
   },
   "REACTOME_VS": {
     "source_type": "simpleknowledge",
     "execute": "./skowlnets/skowlnets.py REACTOME_VS",
-    "description": "Reactome valueset, obtained from input spreadsheet in SimpleKnowledge format"
+    "name": "Reactome valueset",
+    "description": "Categorical values related to Reactome data model--e.g., reaction type",
+    "version": "2025-DEC-01"
   },
   "RIBCA": {
     "source_type": "hra_do",
     "execute": "./hra_digital_objects/hra_do.py RIBCA",
-    "description": "RIBCA annotations, obtained from the crosswalk CSV maintained by the Human Reference Atlas"
-  },
-  "RO": {
-    "source_type": "owl",
-    "owl_url": "http://purl.obolibrary.org/obo/ro.owl",
-    "description": "This Relation Ontology should get relationships and inverses and the RO code where we want the name"
+    "name": "Robust Image-Based Cell Annotator (RIBCA)",
+    "description": "RIBCA annotations",
+    "source": "v1.0"
   },
   "SENNET": {
     "source_type": "simpleknowledge",
     "execute": "./skowlnets/skowlnets.py SENNET",
-    "description": "SenNet application ontology, obtained from input spreadsheet in SimpleKnowledge format"
+    "name": "Senescene Network (SenNet) application ontology",
+    "description": "Senescene Network (SenNet) application ontology",
+    "version": "2026-MAR-23"
   },
   "SBO": {
     "source_type": "owl",
     "owl_url": "http://purl.obolibrary.org/obo/sbo.owl",
-    "description": "Systems Biology Ontology"
+    "name": "Systems Biology Ontology (SBO)",
+    "description": "Terms commonly used in Systems Biology and in particular in computational modeling.",
+    "version": "2021-AUG-21"
   },
   "STELLAR": {
     "source_type": "hra_do",
     "execute": "./hra_digital_objects/hra_do.py STELLAR",
-    "description": "STELLAR annotations, obtained from the crosswalk CSV maintained by the Human Reference Atlas"
+    "name": "STELLAR (SpaTial cElL LeARning) to Cell Ontology mappings",
+    "description": "STELLAR annotations",
+    "version": "v1.0"
   },
   "STRING": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py STRING",
-    "description": "StringDB"
+    "name": "Data Distillery: StringDB",
+    "description": "StringDB Protein-Protein Interaction Network",
+    "version": "2024-JUL-09"
   },
   "UBERON": {
     "source_type": "owl",
     "owl_url": "http://purl.obolibrary.org/obo/uberon/uberon-base.owl",
-    "description": "UBERON"
+    "name": "Uberon",
+    "description": "Uberon multi species anatomy ontology",
+    "version": "2025-JAN-15"
   },
   "UBERONEMAPA": {
     "source_type": "owl",
     "owl_url": "http://purl.obolibrary.org/obo/uberon/bridge/uberon-bridge-to-emapa.owl",
-    "description": "UBERON Anatomical Bridging Ontology to EMAPA"
-  },
-  "UBKGSOURCE": {
-    "source_type": "simpleknowledge",
-    "execute": "./skowlnets/skowlnets.py UBKGSOURCE",
-    "description": "UBKG source ontology, obtained from input spreadsheet in SimpleKnowledge format"
+    "name": "UBERON-EMAPA",
+    "description": "UBERON Anatomical Bridging Ontology to EMAPA",
+    "source": "2025-MAY-28"
   },
   "UNIPROT": {
     "source_type": "owl",
     "owl_url": "https://ftp.uniprot.org/pub/databases/uniprot/current_release/rdf/core.owl",
-    "description": "UniProt"
+    "name": "UniProt",
+    "description": "Universal Protein Resource",
+    "version": "2024-OCT-02"
   },
   "UNIPROTKB": {
     "source_type": "uniprotkb",
     "execute_url": "https://www.uniprot.org/uniprot/?query=facets=reviewed%3Atrue&fil=organism%3A%22Homo+sapiens+%28Human%29+%5B9606%5D%22",
     "execute": "./uniprotkb/uniprotkb_owlnets.py",
+    "name": "UniProtKB",
     "description": "Data from UniProtKB exported to OWLNETS format."
   },
   "UO": {
     "source_type": "owl",
     "owl_url": "http://purl.obolibrary.org/obo/uo.owl",
-    "description": "Unit Ontology"
+    "name": "Unit Ontology (UO)",
+    "description": "Metrical units for use in conjunction with PATO",
+    "version": "2023-MAY-25"
   },
   "VCCF": {
     "source_type": "hra_do",
     "execute": "./hra_digital_objects/hra_do.py VCCF",
-    "description": "VCCF annotations, obtained from the crosswalk CSV maintained by the Human Reference Atlas"
+    "name": "Vasculature Common Coordinate Framework (VCCF)",
+    "description": "VCCF annotations",
+    "version": "v1.0"
   },
   "WP": {
     "source_type": "ubkg_edge_node",
     "execute": "./ubkg_edges_nodes/ubkg_edges_nodes.py WP",
-    "description": "WikiPathways"
+    "name": "Data Distillery: WikiPathways",
+    "description": "WikiPathways",
+    "version": "2023-DEC-18"
   }
 }
