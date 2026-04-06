@@ -18,16 +18,15 @@ from .ubkg_logging import ubkgLogging
 
 class ubkgConfigParser:
 
-    def __init__(self, path: str, log_dir: str, log_file: str, case_sensitive: bool = False):
+    def __init__(self, path: str, ulog:ubkgLogging, case_sensitive: bool = False):
         """
         Read and validate the specified configuration file
         :param path: full path to the configuration file
-        :param log_dir: logging directory
-        :param log_file: logging file
+        :param ulog: common log file object
         :param case_sensitive: whether the configuration file should be case-sensitive
         """
 
-        self.ulog = ubkgLogging(log_dir=log_dir, log_file=log_file)
+        self.ulog = ulog
 
         self.config = ConfigParser(interpolation=ExtendedInterpolation())
         if case_sensitive:

@@ -133,7 +133,7 @@ def main():
     ulog.print_and_logger_info(f' - fetch fresh copies: {args.fetch}')
 
     # Obtain application configuration.
-    cfg = ubkgConfigParser(path='sab2edgenode.ini', log_dir=log_dir, log_file='ubkg.log')
+    cfg = ubkgConfigParser(path='ubkgjkg.ini', ulog=ulog)
 
     # Read and validate the file of SAB-specific configuration.
     usource = ubkgSources(ulog=ulog, cfg=cfg, repo_root=repo_root)
@@ -141,7 +141,7 @@ def main():
     # Process SABs.
     start_time = time.time()
     ulog.print_and_logger_info('-' * 50)
-    ulog.print_and_logger_info(f"Processing SABs: {', '.join(sab_names)}")
+    ulog.print_and_logger_info(f"Translating SABs: {', '.join(sab_names)}")
 
     # For each SAB, execute the associated ETL subprocess.
     for sab_name in sab_names:
@@ -158,6 +158,7 @@ def main():
 
         if source_type == 'owl':
             if args.fetch:
+                ulog.print_and_logger_info(f'Running translator: PhenKnowLator.')
                 # Use PheKnowLator to convert OWL files to OWLNETS files.
                 run_pheknowlator_for_sab(cfg=cfg,
                                          ulog=ulog,
@@ -180,12 +181,12 @@ def main():
                 farg = '--fetchnew'
 
             script = f'{usource.get(sab=sab_name, key='execute')}'
-            ulog.print_and_logger_info(f"Running: {script}")
+            ulog.print_and_logger_info(f"Running translator: {script}")
             usub.call_subprocess(script)
 
         # Add log entry for how long it took to do the processing...
         elapsed_time = time.time() - start_time
-        ulog.print_and_logger_info(f'Done! Total Elapsed time {"{:0>8}".format(str(timedelta(seconds=elapsed_time)))}')
+        ulog.print_and_logger_info(f'Translation completed. Total Elapsed time: {"{:0>8}".format(str(timedelta(seconds=elapsed_time)))}')
 
 
 if __name__ == "__main__":

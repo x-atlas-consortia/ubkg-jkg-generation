@@ -1,10 +1,9 @@
-# ingest_sab.ini
+# ubkgjkg.ini
+# config file common to generation framework scripts
 
 [sabs]
 # Absolute path to the sabs.json file
 sab_json_file=generation_framework/sources.json
-# Expected keys in the sabs.json file.
-sab_json_keys=[source_type,execute_url,owl_url, description, sab, download_owl_url_to_file_name, execute]
 
 [directories]
 # Absolute path in the local repo to which to download source files
@@ -15,5 +14,6 @@ sab_jkg_dir=generation_framework/sab_jkg
 owltools_dir=generation_framework/pkt_kg/libs
 
 [owlnets]
+# Scripts using the PheKnowlator package to convert OWL files to OWLNETS format
 owlnets_script_py=generation_framework/translators/owlnets_script/pheknowlator.py
 fix_owlnets_tsv_script_py=generation_framework/translators/owlnets_script/fix_tsv_file.py
