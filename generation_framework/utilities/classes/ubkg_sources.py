@@ -25,7 +25,7 @@ class ubkgSources:
         self.repo_root = repo_root
         self._file_path = os.path.join(repo_root, self._cfg.get_value(section='sabs', key='sab_json_file'))
 
-        self._ulog.print_and_logger_info(f'Validating SAB source file: {self._file_path}')
+        # self._ulog.print_and_logger_info(f'Validating SAB source file: {self._file_path}')
         # Read the sabs.json file.
         try:
             with open(self._file_path, 'r') as f:

@@ -26,6 +26,10 @@ from utilities.classes.ubkg_logging import ubkgLogging
 from utilities.classes.ubkg_config import ubkgConfigParser
 # sources.json handling
 from utilities.classes.ubkg_sources import ubkgSources
+# JKG JSON handling
+from utilities.classes.jkg_json import Jkgjson
+# JKG edge and node file handling
+from utilities.classes.jkg_edgenode import Jkgedgenode
 
 # Subprocess handling
 from utilities.functions.find_repo_root import find_repo_root
@@ -62,11 +66,22 @@ def main():
     ulog.print_and_logger_info(f' - SABs: {', '.join(sab_names)}')
 
     # Obtain application configuration.
-    cfg = ubkgConfigParser(path='ubkgjkg.ini', log_dir=log_dir, log_file='ubkg.log')
+    cfg = ubkgConfigParser(path='ubkgjkg.ini', ulog=ulog)
 
     # Read and validate the file of SAB-specific configuration.
     usource = ubkgSources(ulog=ulog, cfg=cfg, repo_root=repo_root)
-    print(usource.sab_json)
+    sab_names = [s.upper() for s in args.sabs]
+
+    # For each SAB,
+    # --read the JKG JSON.
+    for sab_name in sab_names:
+        #jkgjson = Jkgjson(log=ulog, cfg=cfg)
+        jkgedgenode = Jkgedgenode(log=ulog, cfg=cfg, sab=sab_name)
+        # --build objects (nodes, concept-code rels) using node file.
+        # --build concept-concept rels using edge file.
+        # --add node objects and rel objects to JKG JSON.
+        # --write updated JKG JSON.
+
 
 if __name__ == "__main__":
     main()

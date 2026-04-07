@@ -5,6 +5,7 @@ argparse==1.4.0
 # for analysis of tabular data
 pandas==2.3.0
 numpy==2.1.0
+polars==1.37.1
 # to download data from online sources
 requests~=2.26.0
 # to work with Excel spreadsheets
@@ -36,6 +37,9 @@ flatten-json==0.1.14
 python-json-logger==4.0.0
 
 wget==3.2
+
+# Streaming json
+ijson==3.5.0
 
 
 

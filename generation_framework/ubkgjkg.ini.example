@@ -17,3 +17,8 @@ owltools_dir=generation_framework/pkt_kg/libs
 # Scripts using the PheKnowlator package to convert OWL files to OWLNETS format
 owlnets_script_py=generation_framework/translators/owlnets_script/pheknowlator.py
 fix_owlnets_tsv_script_py=generation_framework/translators/owlnets_script/fix_tsv_file.py
+
+[jkg_json]
+# Keys related to working with JKG JSON files
+# Path to JKG JSON
+jkg_json_path=/Users/jas971/Documents/ubkg-jkg-neo4j/json/jkg.json
