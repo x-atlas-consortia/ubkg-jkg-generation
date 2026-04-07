@@ -105,14 +105,14 @@ def main():
     repo_root = find_repo_root()
     log_dir = os.path.join(repo_root, 'generation_framework/builds/logs')
     # Set up centralized logging.
-    ulog = ubkgLogging(log_dir=log_dir, log_file='ubkg.log')
+    ulog = ubkgLogging(log_dir=log_dir, log_file='ubkg_edges_nodes.log')
 
     # Get runtime arguments.
     args = getargs()
 
     # Get application configuration.
     cfgpath = os.path.join(os.path.dirname(os.getcwd()), 'generation_framework/ubkg_edges_nodes/edges_nodes.ini')
-    config = ubkgConfigParser(path=cfgpath, log_dir=log_dir, log_file='ubkg.log')
+    config = ubkgConfigParser(path=cfgpath, ulog=ulog)
 
     # Get the sab_jkg directory to which to copy translated files.
     # The config file contains absolute paths to the parent directories in the local repo.
@@ -132,7 +132,7 @@ def main():
     ulog.print_and_logger_info(f'Copying {frompath} to {sab_jkg_dir_sab}')
 
     # Decompress files if necessary.
-    uext = ubkgExtract(log_dir=log_dir, log_file='ubkg.log')
+    uext = ubkgExtract(ulog=ulog)
     unzipfiles(path=frompath, uext=uext, ulog=ulog)
 
     if containsedgenodefiles(frompath):

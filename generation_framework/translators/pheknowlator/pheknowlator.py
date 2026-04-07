@@ -287,10 +287,10 @@ def robot_merge(owl_url: str) -> None:
 # -------------------------
 # Main
 
-# Set up centralized logging.
+# Set up logging.
 repo_root = find_repo_root()
 log_dir = os.path.join(repo_root, 'generation_framework/builds/logs')
-ulog = ubkgLogging(log_dir=log_dir, log_file='ubkg.log')
+ulog = ubkgLogging(log_dir=log_dir, log_file='pheknowlator.log')
 
 if args.verbose is True:
     ulog.print_and_logger_info('Parameters:')

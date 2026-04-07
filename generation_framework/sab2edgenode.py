@@ -148,7 +148,6 @@ def main():
 
         ulog.print_and_logger_info(f"SAB: {sab_name}")
         source_type = usource.get(sab=sab_name, key='source_type')
-        print('DEBUG: source_type:', source_type)
 
         # Obtain absolute paths in repo to which to store:
         # - source files for the SAB
@@ -159,6 +158,7 @@ def main():
         if source_type == 'owl':
             if args.fetch:
                 ulog.print_and_logger_info(f'Running translator: PhenKnowLator.')
+                ulog.print_and_logger_info('Log file: phenKnowLator.log')
                 # Use PheKnowLator to convert OWL files to OWLNETS files.
                 run_pheknowlator_for_sab(cfg=cfg,
                                          ulog=ulog,
@@ -182,6 +182,7 @@ def main():
 
             script = f'{usource.get(sab=sab_name, key='execute')}'
             ulog.print_and_logger_info(f"Running translator: {script}")
+            ulog.print_and_logger_info(f"The log file has the name of the script.")
             usub.call_subprocess(script)
 
         # Add log entry for how long it took to do the processing...

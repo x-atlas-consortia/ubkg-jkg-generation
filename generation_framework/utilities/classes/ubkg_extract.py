@@ -14,6 +14,9 @@ import gdown
 import fileinput
 import sys
 
+import polars as pl
+from ubkg_timer import UbkgTimer
+
 # For retry loop
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
@@ -23,9 +26,9 @@ from .ubkg_logging import ubkgLogging
 
 class ubkgExtract:
 
-    def __init__(self, log_dir: str, log_file: str,):
+    def __init__(self, ulog: ubkgLogging):
 
-        self.ulog = ubkgLogging(log_dir=log_dir, log_file=log_file)
+        self.ulog = ulog
 
 
     def download_file_from_github(self, share_url: str, download_full_path: str):
@@ -357,3 +360,40 @@ class ubkgExtract:
             self.ulog.print_and_error_info(f'Error decoding JSON: {e}')
             exit(1)
 
+    def polars_scan_csv_with_timer(self, filename: str, separator: str,
+                         new_columns: list, n_rows: int,
+                         refresh_interval: float = 0.2,
+                         ) -> pl.DataFrame:
+        """
+        The Polars scan_csv function is not amenable to wrapping in a
+        tqdm progress indicator. This function starts a separate thread that
+        displays a timer around the scan.
+
+        :param filename: path to file to scan
+        :param separator: separator
+        :param new_columns: new_columns
+        :param n_rows: n_rows
+        :return: the DataFrame
+        """
+
+        # Start a timer for the scan and collection.
+        utimer = UbkgTimer(display_msg=f"Scanning {filename}")
+
+        try:
+            # Scan file.
+            lf = (pl.scan_csv(filename,
+                              separator=separator,
+                              has_header=False,
+                              new_columns=new_columns,
+                              n_rows=n_rows)
+                  .fill_null("")  # replace nulls with blank strings
+                  .unique())  # drop duplicates
+
+            # Trigger the scan and compute. This is the blocking operation that is timed.
+            df = lf.collect()
+
+        finally:
+            # Stop timer.
+            utimer.stop()
+
+        return df

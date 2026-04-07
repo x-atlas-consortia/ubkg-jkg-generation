@@ -69,3 +69,15 @@ class ubkgConfigParser:
             exit(1)
 
         return dictreturn
+
+    def get_list(self,section: str, key:str)-> list:
+        """
+        Returns a comma-separated string value in the configuration file
+        as a list.
+        :param section: section name
+        :param key: key name
+        :return: the comma-separated string value as a list
+        """
+
+        valstring = self.get_value(section=section, key=key)
+        return valstring.split(',')

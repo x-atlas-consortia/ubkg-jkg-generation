@@ -793,14 +793,14 @@ def main():
     repo_root = find_repo_root()
     log_dir = os.path.join(repo_root, 'generation_framework/builds/logs')
     # Set up centralized logging.
-    ulog = ubkgLogging(log_dir=log_dir, log_file='ubkg.log')
+    ulog = ubkgLogging(log_dir=log_dir, log_file='gencode.log')
 
     # Obtain runtime arguments.
     args = getargs()
 
     # Get application configuration.
     cfgpath = os.path.join(os.path.dirname(os.getcwd()), 'generation_framework/gencode/gencode.ini')
-    cfg = ubkgConfigParser(path=cfgpath, log_dir=log_dir, log_file='ubkg.log')
+    cfg = ubkgConfigParser(path=cfgpath, ulog=ulog)
 
     # Get sab_source and sab_jkg directories.
     # The config file contains absolute paths to the parent directories in the local repo.
@@ -817,7 +817,7 @@ def main():
     ann_file = cfg.get_value(section='AnnotationFile', key='filename')
 
     # Instantiate UbkgExtract class
-    uext = ubkgExtract(log_dir=log_dir, log_file='ubkg.log')
+    uext = ubkgExtract(ulog=ulog)
     if args.fetchnew:
 
         # Download and decompress GZIP files of GENCODE content from FTP site.

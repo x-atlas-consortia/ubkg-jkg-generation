@@ -344,13 +344,13 @@ def main():
     repo_root = find_repo_root()
     log_dir = os.path.join(repo_root, 'generation_framework/builds/logs')
     # Set up centralized logging.
-    ulog = ubkgLogging(log_dir=log_dir, log_file='ubkg.log')
+    ulog = ubkgLogging(log_dir=log_dir, log_file='unprotkb_owlnets.log')
 
     args = getargs()
 
     # Get application configuration.
     cfgpath = os.path.join(os.path.dirname(os.getcwd()), 'generation_framework/uniprotkb/uniprotkb.ini')
-    cfg = ubkgConfigParser(path=cfgpath, log_dir=log_dir, log_file='ubkg.log')
+    cfg = ubkgConfigParser(path=cfgpath,ulog=ulog)
 
     # Get sab_source and sab_jkg directories.
     # The config file contains absolute paths to the parent directories in the local repo.
@@ -361,7 +361,7 @@ def main():
                                'UNIPROTKB')
 
     # Instantiate UbkgExtract class
-    uext = ubkgExtract(log_dir=log_dir, log_file='ubkg.log')
+    uext = ubkgExtract(ulog=ulog)
 
     # Make the subdirectories.
     os.system(f'mkdir -p {sab_jkg_dir}')

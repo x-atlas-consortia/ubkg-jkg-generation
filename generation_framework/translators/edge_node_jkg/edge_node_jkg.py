@@ -456,16 +456,16 @@ def main():
     repo_root = find_repo_root()
     log_dir = os.path.join(repo_root, 'generation_framework/builds/logs')
     # Set up centralized logging.
-    ulog = ubkgLogging(log_dir=log_dir, log_file='edge_node_jkg.log')
+    ulog = ubkgLogging(log_dir=log_dir, log_file='edge_node.log')
 
     args=getargs()
 
     # Get application configuration.
     cfgpath = os.path.join(os.path.dirname(os.getcwd()), 'edge_node_jkg/edge_node_jkg.ini')
-    cfg = ubkgConfigParser(path=cfgpath, log_dir=log_dir, log_file='edge_node_jkg.log')
+    cfg = ubkgConfigParser(path=cfgpath, ulog=ulog)
 
     # Instantiate UbkgExtract class
-    uext = ubkgExtract(log_dir=log_dir,log_file='edge_node_jkg.log')
+    uext = ubkgExtract(ulog=ulog)
 
     # Get the node file.
     nodefile = getfilename(cfg=cfg, sab=args.sab, filetype='node')
