@@ -35,5 +35,11 @@ class ubkgLogging:
         self.logger.info(message)
 
     def print_and_logger_error(self,message: str) -> None:
-        print(message)
+        # Red text
+        print(f"\033[31m{message}\033[0m")  #
         self.logger.error(message)
+
+    def print_and_logger_warning(self,message: str) -> None:
+        # Yellow text
+        print(f"\033[33m{message}\033[0m") #
+        self.logger.warning(message)

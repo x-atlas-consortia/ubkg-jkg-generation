@@ -168,6 +168,16 @@ def main():
             if args.fetch:
                 ulog.print_and_logger_info(f'Running translator: PhenKnowLator.')
                 ulog.print_and_logger_info('The log file name is: phenKnowLator.log')
+
+                dicthist = usource.get(sab=sab_name, key='download_history')
+                if dicthist:
+                    histsize = dicthist.get('size_mb', 'unknown')
+                    histtime = dicthist.get('max_time_minutes','unknown')
+                    minutes = "minute"
+                    if int(histtime) > 1:
+                        minutes = "minutes"
+                ulog.print_and_logger_warning(f'The OWL file for {sab_name} has historically been <{histsize} MB and required <{histtime} {minutes} to download.')
+
                 # Use PheKnowLator to convert OWL files to OWLNETS files.
                 run_pheknowlator_for_sab(cfg=cfg,
                                          ulog=ulog,

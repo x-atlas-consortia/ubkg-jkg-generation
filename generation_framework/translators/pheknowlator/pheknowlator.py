@@ -5,8 +5,7 @@
 This script uses the PheKnowLator package to convert a file in OWL serialization to
 a set of files that corresponds to a version of OWLNETS format.
 
-Updated for use with JKG. The original form for this script was written
-for the original use case, prior to 2023.
+Refactored for use with JKG. The original form for this script was written prior to 2023.
 
 Script functionality is based on the Example Application provided in the PheKnowLator GitHub at
 https://github.com/callahantiff/PheKnowLator/blob/master/notebooks/OWLNETS_Example_Application.ipynb
@@ -218,6 +217,7 @@ def download_owl(ulog: ubkgLogging, url: str, loc: str, working_file: str, force
     :return:
     """
     print_divider(ulog=ulog)
+
     ulog.print_and_logger_info(f'Downloading via wget')
     ulog.print_and_logger_info(f' * from: \'{url}\'')
     ulog.print_and_logger_info(f' * to: \'{loc}\'')
@@ -232,8 +232,11 @@ def download_owl(ulog: ubkgLogging, url: str, loc: str, working_file: str, force
     # Download via wget.
     print_divider(ulog=ulog)
     ulog.print_and_logger_info(f'WGET START')
+
+    utimer=UbkgTimer(display_msg="Downloading")
     wgetResults: bytes = subprocess.check_output([f'wget {url}'], shell=True, stderr=subprocess.STDOUT)
     wgetResults_str: str = wgetResults.decode('utf-8')
+    utimer.stop()
 
     # Validate result of download.
     for line in wgetResults_str.strip().split('\n'):
@@ -242,8 +245,12 @@ def download_owl(ulog: ubkgLogging, url: str, loc: str, working_file: str, force
             ulog.print_and_logger_error(wgetResults_str)
             exit(1)
 
-    ulog.print_and_logger_info(wgetResults_str)
+    # wget summary is the last block after a blank line
+    summary: str = wgetResults_str.strip().split('\n\n')[-1]
+
+    ulog.print_and_logger_info(summary)
     ulog.print_and_logger_info('WGET COMPLETE')
+
     print_divider(ulog=ulog)
 
     working_file = working_file.split('&download_format')[0]
@@ -467,7 +474,7 @@ def get_owl_file(ulog: ubkgLogging, uextract: ubkgExtract, owl_dir: str, args: a
         owl_file = os.path.join(owl_dir, working_file_new)
 
     # HANDLE GZIPPED OWL FILES.
-    # In at least one use case (HGNCNR in NCBO), the downloaded file is a GZip archive.
+    # In at least one use case (CHEBI), the downloaded file is a GZip archive.
     # If the downloaded OWL file is GZipped, expand it.
 
     # To identify Gzip files, check the first two bytes of the file: those of a GZip file are 1f:8b.
