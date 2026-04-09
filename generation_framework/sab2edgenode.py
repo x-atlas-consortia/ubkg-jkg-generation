@@ -116,6 +116,13 @@ def run_pheknowlator_for_sab(cfg: ubkgConfigParser, ulog: ubkgLogging, sab_sourc
     ulog.print_and_logger_info(f"Running translator: {owlnets_script}")
     usub.call_subprocess(owlnets_script)
 
+    # Run post-processing script.
+    # April 2026 This appears to no longer be necessary.
+    #owlnets_dir: str = os.path.join(sab_jkg_dir, sab)
+    #fix_owlnets_metadata_file(repo_root=repo_root,
+                              #ulog=ulog,
+                              #owlnets_dir=owlnets_dir,
+                              #cfg=cfg)
 
 def main():
 
@@ -170,11 +177,7 @@ def main():
                                          sab=sab_name,
                                          repo_root=repo_root)
 
-                owlnets_dir: str = os.path.join(sab_jkg_dir, sab_name)
-                fix_owlnets_metadata_file(repo_root=repo_root,
-                                          ulog=ulog,
-                                          owlnets_dir=owlnets_dir,
-                                          cfg=cfg)
+
         else:
 
             # Pass the value of the --fetchnew argument to the subprocess.

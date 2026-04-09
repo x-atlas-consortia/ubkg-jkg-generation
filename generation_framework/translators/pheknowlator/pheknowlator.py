@@ -923,5 +923,6 @@ def main():
     ulog.print_and_logger_info(
         f'OWL conversion completed. Elapsed time:  {"{:0>8}".format(str(timedelta(seconds=elapsed_time)))}')
 
+
 if __name__ == "__main__":
     main()
