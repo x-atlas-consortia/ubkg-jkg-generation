@@ -4,6 +4,7 @@
 # UBKG tools for extracting, expanding, and processing source files from online sources, such as GZIP archives.
 # Displays progress indicators of activities.
 
+
 import requests
 import os
 import gzip
@@ -15,7 +16,7 @@ import fileinput
 import sys
 
 import polars as pl
-from ubkg_timer import UbkgTimer
+from .ubkg_timer import UbkgTimer
 
 # For retry loop
 from requests.adapters import HTTPAdapter
@@ -29,7 +30,6 @@ class ubkgExtract:
     def __init__(self, ulog: ubkgLogging):
 
         self.ulog = ulog
-
 
     def download_file_from_github(self, share_url: str, download_full_path: str):
         """
@@ -142,7 +142,7 @@ class ubkgExtract:
         return
 
 
-    def extract_from_gzip(self,zipfilename: str, outputpath: str, outfilename: str) -> str:
+    def extract_from_gzip(self, zipfilename: str, outputpath: str, outfilename: str) -> str:
 
         """
         # Extracts a file from the GZIP archive with file name zipfilename to outputpath.
@@ -361,8 +361,7 @@ class ubkgExtract:
             exit(1)
 
     def polars_scan_csv_with_timer(self, filename: str, separator: str,
-                         new_columns: list, n_rows: int,
-                         refresh_interval: float = 0.2,
+                                   n_rows=None,
                          ) -> pl.DataFrame:
         """
         The Polars scan_csv function is not amenable to wrapping in a
@@ -371,7 +370,6 @@ class ubkgExtract:
 
         :param filename: path to file to scan
         :param separator: separator
-        :param new_columns: new_columns
         :param n_rows: n_rows
         :return: the DataFrame
         """
@@ -383,9 +381,11 @@ class ubkgExtract:
             # Scan file.
             lf = (pl.scan_csv(filename,
                               separator=separator,
-                              has_header=False,
-                              new_columns=new_columns,
-                              n_rows=n_rows)
+                              n_rows=n_rows,
+                              infer_schema_length=0,  # read all columns as Utf8, no truncation
+                              quote_char=None,  # TSVs rarely use quoting; avoids misparse
+                              truncate_ragged_lines=True
+                              )
                   .fill_null("")  # replace nulls with blank strings
                   .unique())  # drop duplicates
 

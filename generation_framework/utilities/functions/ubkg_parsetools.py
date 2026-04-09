@@ -4,9 +4,6 @@ import numpy as np
 import pandas as pd
 import os
 
-# UBKG logging utility
-
-# UBKG utilities for parsing
 
 # codeReplacements - shared by at least the following scripts:
 # OWLNETS-UMLS-GRAPH

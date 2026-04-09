@@ -78,12 +78,13 @@ def fix_owlnets_metadata_file(repo_root: str, cfg: ubkgConfigParser, ulog: ubkgL
 def run_pheknowlator_for_sab(cfg: ubkgConfigParser, ulog: ubkgLogging, sab_source_dir: str, sab_jkg_dir: str, sab_json:dict, sab: str, repo_root: str) -> None:
     """
     Call PheKnowlator-related (OWLNETS) scripts to convert OWL files to JKG format.
+
     :param cfg: application configuration
     :param ulog: centralized Ubkg logger
     :param sab_source_dir: directory for downloaded OWL files
     :param sab_jkg_dir: directory for converted OWL files
     :param sab: SAB
-    :param repo_root: repository root
+    :param repo_root: repository root, used for absolute file references
     :param sab_json: SAB execution-specific information from sabs.json file
     :return:
     """
@@ -97,9 +98,10 @@ def run_pheknowlator_for_sab(cfg: ubkgConfigParser, ulog: ubkgLogging, sab_sourc
 
     sab_config = sab_json[sab]
     owl_url = sab_config['owl_url']
-    ulog.print_and_logger_info(f"Processing OWL file: {owl_url}")
+    #ulog.print_and_logger_info(f"Processing OWL file: {owl_url}")
 
     # Pass runtime arguments to the OWLNETS script.
+    # Assume that the OWL file has no imports.
     owlnets_script_py: str = os.path.join(repo_root, cfg.get_value(section='owlnets',key='owlnets_script_py'))
     owlnets_script: str = (f"{owlnets_script_py} "
                            f"--ignore_owl_md5 "
@@ -111,7 +113,7 @@ def run_pheknowlator_for_sab(cfg: ubkgConfigParser, ulog: ubkgLogging, sab_sourc
                            f"--owltools_dir {owltools_dir} "
                            f"--owl_dir {sab_source_dir} "
                            f" {owl_url} {sab}")
-    ulog.print_and_logger_info(f"Running: {owlnets_script}")
+    ulog.print_and_logger_info(f"Running translator: {owlnets_script}")
     usub.call_subprocess(owlnets_script)
 
 
@@ -158,7 +160,7 @@ def main():
         if source_type == 'owl':
             if args.fetch:
                 ulog.print_and_logger_info(f'Running translator: PhenKnowLator.')
-                ulog.print_and_logger_info('Log file: phenKnowLator.log')
+                ulog.print_and_logger_info('The log file name is: phenKnowLator.log')
                 # Use PheKnowLator to convert OWL files to OWLNETS files.
                 run_pheknowlator_for_sab(cfg=cfg,
                                          ulog=ulog,
@@ -182,7 +184,7 @@ def main():
 
             script = f'{usource.get(sab=sab_name, key='execute')}'
             ulog.print_and_logger_info(f"Running translator: {script}")
-            ulog.print_and_logger_info(f"The log file has the name of the script.")
+            ulog.print_and_logger_info(f"The log file shares the script name.")
             usub.call_subprocess(script)
 
         # Add log entry for how long it took to do the processing...

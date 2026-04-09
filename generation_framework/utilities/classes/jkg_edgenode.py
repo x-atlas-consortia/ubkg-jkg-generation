@@ -12,13 +12,30 @@ from .ubkg_logging import ubkgLogging
 # Application configuration object
 from .ubkg_config import ubkgConfigParser
 # Source file load manager
-from .ubkg_extract import Ubkg
-# Spinner to wrap block functions in tqdm
-from .ubkg_timer import UbkgTimer
+from .ubkg_extract import ubkgExtract
 
 from ..functions.find_repo_root import find_repo_root
 
 class Jkgedgenode:
+
+    def __init__(self, log: ubkgLogging, cfg: ubkgConfigParser, sab: str):
+
+        # Prevent truncation, especially of columns with URLs.
+        pl.Config.set_fmt_str_lengths(200)
+
+        self.log = log
+        self.cfg = cfg
+        self.sab = sab
+
+        self.uextract = ubkgExtract(ulog=log)
+
+        # Get the path to the directory that contains the edge and node files.
+        self.jkg_dir = cfg.get_value(section='directories', key='sab_jkg_dir')
+        self.jkg_path = os.path.join(find_repo_root(),self.jkg_dir, sab)
+
+        # Load the node file.
+        self.jkg_nodes = self._load_node_file()
+
 
     def _get_filename(self, filetype: str) -> str:
         """
@@ -55,21 +72,4 @@ class Jkgedgenode:
 
         nodefilename = self._get_filename(filetype='node')
         nodefilepath = os.path.join(self.jkg_path, nodefilename)
-
-
-
-
-    def __init__(self, log: ubkgLogging, cfg: ubkgConfigParser, sab: str):
-
-        self.log = log
-        self.cfg = cfg
-        self.sab = sab
-
-        self.uextract = Ubkg
-
-        # Get the path to the directory that contains the edge and node files.
-        self.jkg_dir = cfg.get_value(section='directories', key='sab_jkg_dir')
-        self.jkg_path = os.path.join(find_repo_root(),self.jkg_dir, sab)
-
-        # Load the node file.
-        self.jkg_nodes = self._load_file(filetype='node')
+        return self.uextract.polars_scan_csv_with_timer(filename=nodefilepath, separator='\t')
