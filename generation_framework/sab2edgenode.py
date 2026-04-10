@@ -36,7 +36,7 @@ from utilities.functions.find_repo_root import find_repo_root
 
 #----------------------------------
 
-def getargs() -> argparse.Namespace:
+def get_args() -> argparse.Namespace:
     """
     Obtains command line arguments.
     :return: parsed command line arguments
@@ -75,7 +75,10 @@ def fix_owlnets_metadata_file(repo_root: str, cfg: ubkgConfigParser, ulog: ubkgL
     ulog.print_and_logger_info(f"Running: {fix_owlnets_tsv_script}")
     usub.call_subprocess(fix_owlnets_tsv_script)
 
-def run_pheknowlator_for_sab(cfg: ubkgConfigParser, ulog: ubkgLogging, sab_source_dir: str, sab_jkg_dir: str, sab_json:dict, sab: str, repo_root: str) -> None:
+def run_pheknowlator_for_sab(cfg: ubkgConfigParser, ulog: ubkgLogging,
+                             sab_source_dir: str, sab_jkg_dir: str,
+                             sab_json:dict, sab: str,
+                             repo_root: str, fetch: bool=True) -> None:
     """
     Call PheKnowlator-related (OWLNETS) scripts to convert OWL files to JKG format.
 
@@ -86,6 +89,7 @@ def run_pheknowlator_for_sab(cfg: ubkgConfigParser, ulog: ubkgLogging, sab_sourc
     :param sab: SAB
     :param repo_root: repository root, used for absolute file references
     :param sab_json: SAB execution-specific information from sabs.json file
+    :param fetch: whether to download fresh copy of source files
     :return:
     """
 
@@ -103,12 +107,16 @@ def run_pheknowlator_for_sab(cfg: ubkgConfigParser, ulog: ubkgLogging, sab_sourc
     # Pass runtime arguments to the OWLNETS script.
     # Assume that the OWL file has no imports.
     owlnets_script_py: str = os.path.join(repo_root, cfg.get_value(section='owlnets',key='owlnets_script_py'))
+
+    force_owl_download = ''
+    if fetch:
+        force_owl_download = '--force_owl_download '
     owlnets_script: str = (f"{owlnets_script_py} "
                            f"--ignore_owl_md5 "
-                           f"--clean "
-                           f"--verbose "
-                           f"--force_owl_download "
-                           f"--with_imports "
+                           # f"--clean "
+                           # f"--verbose "
+                           f"{force_owl_download}"
+                           # f"--with_imports "
                            f"--owlnets_dir {sab_jkg_dir} "
                            f"--owltools_dir {owltools_dir} "
                            f"--owl_dir {sab_source_dir} "
@@ -135,7 +143,7 @@ def main():
     ulog.print_and_logger_info('-' * 50)
 
     # Obtain command line arguments.
-    args = getargs()
+    args = get_args()
     ulog.print_and_logger_info('Command line arguments:')
     sab_names = [s.upper() for s in args.sabs]
     ulog.print_and_logger_info(f' - SABs: {', '.join(sab_names)}')
@@ -169,24 +177,15 @@ def main():
                 ulog.print_and_logger_info(f'Running translator: PhenKnowLator.')
                 ulog.print_and_logger_info('The log file name is: phenKnowLator.log')
 
-                dicthist = usource.get(sab=sab_name, key='download_history')
-                if dicthist:
-                    histsize = dicthist.get('size_mb', 'unknown')
-                    histtime = dicthist.get('max_time_minutes','unknown')
-                    minutes = "minute"
-                    if int(histtime) > 1:
-                        minutes = "minutes"
-                ulog.print_and_logger_warning(f'The OWL file for {sab_name} has historically been <{histsize} MB and required <{histtime} {minutes} to download.')
-
-                # Use PheKnowLator to convert OWL files to OWLNETS files.
-                run_pheknowlator_for_sab(cfg=cfg,
-                                         ulog=ulog,
-                                         sab_source_dir=sab_source_dir,
-                                         sab_jkg_dir=sab_jkg_dir,
-                                         sab_json=usource.sab_json,
-                                         sab=sab_name,
-                                         repo_root=repo_root)
-
+            # Use PheKnowLator to convert OWL files to OWLNETS files.
+            run_pheknowlator_for_sab(cfg=cfg,
+                                     ulog=ulog,
+                                     sab_source_dir=sab_source_dir,
+                                     sab_jkg_dir=sab_jkg_dir,
+                                     sab_json=usource.sab_json,
+                                     sab=sab_name,
+                                     repo_root=repo_root,
+                                     fetch=args.fetch)
 
         else:
 

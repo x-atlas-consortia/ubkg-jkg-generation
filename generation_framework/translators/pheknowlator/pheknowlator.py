@@ -30,6 +30,7 @@ canonical OWLNETS:
 
 """
 import os
+import glob
 import sys
 import time
 from datetime import timedelta
@@ -78,6 +79,12 @@ from classes.ubkg_standardizer import ubkgStandardizer
 # For a spinning timer to wrap around block processes
 from classes.ubkg_timer import UbkgTimer
 
+# sources.json handling
+from classes.ubkg_sources import ubkgSources
+
+# Config file
+from classes.ubkg_config import ubkgConfigParser
+
 def get_args(ulog:ubkgLogging) -> argparse.Namespace:
     """
     Processes command line arguments.
@@ -85,9 +92,9 @@ def get_args(ulog:ubkgLogging) -> argparse.Namespace:
 
     :return: argparse.Namespace
 
-    The original version of the script relied on runtime arguments
-    instead of configuration files. The majority of these arguments
-    never change.
+    The original version of the script relied on numerous runtime arguments
+    instead of configuration files.
+
     """
 
     # Process arguments.
@@ -109,20 +116,19 @@ def get_args(ulog:ubkgLogging) -> argparse.Namespace:
     parser.add_argument("-t", "--owltools_dir", type=str, default='./pkt_kg/libs',
                         help='directory where the owltools executable is downloaded to')
     # should always be true
-    parser.add_argument("-c", "--clean", action="store_true",
-                        help='clean the owlnets_output directory of previous output files before run')
-    # should always be true
-    parser.add_argument("-d", "--force_owl_download", action="store_true",
+    #parser.add_argument("-c", "--clean", action="store_true",
+                        #help='clean the owlnets_output directory of previous output files before run')
+    parser.add_argument("-f", "--force_owl_download", action="store_true",
                         help='force downloading of the .owl file before processing')
     # always true
     parser.add_argument("-i", "--ignore_owl_md5", action="store_true",
                         help='ignore differences between .owl MD5 and saved MD5')
     # always true
-    parser.add_argument("-w", "--with_imports", action="store_true",
-                        help='process OWL file even if imports are found, otherwise give up with an error')
+    # parser.add_argument("-w", "--with_imports", action="store_true",
+                        #help='process OWL file even if imports are found, otherwise give up with an error')
     # always false
-    parser.add_argument("-D", "--delete_definitions", action="store_true",
-                        help='delete the definitions column when writing files')
+    # parser.add_argument("-D", "--delete_definitions", action="store_true",
+                        #help='delete the definitions column when writing files')
     # always false
     parser.add_argument("-r", "--robot", action="store_true",
                         help='apply robot to owl_url incorporating the includes and exit')
@@ -135,21 +141,20 @@ def get_args(ulog:ubkgLogging) -> argparse.Namespace:
     # Document arguments.
     print_divider(ulog=ulog)
     ulog.print_and_logger_info('PHEKNOWLATOR PARAMETERS:')
-    if args.clean is True:
-        ulog.print_and_logger_info(" * Cleaning owlnets directory")
+    #if args.clean is True:
+        #ulog.print_and_logger_info(" * Cleaning owlnets directory")
     ulog.print_and_logger_info(f" * Owl URL: {args.owl_url}")
     ulog.print_and_logger_info(f" * Owl sab: {args.owl_sab}")
     ulog.print_and_logger_info(f" * Owlnets directory: {args.owlnets_dir} (exists: {os.path.isdir(args.owlnets_dir)})")
     ulog.print_and_logger_info(f" * Owltools directory: {args.owltools_dir} (exists: {os.path.isdir(args.owltools_dir)})")
     ulog.print_and_logger_info(f" * Owl directory: {args.owl_dir} (exists: {os.path.isdir(args.owl_dir)})")
 
-    # These are always true
     if args.force_owl_download is True:
         ulog.print_and_logger_info(f" * PheKnowLator will force .owl file downloads")
-    if args.with_imports is True:
-        ulog.print_and_logger_info(f" * PheKnowLator will run even if imports are found in .owl file")
-    if args.delete_definitions is True:
-        ulog.print_and_logger_info(f" * Delete definitions column in the output .txt files")
+    #if args.with_imports is True:
+        #ulog.print_and_logger_info(f" * PheKnowLator will run even if imports are found in .owl file")
+    #if args.delete_definitions is True:
+        #ulog.print_and_logger_info(f" * Delete definitions column in the output .txt files")
 
     return args
 
@@ -206,14 +211,15 @@ def download_owltools(ulog:ubkgLogging, loc: str) -> None:
         # move back to the working directory
         os.chdir(cwd)
 
-def download_owl(ulog: ubkgLogging, url: str, loc: str, working_file: str, force_empty=True) -> None:
+def download_owl(ulog: ubkgLogging, usource: ubkgSources, url: str, sab: str, loc: str, working_file: str) -> None:
     """
     Downloads an OWL file from a URL to a path on the local machine.
     :param ulog: logging object
+    :param usource: source object (interface to sources.json)
     :param url: OWL URL
+    :param sab: OWL sab
     :param loc: download path
     :param working_file:
-    :param force_empty: if true, delete prior versions of the file
     :return:
     """
     print_divider(ulog=ulog)
@@ -226,8 +232,15 @@ def download_owl(ulog: ubkgLogging, url: str, loc: str, working_file: str, force
     os.system(f"mkdir -p {loc}")
     os.chdir(loc)
 
-    if force_empty is True:
-        os.system(f"rm -f *.owl *.md5")
+    dicthist = usource.get(sab=sab, key='download_history')
+    if dicthist:
+        histsize = dicthist.get('size_mb', 'unknown')
+        histtime = dicthist.get('max_time_minutes', 'unknown')
+        minutes = "minute"
+        if int(histtime) > 1:
+            minutes = "minutes"
+    ulog.print_and_logger_warning(
+        f'The OWL file for {sab} has historically been <{histsize} MB and required <{histtime} {minutes} to download.')
 
     # Download via wget.
     print_divider(ulog=ulog)
@@ -414,7 +427,7 @@ def robot_merge(ulog: ubkgLogging, owl_url: str) -> None:
     # move back to the working directory
     os.chdir(cwd)
 
-def get_owl_file(ulog: ubkgLogging, uextract: ubkgExtract, owl_dir: str, args: argparse.Namespace) -> str:
+def get_owl_file(ulog: ubkgLogging, uextract: ubkgExtract, owl_dir: str, args: argparse.Namespace, usource: ubkgSources) -> str:
     """
     Downloads and prepares the file specified by the owl_url argument.
 
@@ -426,6 +439,7 @@ def get_owl_file(ulog: ubkgLogging, uextract: ubkgExtract, owl_dir: str, args: a
     :param uextract: extraction object for the case of GZipped archives
     :param owl_dir: download directory for the OWL files
     :param args: command line arguments
+    :param usource: sources object (interface to sources.json)
     :return: the path to the prepared OWL file.
 
     """
@@ -439,43 +453,47 @@ def get_owl_file(ulog: ubkgLogging, uextract: ubkgExtract, owl_dir: str, args: a
 
     # The file will be downloaded to the appropriate directory.
     owl_file: str = os.path.join(owl_dir, working_file)
-
     # Download the working file.
-    # April 2026 All arguments are currently always true.
-    # This logic should be simplified, unless there is a need
-    # to check MD5 hashes.
-    if args.force_owl_download is True or os.path.exists(owl_file) is False:
-        if args.verbose:
-            ulog.print_and_logger_info("Force download of OWL file specified.")
-        download_owl(ulog=ulog, url=args.owl_url, loc=owl_dir, working_file=working_file)
-    elif args.ignore_owl_md5 is True:
-        if args.verbose:
-            ulog.print_and_logger_info(f"Ignoring .owl file {owl_file} MD5")
-    elif not compare_file_md5(working_file=owl_file):
-        if args.verbose:
-            ulog.print_and_logger_info(f"MD5 of {working_file} does not match MD5 of {owl_file}: downloading.")
-        download_owl(ulog=ulog, url=args.owl_url, loc=owl_dir, working_file=working_file)
 
-    # HANDLE FILES WITHOUT EXTENSIONS.
-    # Some download URLs (e.g., many from NCBO BioPortal) are REST calls that result in file names like
-    # download?apikey=8b5b7825-538d-40e0-9e9e-5ab9274a9aeb. The resulting downloaded file does not have
-    # a recognized OWL extension.
+    download_owl(ulog=ulog, usource=usource, url=args.owl_url, sab=args.owl_sab, loc=owl_dir, working_file=working_file)
 
-    # If the downloaded OWL file does not have an extension, rename it to the default: <SAB>.owl
-    # April 2026: Trim extraneous download_format--e.g, &download_format=xxx
+    #if args.force_owl_download is True or os.path.exists(owl_file) is False:
+        #ulog.print_and_logger_info("Force download of OWL file specified.")
+        #download_owl(ulog=ulog, url=args.owl_url, loc=owl_dir, working_file=working_file)
+    #elif args.ignore_owl_md5 is True:
+        #if args.verbose:
+            #ulog.print_and_logger_info(f"Ignoring .owl file {owl_file} MD5")
+    #elif not compare_file_md5(working_file=owl_file):
+        #if args.verbose:
+            #ulog.print_and_logger_info(f"MD5 of {working_file} does not match MD5 of {owl_file}: downloading.")
+        #download_owl(ulog=ulog, url=args.owl_url, loc=owl_dir, working_file=working_file)
+
+    """
+    
+    HANDLE FILES WITHOUT EXTENSIONS.
+    Some download URLs (e.g., many from NCBO BioPortal) are REST calls that result in file names like
+    download?apikey=8b5b7825-538d-40e0-9e9e-5ab9274a9aeb. The resulting downloaded file does not have
+    a recognized OWL extension.
+
+    If the downloaded OWL file does not have an extension, rename it to the default: <SAB>.owl
+    April 2026: Trim extraneous download_format--e.g, &download_format=xxx
+    """
+
     working_file = working_file.split('&download_format')[0]
 
     if '.' not in working_file[len(working_file) - 5:len(working_file)]:
         # No extension. Rename the downloaded file.
         working_file_new = args.owl_sab + '.OWL'
-        ulog.print_and_logger_info(f'The downloaded file does not have an extension. Renaming from {working_file} to {working_file_new}')
+        ulog.print_and_logger_warning(f'The downloaded file does not have an extension. Renaming from {working_file} to {working_file_new}')
         os.system(f"mv {os.path.join(owl_dir, working_file)} {os.path.join(owl_dir, working_file_new)}")
         working_file = working_file_new
         owl_file = os.path.join(owl_dir, working_file_new)
 
-    # HANDLE GZIPPED OWL FILES.
-    # In at least one use case (CHEBI), the downloaded file is a GZip archive.
-    # If the downloaded OWL file is GZipped, expand it.
+    """
+    HANDLE GZIPPED OWL FILES.
+    In at least one use case (CHEBI), the downloaded file is a GZip archive.
+    If the downloaded OWL file is GZipped, expand it.
+    """
 
     # To identify Gzip files, check the first two bytes of the file: those of a GZip file are 1f:8b.
     filetest = open(os.path.join(owl_dir, working_file), mode='rb')
@@ -483,7 +501,6 @@ def get_owl_file(ulog: ubkgLogging, uextract: ubkgExtract, owl_dir: str, args: a
         ulog.print_and_logger_info(f'{working_file} is a GZip archive.')
 
         # If the archive does not have a .gz file extension, add one so that the expansion will not overwrite it.
-        # (Use case: again, HGNCNR.)
         # The expansion will write to a file with the original name.
 
         archive = working_file[working_file.rfind('/') + 1:]
@@ -509,6 +526,45 @@ def get_owl_file(ulog: ubkgLogging, uextract: ubkgExtract, owl_dir: str, args: a
         ulog.print_and_logger_info(f"Processed OWL file: {owl_file}")
 
     return owl_file
+
+def find_existing_owl_file(ulog: ubkgLogging, owl_dir: str, sab:str) -> str:
+    """
+    Identifies a candidate for an "OWL file" generated in a previous run of the script,
+    which would have called get_owl_file.
+
+    Possibilities for OWL files are:
+    1. a file with OWL extension, downloaded directly from source
+    2. a file with OWL extension, named by the script after processing
+       an intermediate file in cases:
+       a. a download URL without an extension
+       b. a GZipped file that was expanded
+       c. a Turtle file that was re-serialized in XML/RDF format
+    3. a file with a RDF extension
+
+    :param ulog: logging object
+    :param owl_dir: OWL directory
+    :param sab: OWL sab
+    :return: filename for candidate OWL file
+    """
+
+    print_divider(ulog=ulog)
+    ulog.print_and_logger_info(f'Searching for an existing OWL file in {owl_dir}.')
+
+    owl_files: list = glob.glob(os.path.join(owl_dir, '*.owl'))
+    rdf_files: list = glob.glob(os.path.join(owl_dir, '*.rdf'))
+
+    if len(owl_files) > 1:
+        raise ValueError(f'Multiple OWL files found in {owl_dir}: {owl_files}')
+    if owl_files:
+        return owl_files[0]
+
+    if len(rdf_files) > 1:
+        raise ValueError(f'Multiple RDF files found in {owl_dir}: {rdf_files}')
+    if rdf_files:
+        return rdf_files[0]
+
+    raise ValueError(f'No OWL or RDF files found in {owl_dir}')
+
 
 def print_divider(ulog: ubkgLogging):
     print('')
@@ -575,8 +631,8 @@ def get_rdf_graph(ulog: ubkgLogging, owl_dir: str, owl_file: str) -> Graph:
         The risk here, of course, is that the error is not from ExpatError.
         """
 
-        ulog.print_and_logger_info(f'Error parsing {owl_file} as RDF/XML.')
-        ulog.print_and_logger_info('This script currently supports only RDF/XML or Turtle.')
+        ulog.print_and_logger_warning(f'Error parsing {owl_file} as RDF/XML.')
+        ulog.print_and_logger_warning('This script currently supports only RDF/XML or Turtle.')
 
         ulog.print_and_logger_info('Attempting to parse as Turtle.')
         utimer = UbkgTimer(display_msg="Parsing")
@@ -598,10 +654,12 @@ def get_rdf_graph(ulog: ubkgLogging, owl_dir: str, owl_file: str) -> Graph:
 
     return graph
 
-
 def get_entity_metadata(ulog: ubkgLogging, graph: Graph) -> dict:
     """
     Obtains entity metadata used by PheKnowLator from a rdflib Graph.
+
+    PheKnowLator uses the content of the return of this function
+    to build the tabular edge and node files of the OWLNETS translation.
 
     :param ulog: logging object
     :param graph: a rdflib Graph of data parsed from an OWL file
@@ -694,7 +752,7 @@ def get_owlnets(ulog: ubkgLogging, graph: Graph, working_dir: str, args: argpars
     ulog.print_and_logger_info(' * Initializing owlnets class.')
 
     """
-    Arguments to the class initialization:
+    Arguments for the pkt.OwlNets class initialization:
     - graph: An RDFLib object or a list of RDFLib Graph objects
     - write_location: a file path used for writing knowledge graph data (e.g. "resources/")
     - filename: a string containing the filename for the full knowledge graph (e.g. "/hpo_owlnets")
@@ -763,6 +821,7 @@ def get_owlnets(ulog: ubkgLogging, graph: Graph, working_dir: str, args: argpars
 
     ulog.print_and_logger_info(f'OWL-NETS results: {stats_str}')
 
+    # Original note:
     # run line below if you want to ensure resulting graph contains
     # common_ancestor = 'http://purl.obolibrary.org/obo/BFO_0000001'
     # owlnets.graph = owlnets.makes_graph_connected(owlnets.graph, common_ancestor)
@@ -773,11 +832,12 @@ def get_owlnets(ulog: ubkgLogging, graph: Graph, working_dir: str, args: argpars
 
     return owlnets
 
-
-def write_edges_file(ulog: ubkgLogging, working_dir: str, owlnets: pkt.OwlNets):
+def write_edges_file(sab:str, ulog: ubkgLogging, ustand: ubkgStandardizer, working_dir: str, owlnets: pkt.OwlNets):
     """
     Writes an edges file in OWLNETS format.
+    :param sab: SAB that is to be standardized
     :param ulog: logging object
+    :param ustand: UBKG code standardizer object
     :param working_dir: output directory
     :param owlnets: OWLNets object
     :return:
@@ -786,10 +846,25 @@ def write_edges_file(ulog: ubkgLogging, working_dir: str, owlnets: pkt.OwlNets):
     print_divider(ulog=ulog)
     edge_list_filename: str = working_dir + os.sep + 'OWLNETS_edgelist.txt'
     ulog.print_and_logger_info(f"Write edge list results to '{edge_list_filename}'")
-    with open(edge_list_filename, 'w') as out:
-        out.write('subject' + '\t' + 'predicate' + '\t' + 'object' + '\n')
-        for row in tqdm(owlnets.graph):
-            out.write(str(row[0]) + '\t' + str(row[1]) + '\t' + str(row[2]) + '\n')
+
+    # Standardize IRIs to SAB:code format.
+    df = pd.DataFrame(owlnets.graph)
+    df.columns = ['subject','predicate','object']
+    df['subject_standardized'] = ustand.standardize_code(x=df['subject'], ingestSAB=sab)
+    df['object_standardized'] = ustand.standardize_code(x=df['object'], ingestSAB=sab)
+
+    # Simplify predicate IRIs to standardized predicate terms.
+    df['predicate_standardized'] = ustand.identify_relationships(predicate=df['predicate'])
+
+    df = df[['subject_standardized','predicate_standardized','object_standardized']]
+    df.columns = ['subject','predicate','object']
+    df.to_csv(edge_list_filename, index=False, header=True, encoding='utf-8', sep='\t')
+    # Standardize code IRIs to SAB:Code format.
+
+    #with open(edge_list_filename, 'w') as out:
+        #out.write('subject' + '\t' + 'predicate' + '\t' + 'object' + '\n')
+        #for row in tqdm(owlnets.graph):
+            #out.write(str(row[0]) + '\t' + str(row[1]) + '\t' + str(row[2]) + '\n')
 
 
 def write_nodes_file(ulog: ubkgLogging, working_dir: str, owlnets: pkt.OwlNets, entity_metadata: dict):
@@ -827,13 +902,38 @@ def write_nodes_file(ulog: ubkgLogging, working_dir: str, owlnets: pkt.OwlNets, 
                           '\t' + definitions + '\t' + synonyms +
                           '\t' + dbxrefs + '\n')
 
+def remove_old_files(ulog: ubkgLogging, args: argparse.Namespace):
+    """
+    Removes prior versions of files, depending on command line arguments.
+    :param ulog: ubkgLogging object
+    :param args: command line arguments
+    """
+    cwd = os.getcwd()
+    print_divider(ulog=ulog)
+
+    # 1. Remove old output--i.e., edge and node files
+    output_dir = os.path.join(args.owlnets_dir, args.owl_sab)
+    ulog.print_and_logger_warning(f"Deleting prior output files in working directory {output_dir}")
+    os.chdir(output_dir)
+    os.system("rm -f *")
+
+    # 2. If a new fetch of the OWL file was requested, remove old
+    #    OWL files.
+    owl_dir = os.path.join(args.owl_dir, args.owl_sab)
+    if args.force_owl_download:
+        ulog.print_and_logger_warning(f'Deleting prior versions of files in {owl_dir}')
+        os.chdir(owl_dir)
+        os.system("rm -f *.owl *.md5 *.ttl *.rdf *download*")
+
+    os.chdir(cwd)
+
 def main():
 
     # ------
     # SET UP
     # ------
 
-    # Logging
+    # Set up centralized logging.
     repo_root = find_repo_root()
     log_dir = os.path.join(repo_root, 'generation_framework/builds/logs')
     ulog = ubkgLogging(log_dir=log_dir, log_file='pheknowlator.log')
@@ -841,64 +941,82 @@ def main():
     # Process and document command line arguments.
     args = get_args(ulog=ulog)
 
-    # Extractor object (currently for the case in which the downloaded file
-    # is a compressed file that needs to be expanded).
+    # Initialize extractor object, used to handle the case in which the
+    # downloaded OWL file is a compressed file that must be expanded.
     uextract = ubkgExtract(ulog=ulog)
 
-    # Code Standardizer object
-    # ustandardizer = ubkgStandardizer(ulog=ulog, repo_root=repo_root)
+    # Initialize the code standardizer object.
+    ustandardizer = ubkgStandardizer(ulog=ulog, repo_root=repo_root)
 
-    # Get the URI to the OWL file.
-    uri = args.owl_url
-    ulog.print_and_logger_info(f"OWL file URL:'{uri}'")
+    # Obtain application configuration.
+    cfg = ubkgConfigParser(path='ubkgjkg.ini', ulog=ulog)
+
+    # Read and validate the file of SAB-specific configuration.
+    usource = ubkgSources(ulog=ulog, cfg=cfg, repo_root=repo_root)
+
+    # Housekeeping - remove prior versions of input or output files.
+    remove_old_files(ulog=ulog, args=args)
 
     # Start the processing timer.
     start_time = time.time()
 
-    # This should remove imports if any. Currently it's a one shot deal and exits.
-    # In the future the output of this can be fed into the pipeline so that the processing contains no imports.
-    # April 2026 This is currently not done and should probably be removed.
-    if args.robot is True:
-        robot_merge(ulog=ulog, owl_url=uri)
-        elapsed_time = time.time() - start_time
-        ulog.print_and_logger_info('Done! Elapsed time %s', "{:0>8}".format(str(timedelta(seconds=elapsed_time))))
-        exit(0)
+    """
+    The following is possibly a historical concern.
+    
+    The Pheknowlator package cannot (or could not?) work with OWL files 
+    that have imports. (However, there was also a --with_imports 
+    argument, so perhaps it is not an issue.)
+    
+    OWL files with imports should be pre-processed by OBO's 
+    Robot application.
+    
+    The script originally allowed for a two-step workflow:
+    1. Run the script on a file with imports to create a merged OWL file.
+    2. Run the script on the merged OWL file.
+    
+    Imports have not been an issue with the OWL files that are used
+    for the UBKG. The two-step workflow has not been necessary, at least
+    since 2023.
+    
+    The functionality is retained for potential future use cases.
+    
+    """
+    #if args.robot is True:
+        #robot_merge(ulog=ulog, owl_url=args.owl_url)
+        #elapsed_time = time.time() - start_time
+        #ulog.print_and_logger_info('Done! Elapsed time %s', "{:0>8}".format(str(timedelta(seconds=elapsed_time))))
+        #exit(0)
 
     # Download JARs related to the PheKnowlator package.
     download_owltools(ulog=ulog, loc=args.owltools_dir)
 
-    # Path for outputs of processing.
+    # Determine path for outputs of processing, based on the SAB.
     working_dir: str = os.path.join(args.owlnets_dir, args.owl_sab)
     ulog.print_and_logger_info(f"Creating output directory {working_dir}", )
     os.system(f"mkdir -p {working_dir}")
 
-    # April 2026 The clean argument is currently always true.
-    if args.clean is True:
-        ulog.print_and_logger_info(f"Deleting prior output files in working directory {working_dir}")
-        os.system(f"cd {working_dir}; rm -f *")
-        # working_dir_file_list = os.listdir(working_dir)
-        # if len(working_dir_file_list) == 0:
-        # ulog.print_and_logger_info(f"Working directory {working_dir} is empty")
-        # else:
-        # ulog.print_and_logger_info(f"Working directory {working_dir} is NOT empty")
-
-    # The following code was originally adapted from:
-    # https://github.com/callahantiff/PheKnowLator/blob/master/notebooks/OWLNETS_Example_Application.ipynb
-
     # ------
     # OBTAIN THE OWL FILE.
     # ------
-    # Download a local copy of the .owl file instead of processing in memory.
-    # NOTE: Sometimes, with large documents (eg., chebi) the uri parse hangs, so here we download the document first.
-    # Another problem is with chebi, there is a redirect which Graph.parse(uri, ...) may not handle.
 
-    # Directory to which the downloaded OWL file will be copied.
+    """
+    Although it is possible to work with an OWL file directly in memory,
+    there is a risk of issues obtaining the file, such as timeout or 
+    loss of connectivity, especially for large OWL files. (CHEBI used to be an issue, but 
+    is now available as a compressed GZip.)
+    """
+
+    # Directory containing OWL files related to the SAB.
     owl_dir: str = os.path.join(args.owl_dir, args.owl_sab)
 
-    # Download the file and process it as necessary (e.g., expanding if an archive).
-    owl_file = get_owl_file(ulog=ulog, uextract=uextract, owl_dir=owl_dir, args=args)
-    # Verify that the file has no unexpected imports.
-    search_owl_file_for_imports(ulog=ulog, args=args, owl_filename=owl_file)
+    if args.force_owl_download is True:
+        # Download the file and process it as necessary (e.g., expanding if an archive).
+        owl_file = get_owl_file(ulog=ulog, uextract=uextract, owl_dir=owl_dir, args=args, usource=usource)
+        # Defensive: verify that the file has no unexpected imports.
+        search_owl_file_for_imports(ulog=ulog, args=args, owl_filename=owl_file)
+    else:
+        # Look for an OWL file obtained during a prior run of this script.
+        owl_file = find_existing_owl_file(ulog=ulog, owl_dir=owl_dir, sab=args.owl_sab)
 
     # ------
     # CONVERT THE OWL FILE INTO A rdflib GRAPH.
@@ -918,14 +1036,14 @@ def main():
     # ------
     # WRITE OUTPUT
     # ------
-    write_edges_file(ulog=ulog, working_dir=working_dir, owlnets=owlnets)
+    write_edges_file(sab=args.owl_sab, ulog=ulog, ustand=ustandardizer, working_dir=working_dir, owlnets=owlnets)
     write_nodes_file(ulog=ulog, working_dir=working_dir, owlnets=owlnets, entity_metadata=entity_metadata)
 
     log_files_and_sizes(ulog=ulog, procdir=working_dir)
 
     # look_for_none_in_node_metadata_file(ulog=ulog, procdir=working_dir)
 
-    # Add log entry for how long it took to do the processing.
+    # Add log entry for processing time.
     elapsed_time = time.time() - start_time
     ulog.print_and_logger_info(
         f'OWL conversion completed. Elapsed time:  {"{:0>8}".format(str(timedelta(seconds=elapsed_time)))}')

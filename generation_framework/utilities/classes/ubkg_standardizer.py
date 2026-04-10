@@ -16,10 +16,21 @@ from .ubkg_logging import ubkgLogging
 class ubkgStandardizer:
 
     def __init__(self, ulog: ubkgLogging, repo_root: str):
+
+        """
+
+        :param ulog: logger object
+        :param repo_root: root of the repository, for absolute file paths
+
+        """
         self.ulog = ulog
         self.repo_root = repo_root
+
+        # Special prefix to SAB maps for code standardization
         self.prefix_sab_maps = self._getprefix_sab_maps()
 
+        # Relationship triples from Relations Ontology for relationship standardization.
+        self.relationshiptriples = self._get_relationshiptriples_from_ro()
 
     def _getprefix_sab_maps(self) -> pd.DataFrame:
         """
@@ -29,22 +40,21 @@ class ubkgStandardizer:
         :return: Pandas DataFrame
         """
 
-        # Find absolute path to file, which should be in the same directory in the repo as the class.
+        # Find absolute path to file.
         file = 'prefix_sab_map.csv'
         fpath = os.path.join(self.repo_root, 'generation_framework/utilities', file)
         df = pd.DataFrame()
 
         if os.path.exists(fpath):
+            self.ulog.print_and_logger_info(f"Using prefix-sab map file at {fpath}")
             df = pd.read_csv(fpath)
-        elif os.path.exists(file):
-            df = pd.read_csv(file)
         else:
             # Using print here instead of logging to allow functioning with parsetester.py.
             self.ulog.print_and_logger_error(f'Missing prefix-sab map file {fpath}')
             exit(1)
         return df
 
-    def codeReplacements(self, x: pd.Series, ingestSAB: str):
+    def standardize_code(self, x: pd.Series, ingestSAB: str) -> pd.Series:
 
         """
         Converts strings that correspond to either codes or CUIs for concepts to a standard format
@@ -316,20 +326,48 @@ class ubkgStandardizer:
 
         return ret
 
-    def relationReplacements(self,x: pd.Series):
-
+    def identify_relationships(self, predicate: pd.Series) -> pd.Series:
         """
+        1. Checks relationships in an edge file
+        against the Relations Ontology.
+        2. Standardizes relationship strings for use in the UBKG JKG.
 
-        # Converts strings that correspond to a predicate string to a format recognized by the generation
-        # framework
-        :param x: Pandas Series object containing predicates (edges)
+        :param predicate: Pandas Series object containing predicates (edges):
         :return:
         """
 
-        # Replace . and - with _
-        # Format relationship strings to comply with neo4j naming rules:
-        # 1. Only alphanumeric characters or the underscore.
-        # 2. Prepend "rel_" to relationships with labels that start with numbers.
+        # Perform a series of joins and rename resulting columns to keep track of the source of
+        # relationship labels and inverse relationship labels.
+
+        # Convert input to DataFrame for merge operations.
+        df = predicate.to_frame()
+
+        # Check for relationships in RO, considering the edgelist predicate as a *full IRI*.
+        df = df.merge(self.relationshiptriples, how='left', left_on='predicate',
+                                  right_on='IRI').drop_duplicates().reset_index(drop=True)
+        #df = df[
+            #['predicate' 'relation_label_RO',
+             #'inverse_RO']].rename(
+            #columns={'relation_label_RO': 'relation_label_RO_fromIRIjoin', 'inverse_RO': 'inverse_RO_fromIRIjoin'})
+
+        print(df)
+
+    def standardize_relationship(self,x: pd.Series) -> pd.Series:
+
+        """
+        # Converts strings that correspond to a predicate string to a format recognized by the generation
+        # framework
+        :param x: Pandas Series object containing predicates (edges)
+        :return: Pandas Series object of standardized predicates.
+        """
+
+
+        # Final formatting
+
+        # 1. Replace . and - with _
+        # 2. Format relationship strings to comply with neo4j naming rules:
+        #    a. Only alphanumeric characters or the underscore.
+        #    b. Prepend "rel_" to relationships with labels that start with numbers.
 
         ret = x.str.replace('.', '_', regex=False)
         ret = ret.str.replace('-', '_', regex=False)
@@ -353,13 +391,14 @@ class ubkgStandardizer:
         # 3. RO:code
         # 4. a string
 
-        # March 2024 predicates are in lowercase.
-        # ret = np.where(x.str.contains('RO:'), 'http://purl.obolibrary.org/obo/RO_' + x.str.split('RO:').str[-1], ret)
+        # Predicates are in lowercase.
         ret = np.where(x.str.contains('ro:'), 'http://purl.obolibrary.org/obo/ro_' + x.str.split('ro:').str[-1], ret)
 
         # Replace #type from RDF schemas with isa.
         ret = np.where(x.str.contains('http://www.w3.org/1999/02/22-rdf-syntax-ns#type'), 'isa', ret)
         ret = np.where(x.str.contains('http://www.w3.org/2000/01/rdf-schema#type'), 'isa', ret)
+
+
 
         return ret
 
@@ -384,7 +423,7 @@ class ubkgStandardizer:
         https://stackoverflow.com/questions/4284991/parsing-nested-parentheses-in-python-grab-content-by-level
 
         """
-        return list(parenthetic_contents(strparen))
+        return list(self.parenthetic_contents(strparen))
 
     def parenthetic_contents(self,strparen: str) -> tuple:
 
@@ -398,4 +437,139 @@ class ubkgStandardizer:
                 # Closing of element at this level of nesting.
                 # Return to higher level of nesting.
                 start = stack.pop()
-                yield (len(stack), strparen[start + 1: i])
+                yield len(stack), strparen[start + 1: i]
+
+    def _get_relationshiptriples_from_ro(self) -> pd.DataFrame:
+
+        """
+        Obtains a set of relationship triples from the Relations Ontology (RO).
+        :return: DataFrame
+        """
+
+        """
+        Obtain descriptions of relationships and their inverses from the Relations Ontology JSON.
+
+        The Relations Ontology (RO) is an ontology of relationships, in which the nodes are
+        relationship properties and the edges (predicates) are relationships *between*
+        relationship properties.
+        For example,
+        
+        relationship property RO_0002292 (node) inverseOf (edge) relationship property RO_0002206 (node)
+        or
+        
+        "expresses" inverseOf "expressed in"
+        
+        """
+
+        self.ulog.print_and_logger_info(' * Obtaining relationship reference information from Relations Ontology...')
+        # Fetch the RO JSON.
+        dfro = pd.read_json("https://raw.githubusercontent.com/oborel/obo-relations/master/ro.json")
+
+        # Information on relationship properties (i.e., relationship property nodes) is in the node array.
+        dfrelnodes = pd.DataFrame(dfro.graphs[0]['nodes'])
+
+        # Information on edges (i.e., relationships between relationship properties) is in the edges array.
+        dfreledges = pd.DataFrame(dfro.graphs[0]['edges'])
+
+        """
+        Information on the relationships between relationship properties *should be* in the edges array.
+        Example of edge element:
+        {
+          "sub" : "http://purl.obolibrary.org/obo/RO_0002101",
+          "pred" : "inverseOf",
+          "obj" : "http://purl.obolibrary.org/obo/RO_0002132"
+        }
+        
+        Not all relationships in RO are defined with inverses; for these relationships, the script can define
+        "pseudo-inverse" relationships--e.g., if the only information available is the label "eats", then
+        the pseudo-inverse will be "inverse_eats" (instead of, say, "eaten_by").
+
+        Cases that require pseudo-inverses include:
+        1. A property is incompletely specified in terms of both sides of an inverse relationship--e.g.,
+           RO_0002206 is listed as the inverse of RO_0002292, but RO_0002292 is not listed as the
+           corresponding inverse of RO_0002206. For these properties, the available relationship
+           will be inverted when joining relationship information to the edgelist.
+           (This is really a case in which both directions of the inverse relationship should have been
+           defined in the edges node, but were not.)
+           
+        2. A property does not have inverse relationships defined in RO.
+           The relationship will be added to the list with a null inverse. The script will later create a
+           pseudo-inverse by appending "inverse_" to the relationship label.
+        """
+
+        # Obtain triple information for relationship properties--i.e.,
+        # 1. IRIs for "subject" nodes and "object" nodes (relationship properties)
+        # 2. relationship predicates (relationships between relationship properties)
+
+        # Get subject node, edge
+        dfrt = dfrelnodes.merge(dfreledges, how='left', left_on='id', right_on='sub')
+        # Get object node
+        dfrt = dfrt.merge(dfrelnodes, how='left', left_on='obj', right_on='id')
+
+        # Set a default predicate to capture nodes without predicates.
+        dfrt = dfrt.fillna(value={'pred': 'no predicate'})
+
+        # ---------------------------------
+        # Identify relationship properties that do not have inverses.
+        # 1. Group relationship properties by predicate, using count.
+        #    ('pred' here describes the relationship between relationship properties.)
+        dfpred = dfrt.groupby(['id_x', 'pred']).count().reset_index()
+
+        # 2. Identify the relationships for which the set of predicates does not include "inverseOf".
+        listinv = dfpred[dfpred['pred'] == 'inverseOf']['id_x'].to_list()
+        listnoinv = dfpred[~dfpred['id_x'].isin(listinv)]['id_x'].to_list()
+        dfnoinv = dfrt.copy()
+        dfnoinv = dfnoinv[dfnoinv['id_x'].isin(listnoinv)]
+
+        # 3. Rename column names to match the relationtriples frame. (Column names are described
+        #    farther down.)
+        dfnoinv = dfnoinv[['id_x', 'lbl_x', 'id_y', 'lbl_y']].rename(
+            columns={'id_x': 'IRI', 'lbl_x': 'relation_label_RO', 'id_y': 'inverse_IRI', 'lbl_y': 'inverse_RO'})
+        # The inverses are undefined.
+        dfnoinv['inverse_IRI'] = np.nan
+        dfnoinv['inverse_RO'] = np.nan
+
+        # ---------------------------------
+        # Look for members of incomplete inverse pairs--i.e., relationship properties that are
+        # the *object* of an inverseOf edge, but not the corresponding *subject* of an inverseOf edge.
+        #
+        # 1. Filter edges to inverseOf.
+        dfedgeinv = dfreledges[dfreledges['pred'] == 'inverseOf']
+
+        # 2. Find all relation properties that are objects of inverseOf edges.
+        dfnoinv = dfnoinv.merge(dfedgeinv, how='left', left_on='IRI', right_on='obj')
+
+        # 3. Get the label for the relation properties that are subjects of inverseOf edges.
+        dfnoinv = dfnoinv.merge(dfrelnodes, how='left', left_on='sub', right_on='id')
+        dfnoinv['inverse_IRI'] = np.where(dfnoinv['lbl'].isnull(), dfnoinv['inverse_IRI'], dfnoinv['id'])
+        dfnoinv['inverse_RO'] = np.where(dfnoinv['lbl'].isnull(), dfnoinv['inverse_RO'], dfnoinv['lbl'])
+        dfnoinv = dfnoinv[['IRI', 'relation_label_RO', 'inverse_IRI', 'inverse_RO']]
+
+        # ---------------------------------
+        # Filter the base triples frame to just those relationship properties that have inverses.
+        # This step eliminates relationship properties related by relationships such as "subPropertyOf".
+        dfrt = dfrt[dfrt['pred'] == 'inverseOf']
+
+        # Rename column names.
+        # Column names will be:
+        # IRI - the IRI for the relationship property
+        # relation_label_RO - the label for the relationship property
+        # inverse_RO - the label of the inverse relationship property
+        # inverse_IRI - IRI for the inverse relationship (This will be dropped.)
+        dfrt = dfrt[['id_x', 'lbl_x', 'id_y', 'lbl_y']].rename(
+            columns={'id_x': 'IRI', 'lbl_x': 'relation_label_RO', 'id_y': 'inverse_IRI', 'lbl_y': 'inverse_RO'})
+
+        # Add triples for problematic relationship properties--i.e., without inverses or from incomplete pairs.
+        dfrt = pd.concat([dfrt, dfnoinv], ignore_index=True).drop_duplicates(subset=['IRI'])
+
+        # Convert stings for labels for relationships to expected delimiting.
+        dfrt['relation_label_RO'] = \
+            dfrt['relation_label_RO'].str.replace(' ', '_').str.split('/').str[-1]
+        dfrt['inverse_RO'] = dfrt['inverse_RO'].str.replace(' ', '_').str.split('/').str[-1]
+
+        dfrt = dfrt.drop(columns='inverse_IRI')
+
+        # Cast IRI to lowercase.
+        dfrt['IRI'] = dfrt['IRI'].str.lower()
+
+        return dfrt

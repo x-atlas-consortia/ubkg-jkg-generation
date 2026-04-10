@@ -200,7 +200,11 @@
     "owl_url": "https://raw.githubusercontent.com/glycoinfo/GlycoRDF/master/ontology/glycan.rdf",
     "name": "GlycoRDF",
     "description": "GlycoRDF is a standard representation for storing Glycomics data (glycan structures publication information biological source information experimental data) in RDF",
-    "version": "2013-FEB-10"
+    "version": "2013-FEB-10",
+    "download_history": {
+      "size_mb": 0.3,
+      "max_time_minutes": 1
+    }
   },
   "GLYCOCOO": {
     "source_type": "owl",
