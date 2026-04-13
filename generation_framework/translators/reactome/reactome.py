@@ -80,7 +80,8 @@ def gethierarchyedges(dictevent:dict, taxon: str, df_vs: pd.DataFrame)->list:
     if listchildren is not None:
         for child in listchildren:
             # Emulate the "hasEvent" relationship of the Reactome (graph) model.
-            pred = 'http://purl.obolibrary.org/obo/RO_0002410' # causally_related_to
+            #pred = 'http://purl.obolibrary.org/obo/RO_0002410' # causally_related_to
+            pred = 'causally_related_to'
             dictedge = {'subject': f'REACTOME:{dictevent.get("stId")}', 'predicate': pred, 'object': f'REACTOME:{child.get("stId")}'}
             listret.append(dictedge)
             # Obtain hierarchy list for child node.
@@ -167,7 +168,8 @@ def getpropertyedges(ulog: ubkgLogging, uext: ubkgExtract, listhierarchyedges:li
         # }
 
         # SPECIES
-        pred = 'http://purl.obolibrary.org/obo/RO_0002162'  # in_taxon
+        #pred = 'http://purl.obolibrary.org/obo/RO_0002162'  # in_taxon
+        pred = 'in_taxon'
         listpropertyedges.append({'subject': id, 'predicate': pred, 'object': f'NCBI:{species_id}'})
 
         # Call the https://reactome.org/ContentService/data/query/enhanced endpoint.
@@ -179,7 +181,8 @@ def getpropertyedges(ulog: ubkgLogging, uext: ubkgExtract, listhierarchyedges:li
         # GO biological process
         # Per the Gene Ontology Annotation (GOA) documentation, the default relationship for the Biological Process
         # aspect of GO is "involved_in".
-        pred = 'http://purl.obolibrary.org/obo/RO_0002331' # involved_in
+        #pred = 'http://purl.obolibrary.org/obo/RO_0002331' # involved_in
+        pred = 'involved_in'
         go_biological_process = queryjson.get('goBiologicalProcess')
         if go_biological_process is not None:
             if isinstance(go_biological_process, dict):
@@ -188,7 +191,8 @@ def getpropertyedges(ulog: ubkgLogging, uext: ubkgExtract, listhierarchyedges:li
 
         # compartment (GO cellular component)
         # Per GOA, the default relationship for the Cellular Component aspect is "part_of".
-        pred = 'http://purl.obolibrary.org/obo/BFO_0000050' #part_of
+        #pred = 'http://purl.obolibrary.org/obo/BFO_0000050' #part_of
+        pred = 'part_of'
         compartment = (queryjson.get('compartment'))
         if compartment is not None:
             for c in compartment:
@@ -196,7 +200,8 @@ def getpropertyedges(ulog: ubkgLogging, uext: ubkgExtract, listhierarchyedges:li
                 listpropertyedges.append({'subject': id, 'predicate': pred, 'object': obj})
 
         # preceding events
-        pred = 'http://purl.obolibrary.org/obo/BFO_0000062' # preceded_by
+        #pred = 'http://purl.obolibrary.org/obo/BFO_0000062' # preceded_by
+        pred = 'preceded_by'
         preceding_event = queryjson.get('precedingEvent')
         if preceding_event is not None:
             for p in preceding_event:
@@ -245,7 +250,8 @@ def getparticipantedges(uext: ubkgExtract, base_url: str, event_id: str) -> list
     listedges = []
     if participantjson is not None:
         for p in participantjson:
-            pred = 'http://purl.obolibrary.org/obo/RO_0000057' # has_participant
+            #pred = 'http://purl.obolibrary.org/obo/RO_0000057' # has_participant
+            pred = 'has_participant'
             classname = p.get('className')
             if classname == 'ReferenceGeneProduct':
                 # The SAB for UniProt in UBKG is UNIPROTKB.

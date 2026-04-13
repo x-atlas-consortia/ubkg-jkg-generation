@@ -35,6 +35,10 @@ class ubkgStandardizer:
         specified in the Relationship Ontology, but that can be
         obtained from other sources, such as OBO.
 
+        References:
+        1. OBI: https://dashboard.obofoundry.org/dashboard/obi/fp7.html
+        2.
+
         These edges are mapped in a CSV file.
         :return: Pandas DataFrame
         """

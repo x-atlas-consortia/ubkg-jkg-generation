@@ -541,11 +541,11 @@ def find_existing_owl_file(ulog: ubkgLogging, owl_dir: str, sab:str) -> str:
     print_divider(ulog=ulog)
     ulog.print_and_logger_info(f'Searching for an existing OWL file in {owl_dir}.')
 
-    owl_files: list = glob.glob(os.path.join(owl_dir, '*.owl'))
+    owl_files: list = glob.glob(os.path.join(owl_dir, f'{sab}.owl'))
     rdf_files: list = glob.glob(os.path.join(owl_dir, '*.rdf'))
 
     if len(owl_files) > 1:
-        raise ValueError(f'Multiple OWL files found in {owl_dir}: {owl_files}')
+        raise ValueError(f'Multiple OWL files for {sab} found in {owl_dir}: {owl_files}')
     if owl_files:
         return owl_files[0]
 
@@ -641,7 +641,7 @@ def get_rdf_graph(ulog: ubkgLogging, usource: ubkgSources, owl_dir: str, owl_fil
         utimer.stop()
         ulog.print_and_logger_info(f'Successfully parsed {owl_file} as Turtle.')
 
-        convertedpath = os.path.join(owl_dir, 'converted.owl')
+        convertedpath = os.path.join(owl_dir, f'{sab}.owl')
 
         ulog.print_and_logger_info(f'Serializing {owl_file} to RDF/XML format in file {convertedpath}')
         v = graph.serialize(format='xml', destination=convertedpath)
@@ -677,7 +677,7 @@ def get_entity_metadata(ulog: ubkgLogging, graph: Graph) -> pd.DataFrame:
     ont_dbxrefs = pkt.utils.gets_ontology_class_dbxrefs(graph)
     ont_defs = pkt.utils.gets_ontology_definitions(graph)
 
-    ulog.print_and_logger_info(' * Adding class metadata to the master metadata dictionary.')
+    ulog.print_and_logger_info('Adding class metadata to the master metadata dictionary.')
     entity_metadata = {'nodes': {}, 'relations': {}}
     for cls in tqdm(ont_classes):
         # Get class metadata - synonyms and dbxrefs
@@ -736,7 +736,6 @@ def get_entity_metadata(ulog: ubkgLogging, graph: Graph) -> pd.DataFrame:
     pkt.utils.derives_graph_statistics(graph)
 
     return entity_metadata
-
 
 def get_owlnets(ulog: ubkgLogging, graph: Graph, working_dir: str, args: argparse.Namespace) -> pkt.OwlNets:
     """

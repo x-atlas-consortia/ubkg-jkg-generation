@@ -163,7 +163,8 @@
     "version": "2022-SEP-07",
     "history": {
       "download_size_mb": 0.3,
-      "download_time_minutes": 1
+      "download_time_minutes": 1,
+      "parse_time_seconds": 10
     }
   },
   "FTU2D": {
@@ -209,7 +210,8 @@
     "version": "2013-FEB-10",
     "history": {
       "download_size_mb": 0.3,
-      "download_time_minutes": 1
+      "download_time_minutes": 1,
+      "parse_time_seconds": 10
     }
   },
   "GLYCOCOO": {
@@ -220,7 +222,8 @@
     "version": "2018-OCT-26",
     "history": {
       "download_size_mb": 0.3,
-      "download_time_minutes": 3
+      "download_time_minutes": 3,
+      "parse_time_seconds": 10
     }
   },
   "GTEXCOEXP": {
@@ -301,7 +304,8 @@
     "version": "2025-JAN-23",
     "history": {
       "download_size_mb": 0.6,
-      "download_time_minutes": 1
+      "download_time_minutes": 1,
+      "parse_time_seconds": 10
     }
   },
   "HSCLO": {
@@ -353,7 +357,8 @@
     "version": "CVversion 2.5.5",
     "history": {
       "download_size_mb": 3,
-      "download_time_minutes": 1
+      "download_time_minutes": 1,
+      "parse_time_seconds": 10
     }
   },
   "MONDO": {
@@ -363,7 +368,8 @@
     "description": "A global community effort to harmonize multiple disease resources to yield a coherent merged ontology",
     "history": {
       "download_size_mb": 220,
-      "download_time_minutes": 1
+      "download_time_minutes": 1,
+      "parse_time_seconds": 50
     }
   },
   "MOTRPAC": {
@@ -381,7 +387,8 @@
     "version": "2025-NOV-19",
     "history": {
       "download_size_mb": 103,
-      "download_time_minutes": 1
+      "download_time_minutes": 1,
+      "parse_time_seconds": 50
     }
   },
   "MPMGI": {
@@ -413,7 +420,8 @@
     "version": "2024-MAR-04",
     "history": {
       "download_size_mb": 0.6,
-      "download_time_minutes": 1
+      "download_time_minutes": 1,
+      "parse_time_seconds": 10
     }
   },
   "NPOSKCAN": {
@@ -424,7 +432,8 @@
     "version": "2024-MAR-04",
     "history": {
       "download_size_mb": 6,
-      "download_time_minutes": 1
+      "download_time_minutes": 1,
+      "parse_time_seconds": 10
     }
   },
   "OBI": {
@@ -435,7 +444,8 @@
     "version": "2025-OCT-14",
     "history": {
       "download_size_mb": 10,
-      "download_time_minutes": 1
+      "download_time_minutes": 1,
+      "parse_time_seconds": 10
     }
   },
   "OBIB": {
@@ -446,7 +456,8 @@
     "version": "2023-APR-05",
     "history": {
       "download_size_mb": 3,
-      "download_time_minutes": 1
+      "download_time_minutes": 1,
+      "parse_time_seconds": 10
     }
   },
   "ORDO": {
@@ -457,7 +468,8 @@
     "version": "2025-NOV-30",
     "history": {
       "download_size_mb": 51,
-      "download_time_minutes": 1
+      "download_time_minutes": 1,
+      "parse_time_seconds": 15
     }
   },
   "OTG": {
@@ -475,7 +487,8 @@
     "version": "2025-MAY-14",
     "history": {
       "download_size_mb": 3,
-      "download_time_minutes": 1
+      "download_time_minutes": 1,
+      "parse_time_seconds": 10
     }
   },
   "PAZ": {
@@ -542,7 +555,8 @@
     "version": "2021-AUG-21",
     "history": {
       "download_size_mb": 0.6,
-      "download_time_minutes": 1
+      "download_time_minutes": 1,
+      "parse_time_seconds": 10
     }
   },
   "STELLAR": {
@@ -591,7 +605,8 @@
     "version": "2024-OCT-02",
     "history": {
       "download_size_mb": 0.3,
-      "download_time_minutes": 1
+      "download_time_minutes": 1,
+      "parse_time_seconds": 10
     }
   },
   "UNIPROTKB": {
