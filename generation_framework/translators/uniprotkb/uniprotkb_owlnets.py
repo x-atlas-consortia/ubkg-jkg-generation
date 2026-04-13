@@ -22,21 +22,20 @@ from tqdm import tqdm
 # Import UBKG utilities that are in a directory that is at the same level as the script directory.
 # Go "up and over" for an absolute path.
 fpath = os.path.dirname(os.getcwd())
-fpath = os.path.join(fpath, 'generation_framework/ubkg_utilities')
+fpath = os.path.join(fpath, 'generation_framework/utilities')
 sys.path.append(fpath)
 
 # Extraction module
-from ubkg_extract import ubkgExtract
+from classes.ubkg_extract import ubkgExtract
 # argparser
-from ubkg_args import RawTextArgumentDefaultsHelpFormatter
+from classes.ubkg_args import RawTextArgumentDefaultsHelpFormatter
 # Centralized logging module
-from find_repo_root import find_repo_root
-from ubkg_logging import ubkgLogging
+from functions.find_repo_root import find_repo_root
+from classes.ubkg_logging import ubkgLogging
 
 # config file
-from ubkg_config import ubkgConfigParser
+from classes.ubkg_config import ubkgConfigParser
 
-import ubkg_parsetools as uparse
 # -----------------------------
 
 def getuniprotkb(cfg: ubkgConfigParser, ulog: ubkgLogging, uext:ubkgExtract, sab_source_dir: str, sab_jkg_dir: str) -> pd.DataFrame:
@@ -183,11 +182,14 @@ def write_go_annotation_edges(subject: str, go_column: str, go_aspect: str, out)
     """
 
     if go_aspect == 'p':
-        pred = 'http://purl.obolibrary.org/obo/RO_0002331'
+        #pred = 'http://purl.obolibrary.org/obo/RO_0002331'
+        pred = 'involved_in'
     elif go_aspect == 'c':
-        pred = 'http://purl.obolibrary.org/obo/BFO_0000050'
+        #pred = 'http://purl.obolibrary.org/obo/BFO_0000050'
+        pred = 'part_of'
     elif go_aspect == 'f':
-        pred = 'http://purl.obolibrary.org/obo/RO_0002327'
+        #pred = 'http://purl.obolibrary.org/obo/RO_0002327'
+        pred = 'enables'
     else:
         raise ValueError(f"Invalid GO aspect parameter '{go_aspect}'.")
 
@@ -223,7 +225,8 @@ def write_edges_file(df: pd.DataFrame, ulog: ubkgLogging, dfhgnc:pd.DataFrame, s
 
     ulog.print_and_logger_info('Building: ' + os.path.abspath(edgelist_path))
 
-    pred = 'http://purl.obolibrary.org/obo/RO_0002204'  # gene product of
+    #pred = 'http://purl.obolibrary.org/obo/RO_0002204'  # gene product of
+    pred = 'gene_product_of'
 
     with open(edgelist_path, 'w') as out:
         out.write('subject' + '\t' + 'predicate' + '\t' + 'object' + '\n')
@@ -247,6 +250,44 @@ def write_edges_file(df: pd.DataFrame, ulog: ubkgLogging, dfhgnc:pd.DataFrame, s
             write_go_annotation_edges(subject=subject, go_column=row['Gene Ontology (molecular function)'], go_aspect='f', out=out)
 
     return
+
+def parse_string_nested_parentheses(strparen: str) -> list[tuple]:
+
+        """
+        Analyzes a string with nested parentheses in terms of level of nesting.
+
+        For example, '(a(b(c)(d)e)(f)g)' can be analyzed as:
+        level 0: a(b(c)(d)e)(f)g
+        level 1: f
+        level 1: b(c)(d)e
+        level 2: c
+        level 2: d
+        or
+        [(2, 'c'), (2, 'd'), (1, 'b(c)(d)e'), (1, 'f'), (0, 'a(b(c)(d)e)(f)g')]
+
+        UBKG use case: UniprotKB, which uses parentheses both as delimiters and
+        inside elements--e.g., (element 1 (details))(element 2 (details))
+
+        Adapted from a solution posted by Gareth Rees at
+        https://stackoverflow.com/questions/4284991/parsing-nested-parentheses-in-python-grab-content-by-level
+
+        """
+        return list(parenthetic_contents(strparen))
+
+def parenthetic_contents(strparen: str) -> tuple:
+
+        # Employs a stack to analyze elements in a string by level of nesting.
+        stack = []
+        for i, c in enumerate(strparen):
+            if c == '(':
+                # New level of parenthesis nesting.
+                stack.append(i)
+            elif c == ')' and stack:
+                # Closing of element at this level of nesting.
+                # Return to higher level of nesting.
+                start = stack.pop()
+                yield len(stack), strparen[start + 1: i]
+
 
 def write_nodes_file(df: pd.DataFrame,  ulog: ubkgLogging, sab_jkg_dir: str):
 
@@ -306,7 +347,7 @@ def write_nodes_file(df: pd.DataFrame,  ulog: ubkgLogging, sab_jkg_dir: str):
             # Replace the approved name with the UniProtKB Entry Name, so it will the first synonym.
             synonyms = [row['Entry Name']]
             # Parse the protein names string by level of nested parentheses.
-            synonyms_parsed = uparse.parse_string_nested_parentheses(protein_names)
+            synonyms_parsed = parse_string_nested_parentheses(protein_names)
             if synonyms_parsed != []:
                 # Treat 0-level strings as synonyms.
                 for parsetuple in synonyms_parsed:
@@ -324,8 +365,6 @@ def write_nodes_file(df: pd.DataFrame,  ulog: ubkgLogging, sab_jkg_dir: str):
                 node_id + '\t' + node_namespace + '\t' + node_label + '\t' + node_definition + '\t' + node_synonyms + '\t' + node_dbxrefs + '\n')
 
     return
-
-
 
 def getargs()->argparse.Namespace:
     # Parse command line arguments.
@@ -349,7 +388,7 @@ def main():
     args = getargs()
 
     # Get application configuration.
-    cfgpath = os.path.join(os.path.dirname(os.getcwd()), 'generation_framework/uniprotkb/uniprotkb.ini')
+    cfgpath = os.path.join(os.path.dirname(os.getcwd()), 'generation_framework/translators/uniprotkb/uniprotkb.ini')
     cfg = ubkgConfigParser(path=cfgpath,ulog=ulog)
 
     # Get sab_source and sab_jkg directories.

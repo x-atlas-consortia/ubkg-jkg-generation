@@ -211,14 +211,14 @@ def download_owltools(ulog:ubkgLogging, loc: str) -> None:
         # move back to the working directory
         os.chdir(cwd)
 
-def download_owl(ulog: ubkgLogging, usource: ubkgSources, url: str, sab: str, loc: str, working_file: str) -> None:
+def download_owl_file(ulog: ubkgLogging, usource: ubkgSources, url: str, sab: str, download_dir: str, working_file: str) -> None:
     """
     Downloads an OWL file from a URL to a path on the local machine.
     :param ulog: logging object
     :param usource: source object (interface to sources.json)
     :param url: OWL URL
     :param sab: OWL sab
-    :param loc: download path
+    :param download_dir: download path
     :param working_file:
     :return:
     """
@@ -226,12 +226,12 @@ def download_owl(ulog: ubkgLogging, usource: ubkgSources, url: str, sab: str, lo
 
     ulog.print_and_logger_info(f'Downloading via wget')
     ulog.print_and_logger_info(f' * from: \'{url}\'')
-    ulog.print_and_logger_info(f' * to: \'{loc}\'')
+    ulog.print_and_logger_info(f' * to: \'{download_dir}\'')
 
     cwd: str = os.getcwd()
-    os.system(f"mkdir -p {loc}")
-    os.chdir(loc)
+    os.chdir(download_dir)
 
+    # Provide an estimate for download time.
     dicthist = usource.get(sab=sab, key='download_history')
     if dicthist:
         histsize = dicthist.get('size_mb', 'unknown')
@@ -239,12 +239,10 @@ def download_owl(ulog: ubkgLogging, usource: ubkgSources, url: str, sab: str, lo
         minutes = "minute"
         if int(histtime) > 1:
             minutes = "minutes"
-    ulog.print_and_logger_warning(
-        f'The OWL file for {sab} has historically been <{histsize} MB and required <{histtime} {minutes} to download.')
-
-    # Download via wget.
-    print_divider(ulog=ulog)
-    ulog.print_and_logger_info(f'WGET START')
+        ulog.print_and_logger_warning(f'The OWL file for {sab} has historically '
+                                      f'been <{histsize} MB and '
+                                      f'required <{histtime} {minutes} '
+                                      f'to download.')
 
     utimer=UbkgTimer(display_msg="Downloading")
     wgetResults: bytes = subprocess.check_output([f'wget {url}'], shell=True, stderr=subprocess.STDOUT)
@@ -261,12 +259,8 @@ def download_owl(ulog: ubkgLogging, usource: ubkgSources, url: str, sab: str, lo
     # wget summary is the last block after a blank line
     summary: str = wgetResults_str.strip().split('\n\n')[-1]
 
-    ulog.print_and_logger_info(summary)
-    ulog.print_and_logger_info('WGET COMPLETE')
-
-    print_divider(ulog=ulog)
-
     working_file = working_file.split('&download_format')[0]
+
     md5: str = hashlib.md5(open(working_file, 'rb').read()).hexdigest()
     md5_file: str = f'{working_file}.md5'
     ulog.print_and_logger_info(f'MD5 for owl file {md5} saved to {md5_file}')
@@ -301,7 +295,6 @@ def scan_xml_tree_for_imports(tree: etree.ElementTree) -> list:
         resource_uris.append(resource_uri)
     return resource_uris
 
-
 def search_owl_file_for_imports(ulog: ubkgLogging, args: argparse.Namespace, owl_filename: str) -> None:
 
     """
@@ -327,7 +320,6 @@ def search_owl_file_for_imports(ulog: ubkgLogging, args: argparse.Namespace, owl
     else:
         ulog.print_and_logger_info(f"No imports were found in OWL file {owl_filename}")
 
-
 def log_files_and_sizes(ulog: ubkgLogging, procdir: str) -> None:
     """
     Log the files that were produced in a processing directory.
@@ -341,7 +333,6 @@ def log_files_and_sizes(ulog: ubkgLogging, procdir: str) -> None:
         generated_file: str = os.path.join(procdir, file)
         size: int = os.path.getsize(generated_file)
         ulog.print_and_logger_info(f"Generated file '{generated_file}' size {size:,}")
-
 
 def look_for_none_in_node_metadata_file(ulog: ubkgLogging, procdir: str) -> None:
 
@@ -381,7 +372,6 @@ def look_for_none_in_node_metadata_file(ulog: ubkgLogging, procdir: str) -> None
 
     both_not_None = node_synonyms_not_None[node_synonyms_not_None['node_dbxrefs'].str.contains('None') == False]
     ulog.print_and_logger_info(f"Columns where node_synonyms && node_dbxrefs is not None: {len(both_not_None)}")
-
 
 def robot_merge(ulog: ubkgLogging, owl_url: str) -> None:
 
@@ -455,18 +445,18 @@ def get_owl_file(ulog: ubkgLogging, uextract: ubkgExtract, owl_dir: str, args: a
     owl_file: str = os.path.join(owl_dir, working_file)
     # Download the working file.
 
-    download_owl(ulog=ulog, usource=usource, url=args.owl_url, sab=args.owl_sab, loc=owl_dir, working_file=working_file)
+    download_owl_file(ulog=ulog, usource=usource, url=args.owl_url, sab=args.owl_sab, download_dir=owl_dir, working_file=working_file)
 
     #if args.force_owl_download is True or os.path.exists(owl_file) is False:
         #ulog.print_and_logger_info("Force download of OWL file specified.")
-        #download_owl(ulog=ulog, url=args.owl_url, loc=owl_dir, working_file=working_file)
+        #download_owl_file(ulog=ulog, url=args.owl_url, loc=owl_dir, working_file=working_file)
     #elif args.ignore_owl_md5 is True:
         #if args.verbose:
             #ulog.print_and_logger_info(f"Ignoring .owl file {owl_file} MD5")
     #elif not compare_file_md5(working_file=owl_file):
         #if args.verbose:
             #ulog.print_and_logger_info(f"MD5 of {working_file} does not match MD5 of {owl_file}: downloading.")
-        #download_owl(ulog=ulog, url=args.owl_url, loc=owl_dir, working_file=working_file)
+        #download_owl_file(ulog=ulog, url=args.owl_url, loc=owl_dir, working_file=working_file)
 
     """
     
@@ -832,12 +822,13 @@ def get_owlnets(ulog: ubkgLogging, graph: Graph, working_dir: str, args: argpars
 
     return owlnets
 
-def write_edges_file(sab:str, ulog: ubkgLogging, ustand: ubkgStandardizer, working_dir: str, owlnets: pkt.OwlNets):
+def write_edges_file(sab:str, ulog: ubkgLogging, ustand: ubkgStandardizer, uextractor: ubkgExtract, working_dir: str, owlnets: pkt.OwlNets):
     """
     Writes an edges file in OWLNETS format.
     :param sab: SAB that is to be standardized
     :param ulog: logging object
     :param ustand: UBKG code standardizer object
+    :param uextractor: UBKG extractor object
     :param working_dir: output directory
     :param owlnets: OWLNets object
     :return:
@@ -849,28 +840,26 @@ def write_edges_file(sab:str, ulog: ubkgLogging, ustand: ubkgStandardizer, worki
 
     # Standardize IRIs to SAB:code format.
     df = pd.DataFrame(owlnets.graph)
+
     df.columns = ['subject','predicate','object']
     df['subject_standardized'] = ustand.standardize_code(x=df['subject'], ingestSAB=sab)
     df['object_standardized'] = ustand.standardize_code(x=df['object'], ingestSAB=sab)
 
     # Simplify predicate IRIs to standardized predicate terms.
-    df['predicate_standardized'] = ustand.identify_relationships(predicate=df['predicate'])
+    df['predicate_standardized'] = ustand.standardize_relationships(predicate=df['predicate'])
 
     df = df[['subject_standardized','predicate_standardized','object_standardized']]
-    df.columns = ['subject','predicate','object']
-    df.to_csv(edge_list_filename, index=False, header=True, encoding='utf-8', sep='\t')
-    # Standardize code IRIs to SAB:Code format.
+    df.columns = ['subject','predicate', 'object']
 
-    #with open(edge_list_filename, 'w') as out:
-        #out.write('subject' + '\t' + 'predicate' + '\t' + 'object' + '\n')
-        #for row in tqdm(owlnets.graph):
-            #out.write(str(row[0]) + '\t' + str(row[1]) + '\t' + str(row[2]) + '\n')
+    uextractor.to_csv_with_progress_bar(df=df, path=edge_list_filename, sep='\t', index=False)
 
-
-def write_nodes_file(ulog: ubkgLogging, working_dir: str, owlnets: pkt.OwlNets, entity_metadata: dict):
+def write_nodes_file(sab: str, ulog: ubkgLogging, uextractor: ubkgExtract, ustand: ubkgStandardizer, working_dir: str, owlnets: pkt.OwlNets, entity_metadata: dict):
     """
     Writes an edges file in OWLNETS format.
+    :param sab: SAB for standardizing codes
     :param ulog: logging object
+    :param uextractor: UBKG extractor object
+    :param ustand: UBKG code standardizer object
     :param working_dir: output directory
     :param owlnets: OWLNets object
     :param entity_metadata: OWLNets entity metadata
@@ -884,46 +873,63 @@ def write_nodes_file(ulog: ubkgLogging, working_dir: str, owlnets: pkt.OwlNets, 
 
     node_metadata_filename: str = working_dir + os.sep + 'OWLNETS_node_metadata.txt'
     ulog.print_and_logger_info(f"Write node metadata results to '{node_metadata_filename}'")
+
     with open(node_metadata_filename, 'w') as out:
-        out.write('node_id' + '\t' + 'node_namespace' + '\t'
+        out.write('node_id' + '\t'
                   + 'node_label' + '\t' + 'node_definition'
                   + '\t' + 'node_synonyms' + '\t'
                   + 'node_dbxrefs' + '\n')
 
-        for x in tqdm(nodes):
-            if x in entity_metadata['nodes'].keys():
-                namespace = entity_metadata['nodes'][x]['namespace']
-                labels = entity_metadata['nodes'][x]['label']
-                definitions = entity_metadata['nodes'][x]['definitions']
-                synonyms = entity_metadata['nodes'][x]['synonyms']
-                dbxrefs = entity_metadata['nodes'][x]['dbxrefs']
+        for node_id in tqdm(nodes):
+            if node_id in entity_metadata['nodes'].keys():
+                # Standardize the node id.
+                # The standardize_code function expects a Pandas Series object,
+                # so convert the node_id to a one-value series.
+                node_id_series= pd.Series({'label': node_id})
+                node_id_standardized_series = ustand.standardize_code(x=node_id_series, ingestSAB=sab)
+                node_id_standardized = node_id_standardized_series[0]
 
-                out.write(x + '\t' + namespace + '\t' + labels +
+                labels = entity_metadata['nodes'][node_id]['label']
+                definitions = entity_metadata['nodes'][node_id]['definitions']
+                synonyms = entity_metadata['nodes'][node_id]['synonyms']
+                dbxrefs = entity_metadata['nodes'][node_id]['dbxrefs']
+
+                out.write(node_id_standardized + '\t' + labels +
                           '\t' + definitions + '\t' + synonyms +
                           '\t' + dbxrefs + '\n')
 
-def remove_old_files(ulog: ubkgLogging, args: argparse.Namespace):
+
+def do_file_housekeeping(ulog: ubkgLogging, args: argparse.Namespace):
     """
-    Removes prior versions of files, depending on command line arguments.
+    1. Removes prior versions of files, depending on command line arguments.
+    2. Creates sab-related directories as needed.
     :param ulog: ubkgLogging object
     :param args: command line arguments
     """
     cwd = os.getcwd()
     print_divider(ulog=ulog)
 
-    # 1. Remove old output--i.e., edge and node files
+    # Output directory
     output_dir = os.path.join(args.owlnets_dir, args.owl_sab)
-    ulog.print_and_logger_warning(f"Deleting prior output files in working directory {output_dir}")
-    os.chdir(output_dir)
-    os.system("rm -f *")
+    if not os.path.exists(output_dir):
+        ulog.print_and_logger_info(f"Creating output directory {output_dir}", )
+        os.system(f"mkdir -p {output_dir}")
+    else:
+        ulog.print_and_logger_warning(f"Deleting prior output files in working directory {output_dir}")
+        os.chdir(output_dir)
+        os.system("rm -f *")
 
     # 2. If a new fetch of the OWL file was requested, remove old
     #    OWL files.
     owl_dir = os.path.join(args.owl_dir, args.owl_sab)
-    if args.force_owl_download:
-        ulog.print_and_logger_warning(f'Deleting prior versions of files in {owl_dir}')
-        os.chdir(owl_dir)
-        os.system("rm -f *.owl *.md5 *.ttl *.rdf *download*")
+    if not os.path.exists(owl_dir):
+        ulog.print_and_logger_info(f"Creating OWL directory {owl_dir}", )
+        os.system(f"mkdir -p {owl_dir}")
+    else:
+        if args.force_owl_download:
+            ulog.print_and_logger_warning(f'Deleting prior versions of files in {owl_dir}')
+            os.chdir(owl_dir)
+            os.system("rm -f *.owl *.md5 *.ttl *.rdf *download*")
 
     os.chdir(cwd)
 
@@ -938,6 +944,9 @@ def main():
     log_dir = os.path.join(repo_root, 'generation_framework/builds/logs')
     ulog = ubkgLogging(log_dir=log_dir, log_file='pheknowlator.log')
 
+    print_divider(ulog=ulog)
+    ulog.print_and_logger_info('PHEKNOWLATOR SCRIPT')
+
     # Process and document command line arguments.
     args = get_args(ulog=ulog)
 
@@ -945,8 +954,6 @@ def main():
     # downloaded OWL file is a compressed file that must be expanded.
     uextract = ubkgExtract(ulog=ulog)
 
-    # Initialize the code standardizer object.
-    ustandardizer = ubkgStandardizer(ulog=ulog, repo_root=repo_root)
 
     # Obtain application configuration.
     cfg = ubkgConfigParser(path='ubkgjkg.ini', ulog=ulog)
@@ -955,7 +962,7 @@ def main():
     usource = ubkgSources(ulog=ulog, cfg=cfg, repo_root=repo_root)
 
     # Housekeeping - remove prior versions of input or output files.
-    remove_old_files(ulog=ulog, args=args)
+    do_file_housekeeping(ulog=ulog, args=args)
 
     # Start the processing timer.
     start_time = time.time()
@@ -992,8 +999,6 @@ def main():
 
     # Determine path for outputs of processing, based on the SAB.
     working_dir: str = os.path.join(args.owlnets_dir, args.owl_sab)
-    ulog.print_and_logger_info(f"Creating output directory {working_dir}", )
-    os.system(f"mkdir -p {working_dir}")
 
     # ------
     # OBTAIN THE OWL FILE.
@@ -1009,7 +1014,7 @@ def main():
     # Directory containing OWL files related to the SAB.
     owl_dir: str = os.path.join(args.owl_dir, args.owl_sab)
 
-    if args.force_owl_download is True:
+    if args.force_owl_download:
         # Download the file and process it as necessary (e.g., expanding if an archive).
         owl_file = get_owl_file(ulog=ulog, uextract=uextract, owl_dir=owl_dir, args=args, usource=usource)
         # Defensive: verify that the file has no unexpected imports.
@@ -1036,8 +1041,13 @@ def main():
     # ------
     # WRITE OUTPUT
     # ------
-    write_edges_file(sab=args.owl_sab, ulog=ulog, ustand=ustandardizer, working_dir=working_dir, owlnets=owlnets)
-    write_nodes_file(ulog=ulog, working_dir=working_dir, owlnets=owlnets, entity_metadata=entity_metadata)
+
+    # Initialize the code standardizer object.
+    print_divider(ulog=ulog)
+    ustandardizer = ubkgStandardizer(ulog=ulog, repo_root=repo_root)
+
+    write_edges_file(sab=args.owl_sab, ulog=ulog, ustand=ustandardizer, uextractor=uextract, working_dir=working_dir, owlnets=owlnets)
+    write_nodes_file(sab=args.owl_sab, ulog=ulog, uextractor=uextract, ustand=ustandardizer, working_dir=working_dir, owlnets=owlnets, entity_metadata=entity_metadata)
 
     log_files_and_sizes(ulog=ulog, procdir=working_dir)
 

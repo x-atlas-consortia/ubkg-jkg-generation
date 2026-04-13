@@ -93,16 +93,11 @@ def run_pheknowlator_for_sab(cfg: ubkgConfigParser, ulog: ubkgLogging,
     :return:
     """
 
-    ulog.print_and_logger_info(f'OWL dir: {os.path.join(sab_source_dir,sab)}')
-    ulog.print_and_logger_info(f'JKG dir: {os.path.join(sab_jkg_dir,sab)}')
-
     # Obtain absolute path to OWLTools directory.
     owltools_dir = os.path.join(repo_root,cfg.get_value(section='directories',key='owltools_dir'))
-    ulog.print_and_logger_info(f'owltools_dir: {owltools_dir}')
 
     sab_config = sab_json[sab]
     owl_url = sab_config['owl_url']
-    #ulog.print_and_logger_info(f"Processing OWL file: {owl_url}")
 
     # Pass runtime arguments to the OWLNETS script.
     # Assume that the OWL file has no imports.
@@ -121,7 +116,6 @@ def run_pheknowlator_for_sab(cfg: ubkgConfigParser, ulog: ubkgLogging,
                            f"--owltools_dir {owltools_dir} "
                            f"--owl_dir {sab_source_dir} "
                            f" {owl_url} {sab}")
-    ulog.print_and_logger_info(f"Running translator: {owlnets_script}")
     usub.call_subprocess(owlnets_script)
 
     # Run post-processing script.
@@ -174,8 +168,7 @@ def main():
 
         if source_type == 'owl':
             if args.fetch:
-                ulog.print_and_logger_info(f'Running translator: PhenKnowLator.')
-                ulog.print_and_logger_info('The log file name is: phenKnowLator.log')
+                ulog.print_and_logger_info(f'Executing translator: PhenKnowLator')
 
             # Use PheKnowLator to convert OWL files to OWLNETS files.
             run_pheknowlator_for_sab(cfg=cfg,
@@ -194,9 +187,7 @@ def main():
             if args.fetch:
                 farg = '--fetchnew'
 
-            script = f'{usource.get(sab=sab_name, key='execute')}'
-            ulog.print_and_logger_info(f"Running translator: {script}")
-            ulog.print_and_logger_info(f"The log file shares the script name.")
+            script = f'{usource.get(sab=sab_name, key='execute')} {farg}'
             usub.call_subprocess(script)
 
         # Add log entry for how long it took to do the processing...

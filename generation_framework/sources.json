@@ -590,7 +590,7 @@
   "UNIPROTKB": {
     "source_type": "uniprotkb",
     "execute_url": "https://www.uniprot.org/uniprot/?query=facets=reviewed%3Atrue&fil=organism%3A%22Homo+sapiens+%28Human%29+%5B9606%5D%22",
-    "execute": "./uniprotkb/uniprotkb_owlnets.py",
+    "execute": "./translators/uniprotkb/uniprotkb_owlnets.py",
     "name": "UniProtKB",
     "description": "Data from UniProtKB exported to OWLNETS format."
   },

@@ -29,9 +29,6 @@ class ubkgStandardizer:
         # Special prefix to SAB maps for code standardization
         self.prefix_sab_maps = self._getprefix_sab_maps()
 
-        # Relationship triples from Relations Ontology for relationship standardization.
-        self.relationshiptriples = self._get_relationshiptriples_from_ro()
-
     def _getprefix_sab_maps(self) -> pd.DataFrame:
         """
         A number of UBKG sources use idiosyncratic naming conventions
@@ -326,43 +323,313 @@ class ubkgStandardizer:
 
         return ret
 
-    def identify_relationships(self, predicate: pd.Series) -> pd.Series:
+    def standardize_relationships(self, predicate: pd.Series) -> pd.Series:
         """
         1. Checks relationships in an edge file
-        against the Relations Ontology.
+           against references including
+           a. Relations Ontology
+           b. Biological Spatial Ontology
+           c. OBO
         2. Standardizes relationship strings for use in the UBKG JKG.
 
         :param predicate: Pandas Series object containing predicates (edges):
-        :return:
+        :return: Pandas Series object with translated predicate labels
+
+        The Relationship Ontology defines inverse relationships for
+        many relationships. The UBKG-JKG only defines forward
+        relationships; however, the inverse relationship
+        definition logic will be retained.
+
         """
 
-        # Perform a series of joins and rename resulting columns to keep track of the source of
-        # relationship labels and inverse relationship labels.
+        # Relationship triples from Relations Ontology for relationship standardization.
+        dfro = self._get_relationshiptriples_from_ro()
+
+        # Relationship edges from the Biological Spatial Ontology
+        dfbspo = self._get_edges_from_bspo()
+
+        # Perform a series of merge and rename resulting columns
+        # to keep track of the source of relationship labels
+        # and inverse relationship labels (for RO).
 
         # Convert input to DataFrame for merge operations.
         df = predicate.to_frame()
 
-        # Check for relationships in RO, considering the edgelist predicate as a *full IRI*.
-        df = df.merge(self.relationshiptriples, how='left', left_on='predicate',
-                                  right_on='IRI').drop_duplicates().reset_index(drop=True)
-        #df = df[
-            #['predicate' 'relation_label_RO',
-             #'inverse_RO']].rename(
-            #columns={'relation_label_RO': 'relation_label_RO_fromIRIjoin', 'inverse_RO': 'inverse_RO_fromIRIjoin'})
+        """
+            A predicate can be one of the following:
+            1. a full IRI that has a match to a relationship node in 
+               the Relations Ontology
+            2. a code for a relationship node in the Relations Ontology
+            3. a label that has a match to the label for a 
+               relationship node in the Relations Ontology
+            4. a label that has a match to the label for a
+               relationship node in the Biospatial Spatial Ontology
+            5. a label that can be extracted from a #core IRI--e.g.,
+               http://purl.obolibrary.org/obo/uberon/core#proximally_connected_to
+            6. a custom label
+               
+       """
 
-        print(df)
-
-    def standardize_relationship(self,x: pd.Series) -> pd.Series:
+        # Check whether the predicate corresponds to a full IRI in RO.
+        # RO IRIs are cast to lowercase.
+        df['predicate_lower'] = df['predicate'].str.lower()
+        df = df.merge(dfro, how='left', left_on='predicate_lower',
+                      right_on='IRI').reset_index(drop=True)
+        df = (df[[
+            'predicate',
+            'predicate_lower',
+            'relation_label_RO',
+            'inverse_label_RO']]
+        .rename(columns={
+            'relation_label_RO': 'relation_label_RO_from_IRI',
+            'inverse_label_RO': 'inverse_label_RO_from_IRI',
+        }))
 
         """
-        # Converts strings that correspond to a predicate string to a format recognized by the generation
-        # framework
+        Check whether the predicate corresponds to a label for a relationship in RO by label.
+        First, format the predicate string to match potential relationship strings from RO.
+        Parsing note: relationship IRIs often include the '#' character as a terminal delimiter, and
+        be in format url...#relation--e.g., ccf.owl#ct_is_a.
+        """
+        # Strip any URL path prefix.
+        df['predicate_label'] = df['predicate'].str.replace(' ', '_').str.replace('#', '/').str.split('/').str[-1]
+        df = df.merge(dfro, how='left', left_on='predicate_label',
+                      right_on='relation_label_RO').reset_index(drop=True)
+
+        df = (df[[
+            'predicate',
+            'predicate_lower',
+            'relation_label_RO_from_IRI',
+            'inverse_label_RO_from_IRI',
+            'relation_label_RO',
+            'inverse_label_RO']]
+        .rename(columns={
+            'relation_label_RO': 'relation_label_RO_from_label',
+            'inverse_label_RO': 'inverse_label_RO_from_label'
+        }))
+
+        """
+        Check whether the predicate corresponds to a code in RO, treating the predicate 
+        as an abbreviated IRI in format RO:code. (Use case: GTEX)
+        
+        """
+        # Reformat the predicate string as a full IRI.
+        df['predicate_IRI'] = 'http://purl.obolibrary.org/obo/' + df['predicate'].str.replace(':', '_')
+
+        df = df.merge(dfro, how='left', left_on='predicate_IRI',
+                      right_on='IRI').reset_index(drop=True)
+
+        df = (df[[
+            'predicate',
+            'predicate_lower',
+            'relation_label_RO_from_IRI',
+            'inverse_label_RO_from_IRI',
+            'relation_label_RO_from_label',
+            'inverse_label_RO_from_label',
+            'relation_label_RO',
+            'inverse_label_RO']]
+        .rename(
+            columns={
+                'relation_label_RO': 'relation_label_RO_from_code',
+                'inverse_label_RO': 'inverse_label_RO_from_code'
+        }))
+
+        """
+        Check whether the predicate corresponds to a relationship from BSPO.
+        Check on IRI.
+        """
+        df = df.merge(dfbspo, how='left', left_on='predicate_lower',
+                      right_on='id').reset_index(drop=True)
+        df = (df[[
+            'predicate',
+            'relation_label_RO_from_IRI',
+            'inverse_label_RO_from_IRI',
+            'relation_label_RO_from_label',
+            'inverse_label_RO_from_label',
+            'relation_label_RO_from_code',
+            'inverse_label_RO_from_code',
+            'lbl']]
+        .rename(
+            columns={
+                'lbl': 'relation_label_BSPO'
+            }))
+
+        """
+        Check whether the predicate corresponds to a label that 
+        can be extracted from a # IRI.
+        """
+        df['predicate_#'] = \
+        df['predicate'].where(df['predicate'].str.contains('#', na=False)).str.split('#').str[-1]
+
+
+        # Finally, extract a custom label.
+        df['predicate_label'] = df['predicate'].str.split('/').str[-1]
+
+
+        # Order of precedence for relationship/inverse relationship data:
+
+        # 1. label from the edgelist predicate joined to RO by IRI
+        df['relation_label'] = df['relation_label_RO_from_IRI']
+        df['inverse_label'] = df['inverse_label_RO_from_IRI']
+
+        # 2. label from the edgelist predicate formatted as RO:code, joined to RO by IRI
+        df['relation_label'] = np.where(df['relation_label'].isnull(),
+                                              df['relation_label_RO_from_code'],
+                                              df['relation_label'])
+        df['inverse_label'] = np.where(df['inverse_label'].isnull(),
+                                              df['inverse_label_RO_from_code'],
+                                              df['inverse_label'])
+
+        # 3. label from the edgelist predicate joined to RO by label
+        df['relation_label'] = np.where(df['relation_label'].isnull(),
+                                        df['relation_label_RO_from_label'],
+                                        df['relation_label'])
+        df['inverse_label'] = np.where(df['inverse_label'].isnull(),
+                                       df['relation_label_RO_from_label'],
+                                       df['inverse_label'])
+
+        # 4. label from the BSPO
+        df['relation_label'] = np.where(df['relation_label'].isnull(),
+                                        df['relation_label_BSPO'],
+                                        df['relation_label'])
+
+        # 5. label extracted from # IRI
+        df['relation_label'] = np.where(df['relation_label'].isnull(),
+                                        df['predicate_#'],
+                                        df['relation_label'])
+
+        # 6. predicate label from edgelist
+        df['relation_label'] = np.where(df['relation_label'].isnull(),
+                                        df['predicate_label'],
+                                        df['relation_label'])
+
+        # CUSTOM relationship label replacements.
+        # Replace subClassOf with isa.
+        df['relation_label'] = np.where(df['relation_label'].str.contains('subClassOf'), 'isa', df['relation_label'])
+
+        # Replace #type from RDF schemas with isa.
+        df['relation_label'] = np.where(df['relation_label'].str.contains('http://www.w3.org/1999/02/22-rdf-syntax-ns#type'),
+                                        'isa',
+                                        df['relation_label'])
+        df['relation_label'] = np.where(
+            df['relation_label'].str.contains('http://www.w3.org/2000/01/rdf-schema#type'),
+            'isa',
+            df['relation_label'])
+
+        df['relation_label'] = np.where(
+            df['relation_label'].str.contains('ido_0000664'),
+            'has_material_basis_in',
+            df['relation_label'])
+
+        df['relation_label'] = np.where(
+            df['relation_label'].str.contains('cl_4030044'),
+            'has_not_completed',
+            df['relation_label'])
+
+        df['relation_label'] = np.where(
+            df['relation_label'].str.contains('efo_0000784'),
+            'has_disease_location',
+            df['relation_label'])
+
+        df['relation_label'] = np.where(
+            df['relation_label'].str.contains('efo_0001697'),
+            'has_unit_of',
+            df['relation_label'])
+
+        df['relation_label'] = np.where(
+            df['relation_label'].str.contains('efo_0006351'),
+            'has_about_it',
+            df['relation_label'])
+
+        df['relation_label'] = np.where(
+            df['relation_label'].str.contains('hancestro_0301'),
+            'hasancestrystatus',
+            df['relation_label'])
+
+        df['relation_label'] = np.where(
+            df['relation_label'].str.contains('obi_0000293'),
+            'has_specified_input',
+            df['relation_label'])
+
+        df['relation_label'] = np.where(
+            df['relation_label'].str.contains('obi_0000295'),
+            'is_specified_input_of',
+            df['relation_label'])
+
+        df['relation_label'] = np.where(
+            df['relation_label'].str.contains('obi_0000299'),
+            'has_specified_output',
+            df['relation_label'])
+
+        df['relation_label'] = np.where(
+            df['relation_label'].str.contains('mondo_0100332'),
+            'disease_has_primary_infectious_agent',
+            df['relation_label'])
+
+        df['relation_label'] = np.where(
+            df['relation_label'].str.contains('mondo_0100333'),
+            'disease_caused_by_reactivation_of_latent_infectious_agent',
+            df['relation_label'])
+
+        df['relation_label'] = np.where(
+            df['relation_label'].str.contains('gorel_0002004'),
+            'results_in_fission_of',
+            df['relation_label'])
+
+        df['relation_label'] = np.where(
+            df['relation_label'].str.contains('ilx_0112785'),
+            'is_part_of',
+            df['relation_label'])
+
+        df['relation_label'] = np.where(
+            df['relation_label'].str.contains('obi_0000312'),
+            'is_specified_output_of',
+            df['relation_label'])
+
+        df['relation_label'] = np.where(
+            df['relation_label'].str.contains('obi_0000417'),
+            'achieves_planned_objective',
+            df['relation_label'])
+
+        df['relation_label'] = np.where(
+            df['relation_label'].str.contains('obi_1110060'),
+            'process_is_result_of',
+            df['relation_label'])
+
+        df['relation_label'] = np.where(
+            df['relation_label'].str.contains('obi_0000643'),
+            'has_grain',
+            df['relation_label'])
+
+        df['relation_label'] = np.where(
+            df['relation_label'].str.contains('obi_0003385'),
+            'has_assay_target_context',
+            df['relation_label'])
+
+        # Finally, derive a generic inverse relationship
+        # for relationships that do not have one.
+        df['inverse_label'] = np.where(
+            df['inverse_label'].isnull(),
+            'inverse_' + df['relation_label'],
+            df['inverse_label']
+        )
+        debug = os.path.join(self.repo_root, 'debug.tsv')
+
+        df['relation_label'] = self._format_relationship_for_neo4j(df['relation_label'])
+        df['inverse_label'] = self._format_relationship_for_neo4j(df['inverse_label'])
+
+        return df['relation_label']
+
+    def _format_relationship_for_neo4j(self,x: pd.Series) -> pd.Series:
+
+        """
+        # Converts strings that correspond to a predicate string to a
+        format suitable for use in a neo4j database.
+        The objective is to avoid needing back-ticks in Cypher queries.
+
         :param x: Pandas Series object containing predicates (edges)
         :return: Pandas Series object of standardized predicates.
         """
-
-
-        # Final formatting
 
         # 1. Replace . and - with _
         # 2. Format relationship strings to comply with neo4j naming rules:
@@ -378,66 +645,12 @@ class ubkgStandardizer:
         ret = ret.str.replace('{', '_', regex=False)
         ret = ret.str.replace('}', '_', regex=False)
         ret = ret.str.replace(':', '_', regex=False)
+        ret = ret.str.replace(' ', '_', regex=False)
 
         ret = ret.str.lower()
         ret = np.where(ret.astype(str).str[0].str.isnumeric(),'rel_' + ret, ret)
 
-
-        # For the majority of edges, especially those from either UMLS or from OBO-compliant
-        # OWL files in RDF/XML serialization,
-        # the format of an edge is one of the following:
-        # 1. A IRI in the form http://purl.obolibrary.org/obo/RO_code
-        # 2. RO_code
-        # 3. RO:code
-        # 4. a string
-
-        # Predicates are in lowercase.
-        ret = np.where(x.str.contains('ro:'), 'http://purl.obolibrary.org/obo/ro_' + x.str.split('ro:').str[-1], ret)
-
-        # Replace #type from RDF schemas with isa.
-        ret = np.where(x.str.contains('http://www.w3.org/1999/02/22-rdf-syntax-ns#type'), 'isa', ret)
-        ret = np.where(x.str.contains('http://www.w3.org/2000/01/rdf-schema#type'), 'isa', ret)
-
-
-
         return ret
-
-    def parse_string_nested_parentheses(self,strparen: str) -> list[tuple]:
-
-        """
-        Analyzes a string with nested parentheses in terms of level of nesting.
-
-        For example, '(a(b(c)(d)e)(f)g)' can be analyzed as:
-        level 0: a(b(c)(d)e)(f)g
-        level 1: f
-        level 1: b(c)(d)e
-        level 2: c
-        level 2: d
-        or
-        [(2, 'c'), (2, 'd'), (1, 'b(c)(d)e'), (1, 'f'), (0, 'a(b(c)(d)e)(f)g')]
-
-        UBKG use case: UniprotKB, which uses parentheses both as delimiters and
-        inside elements--e.g., (element 1 (details))(element 2 (details))
-
-        Adapted from a solution posted by Gareth Rees at
-        https://stackoverflow.com/questions/4284991/parsing-nested-parentheses-in-python-grab-content-by-level
-
-        """
-        return list(self.parenthetic_contents(strparen))
-
-    def parenthetic_contents(self,strparen: str) -> tuple:
-
-        # Employs a stack to analyze elements in a string by level of nesting.
-        stack = []
-        for i, c in enumerate(strparen):
-            if c == '(':
-                # New level of parenthesis nesting.
-                stack.append(i)
-            elif c == ')' and stack:
-                # Closing of element at this level of nesting.
-                # Return to higher level of nesting.
-                start = stack.pop()
-                yield len(stack), strparen[start + 1: i]
 
     def _get_relationshiptriples_from_ro(self) -> pd.DataFrame:
 
@@ -461,7 +674,7 @@ class ubkgStandardizer:
         
         """
 
-        self.ulog.print_and_logger_info(' * Obtaining relationship reference information from Relations Ontology...')
+        self.ulog.print_and_logger_info('Obtaining relationship reference information from Relations Ontology...')
         # Fetch the RO JSON.
         dfro = pd.read_json("https://raw.githubusercontent.com/oborel/obo-relations/master/ro.json")
 
@@ -524,10 +737,10 @@ class ubkgStandardizer:
         # 3. Rename column names to match the relationtriples frame. (Column names are described
         #    farther down.)
         dfnoinv = dfnoinv[['id_x', 'lbl_x', 'id_y', 'lbl_y']].rename(
-            columns={'id_x': 'IRI', 'lbl_x': 'relation_label_RO', 'id_y': 'inverse_IRI', 'lbl_y': 'inverse_RO'})
+            columns={'id_x': 'IRI', 'lbl_x': 'relation_label_RO', 'id_y': 'inverse_IRI', 'lbl_y': 'inverse_label_RO'})
         # The inverses are undefined.
         dfnoinv['inverse_IRI'] = np.nan
-        dfnoinv['inverse_RO'] = np.nan
+        dfnoinv['inverse_label_RO'] = np.nan
 
         # ---------------------------------
         # Look for members of incomplete inverse pairs--i.e., relationship properties that are
@@ -542,8 +755,8 @@ class ubkgStandardizer:
         # 3. Get the label for the relation properties that are subjects of inverseOf edges.
         dfnoinv = dfnoinv.merge(dfrelnodes, how='left', left_on='sub', right_on='id')
         dfnoinv['inverse_IRI'] = np.where(dfnoinv['lbl'].isnull(), dfnoinv['inverse_IRI'], dfnoinv['id'])
-        dfnoinv['inverse_RO'] = np.where(dfnoinv['lbl'].isnull(), dfnoinv['inverse_RO'], dfnoinv['lbl'])
-        dfnoinv = dfnoinv[['IRI', 'relation_label_RO', 'inverse_IRI', 'inverse_RO']]
+        dfnoinv['inverse_label_RO'] = np.where(dfnoinv['lbl'].isnull(), dfnoinv['inverse_label_RO'], dfnoinv['lbl'])
+        dfnoinv = dfnoinv[['IRI', 'relation_label_RO', 'inverse_IRI', 'inverse_label_RO']]
 
         # ---------------------------------
         # Filter the base triples frame to just those relationship properties that have inverses.
@@ -554,10 +767,10 @@ class ubkgStandardizer:
         # Column names will be:
         # IRI - the IRI for the relationship property
         # relation_label_RO - the label for the relationship property
-        # inverse_RO - the label of the inverse relationship property
         # inverse_IRI - IRI for the inverse relationship (This will be dropped.)
+        # inverse_label_RO - the label of the inverse relationship property
         dfrt = dfrt[['id_x', 'lbl_x', 'id_y', 'lbl_y']].rename(
-            columns={'id_x': 'IRI', 'lbl_x': 'relation_label_RO', 'id_y': 'inverse_IRI', 'lbl_y': 'inverse_RO'})
+            columns={'id_x': 'IRI', 'lbl_x': 'relation_label_RO', 'id_y': 'inverse_IRI', 'lbl_y': 'inverse_label_RO'})
 
         # Add triples for problematic relationship properties--i.e., without inverses or from incomplete pairs.
         dfrt = pd.concat([dfrt, dfnoinv], ignore_index=True).drop_duplicates(subset=['IRI'])
@@ -565,11 +778,29 @@ class ubkgStandardizer:
         # Convert stings for labels for relationships to expected delimiting.
         dfrt['relation_label_RO'] = \
             dfrt['relation_label_RO'].str.replace(' ', '_').str.split('/').str[-1]
-        dfrt['inverse_RO'] = dfrt['inverse_RO'].str.replace(' ', '_').str.split('/').str[-1]
+        dfrt['inverse_label_RO'] = dfrt['inverse_label_RO'].str.replace(' ', '_').str.split('/').str[-1]
 
         dfrt = dfrt.drop(columns='inverse_IRI')
 
-        # Cast IRI to lowercase.
+        # Cast IRI to lower case.
         dfrt['IRI'] = dfrt['IRI'].str.lower()
 
         return dfrt
+
+    def _get_edges_from_bspo(self)-> pd.DataFrame:
+
+        """
+        Obtains relationship labels from the Biological Spatial Ontology.
+
+        :return: DataFrame
+        """
+
+        self.ulog.print_and_logger_info('Obtaining relationship reference information from Biological Spatial Ontology...')
+        # Fetch the RO JSON.
+        dfbspo = pd.read_json("https://raw.githubusercontent.com/obophenotype/biological-spatial-ontology/refs/heads/master/bspo-base.json")
+
+        # Information on relationship properties is in the nodes array.
+        # Cast strings (IRI) to lowercase.
+        dfrelnodes = pd.DataFrame(dfbspo.graphs[0]['nodes']).apply(
+            lambda x: x.str.lower() if x.dtype == 'object' else x)
+        return dfrelnodes
