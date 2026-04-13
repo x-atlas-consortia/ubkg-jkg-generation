@@ -79,7 +79,7 @@ class ubkgStandardizer:
             exit(1)
         return df
 
-    def standardize_code(self, x: pd.Series, ingestSAB: str) -> pd.Series:
+    def standardize_code(self, x: pd.Series, sab: str) -> pd.Series:
 
         """
         Converts strings that correspond to either codes or CUIs for concepts to a standard format
@@ -90,7 +90,7 @@ class ubkgStandardizer:
         :param x: Pandas Series containing information on either:
                   a set of nodes (subject or object)
                   a set of dbxrefs (cross-reference for a node)
-        :param ingestSAB: the SAB for a set of assertions that is being ingested into the UBKG.
+        :param sab: the SAB for a set of assertions that is being ingested into the UBKG.
         :return:
         """
 
@@ -243,7 +243,7 @@ class ubkgStandardizer:
         # translated to IRIs that are not formatted as expected.
         # Map IRIs to SABs using prefix-sab map file.
         for index, row in self.prefix_sab_maps.iterrows():
-            if ingestSAB in ['GLYCOCOO', 'GLYCORDF']:
+            if sab in ['GLYCOCOO', 'GLYCORDF']:
                 # GlyCoCOO (a Turtle) and GlyCoRDF use IRIs that delimit with hash and use underlines.
                 # "http://purl.glycoinfo.org/ontology/codao#Compound_disease_association
                 # July 2023 - refactored to use colon as SAB:code delimiter
@@ -252,7 +252,7 @@ class ubkgStandardizer:
                                ret)
             # July 2023: other prefixes are only from NPO, NPOSKCAN
             else:
-                if ingestSAB in ['NPO', 'NPOSKCAN']:
+                if sab in ['NPO', 'NPOSKCAN']:
                     # Other SABs format IRIs with a terminal backslash and the code string.
                     # A notable exception is the PantherDB format (in NPOSKCAN), for which the IRI is an API call
                     # (e.g., http://www.pantherdb.org/panther/family.do?clsAccession=PTHR10558).

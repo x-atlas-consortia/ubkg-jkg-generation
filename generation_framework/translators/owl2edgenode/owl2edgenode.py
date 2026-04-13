@@ -100,7 +100,7 @@ def get_args(ulog:ubkgLogging) -> argparse.Namespace:
 
     # Process arguments.
     parser = argparse.ArgumentParser(
-        description='Run PheKnowLator on an OWL file.\n'
+        description='Run owl2edgenode on an OWL file.\n'
                     'Before running check to see if there are imports in the OWL file and exit if so'
                     'unless the --with_imports switch is also given.\n'
                     '\n'
@@ -141,7 +141,7 @@ def get_args(ulog:ubkgLogging) -> argparse.Namespace:
 
     # Document arguments.
     print_divider(ulog=ulog)
-    ulog.print_and_logger_info('PHEKNOWLATOR PARAMETERS:')
+    ulog.print_and_logger_info('OWL2EDGENODE PARAMETERS:')
     #if args.clean is True:
         #ulog.print_and_logger_info(" * Cleaning owlnets directory")
     ulog.print_and_logger_info(f" * Owl URL: {args.owl_url}")
@@ -151,9 +151,9 @@ def get_args(ulog:ubkgLogging) -> argparse.Namespace:
     ulog.print_and_logger_info(f" * Owl directory: {args.owl_dir} (exists: {os.path.isdir(args.owl_dir)})")
 
     if args.force_owl_download is True:
-        ulog.print_and_logger_info(f" * PheKnowLator will force .owl file downloads")
+        ulog.print_and_logger_info(f" * script will force .owl file downloads")
     #if args.with_imports is True:
-        #ulog.print_and_logger_info(f" * PheKnowLator will run even if imports are found in .owl file")
+        #ulog.print_and_logger_info(f" * script will run even if imports are found in .owl file")
     #if args.delete_definitions is True:
         #ulog.print_and_logger_info(f" * Delete definitions column in the output .txt files")
 
@@ -669,7 +669,7 @@ def get_entity_metadata(ulog: ubkgLogging, graph: Graph) -> pd.DataFrame:
     """
 
     print_divider(ulog=ulog)
-    ulog.print_and_logger_info('Adding node metadata from the graph.')
+    ulog.print_and_logger_info('Adding node metadata from the rdflib graph.')
 
     ont_classes = pkt.utils.gets_ontology_classes(graph)
     ont_labels = {str(x[0]): str(x[2]) for x in list(graph.triples((None, RDFS.label, None)))}
@@ -677,7 +677,7 @@ def get_entity_metadata(ulog: ubkgLogging, graph: Graph) -> pd.DataFrame:
     ont_dbxrefs = pkt.utils.gets_ontology_class_dbxrefs(graph)
     ont_defs = pkt.utils.gets_ontology_definitions(graph)
 
-    ulog.print_and_logger_info('Adding class metadata to the master metadata dictionary.')
+    ulog.print_and_logger_info('Adding class metadata to the PheKnowLator master metadata dictionary.')
     entity_metadata = {'nodes': {}, 'relations': {}}
     for cls in tqdm(ont_classes):
         # Get class metadata - synonyms and dbxrefs
@@ -705,7 +705,7 @@ def get_entity_metadata(ulog: ubkgLogging, graph: Graph) -> pd.DataFrame:
         }
 
     ont_objects = pkt.utils.gets_object_properties(graph)
-    ulog.print_and_logger_info(' * Adding object metadata to the master metadata dictionary.')
+    ulog.print_and_logger_info(' * Adding object metadata to the PheKnowLator master metadata dictionary.')
     for obj in tqdm(ont_objects):
         # get object label
         label_hits = list(graph.objects(obj, RDFS.label))
@@ -725,14 +725,14 @@ def get_entity_metadata(ulog: ubkgLogging, graph: Graph) -> pd.DataFrame:
                                                   'definitions': str(
                                                       ont_defs[obj]) if obj in ont_defs.keys() else 'None'}
 
-    ulog.print_and_logger_info(' * Adding RDF:type and RDFS:subclassOf.')
+    ulog.print_and_logger_info('Adding RDF:type and RDFS:subclassOf.')
     entity_metadata['relations']['http://www.w3.org/2000/01/rdf-schema#subClassOf'] = \
         {'label': 'subClassOf', 'definitions': 'None', 'namespace': 'www.w3.org'}
     entity_metadata['relations']['http://www.w3.org/1999/02/22-rdf-syntax-ns#type'] = \
         {'label': 'type', 'definitions': 'None', 'namespace': 'www.w3.org'}
 
     print_divider(ulog=ulog)
-    ulog.print_and_logger_info('Stats for original graph before running OWL-NETS:')
+    ulog.print_and_logger_info('Stats for original graph before running PheKnowLator OWL-NETS:')
     pkt.utils.derives_graph_statistics(graph)
 
     return entity_metadata
@@ -748,7 +748,7 @@ def get_owlnets(ulog: ubkgLogging, graph: Graph, working_dir: str, args: argpars
     """
 
     print_divider(ulog=ulog)
-    ulog.print_and_logger_info('Converting rdflib graph to OWLNETS object.')
+    ulog.print_and_logger_info('Converting rdflib graph to PheKnowLator OWL-NETS object.')
     ulog.print_and_logger_info(' * Initializing owlnets class.')
 
     """
@@ -852,8 +852,8 @@ def write_edges_file(sab:str, ulog: ubkgLogging, ustand: ubkgStandardizer, uextr
     df = pd.DataFrame(owlnets.graph)
 
     df.columns = ['subject','predicate','object']
-    df['subject_standardized'] = ustand.standardize_code(x=df['subject'], ingestSAB=sab)
-    df['object_standardized'] = ustand.standardize_code(x=df['object'], ingestSAB=sab)
+    df['subject_standardized'] = ustand.standardize_code(x=df['subject'], sab=sab)
+    df['object_standardized'] = ustand.standardize_code(x=df['object'], sab=sab)
 
     # Simplify predicate IRIs to standardized predicate terms.
     df['predicate_standardized'] = ustand.standardize_relationships(predicate=df['predicate'])
@@ -918,7 +918,7 @@ def write_nodes_file(sab: str, ulog: ubkgLogging, uextractor: ubkgExtract, ustan
     dfmeta = dfmeta[dfmeta['node_id'].isin(nodes)]
 
     # Vectorized code standardization
-    dfmeta['node_id'] = ustand.standardize_code(x=dfmeta['node_id'], ingestSAB=sab)
+    dfmeta['node_id'] = ustand.standardize_code(x=dfmeta['node_id'], sab=sab)
 
     header = ['node_id', 'node_label', 'node_definition', 'node_synonyms', 'node_dbxrefs']
     dfmeta = dfmeta[['node_id', 'label', 'definitions', 'synonyms', 'dbxrefs']]
@@ -967,10 +967,10 @@ def main():
     # Set up centralized logging.
     repo_root = find_repo_root()
     log_dir = os.path.join(repo_root, 'generation_framework/builds/logs')
-    ulog = ubkgLogging(log_dir=log_dir, log_file='pheknowlator.log')
+    ulog = ubkgLogging(log_dir=log_dir, log_file='owl2edgenode.log')
 
     print_divider(ulog=ulog)
-    ulog.print_and_logger_info('PHEKNOWLATOR SCRIPT')
+    ulog.print_and_logger_info('OWL2EDGENODE SCRIPT')
 
     # Process and document command line arguments.
     args = get_args(ulog=ulog)

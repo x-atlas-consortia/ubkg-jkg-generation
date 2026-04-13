@@ -15,7 +15,7 @@ owltools_dir=generation_framework/pkt_kg/libs
 
 [owlnets]
 # Scripts using the PheKnowlator package to convert OWL files to OWLNETS format
-owlnets_script_py=generation_framework/translators/owlnets_script/pheknowlator.py
+owlnets_script_py=generation_framework/translators/owl2edgenode/owl2edgenode.py
 fix_owlnets_tsv_script_py=generation_framework/translators/owlnets_script/fix_tsv_file.py
 
 [jkg_json]

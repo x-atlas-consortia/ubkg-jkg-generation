@@ -75,7 +75,7 @@ def fix_owlnets_metadata_file(repo_root: str, cfg: ubkgConfigParser, ulog: ubkgL
     ulog.print_and_logger_info(f"Running: {fix_owlnets_tsv_script}")
     usub.call_subprocess(fix_owlnets_tsv_script)
 
-def run_pheknowlator_for_sab(cfg: ubkgConfigParser, ulog: ubkgLogging,
+def run_owl2edgenode_for_sab(cfg: ubkgConfigParser, ulog: ubkgLogging,
                              sab_source_dir: str, sab_jkg_dir: str,
                              sab_json:dict, sab: str,
                              repo_root: str, fetch: bool=True) -> None:
@@ -169,7 +169,7 @@ def main():
         if source_type == 'owl':
 
             # Use PheKnowLator to convert OWL files to OWLNETS files.
-            run_pheknowlator_for_sab(cfg=cfg,
+            run_owl2edgenode_for_sab(cfg=cfg,
                                      ulog=ulog,
                                      sab_source_dir=sab_source_dir,
                                      sab_jkg_dir=sab_jkg_dir,

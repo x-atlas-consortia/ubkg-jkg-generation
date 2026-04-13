@@ -9,7 +9,7 @@ polars==1.37.1
 # to download data from online sources
 requests~=2.26.0
 # to work with Excel spreadsheets
-openpyxl==3.0.10
+openpyxl==3.1.5
 
 # ------
 # PheKnowLator package and its dependencies

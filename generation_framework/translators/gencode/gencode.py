@@ -447,12 +447,14 @@ def write_edges_file(ulog: ubkgLogging, uext: ubkgExtract, df: pd.DataFrame, pat
             obj = 'ENSEMBL:' + stripped_ensembl_id(row['gene_id'])
 
             # ASSERTION: transcribed_from
-            predicate = 'http://purl.obolibrary.org/obo/RO_0002510' # transcribed from
+            #predicate = 'http://purl.obolibrary.org/obo/RO_0002510' # transcribed from
+            predicate = 'transcribed_from'
             out.write(subj + '\t' + predicate + '\t' + obj + '\n')
 
             # ASSERTIONs: has_gene_product
             # Look for proteins in both SwissProt and Trembl annotations of UniProtKB
-            predicate = 'http://purl.obolibrary.org/obo/RO_0002205' # has_gene_product
+            #predicate = 'http://purl.obolibrary.org/obo/RO_0002205' # has_gene_product
+            predicate = 'has_gene_product'
             if row['UNIPROTKB_SwissProt_AN'] != '':
                 obj = f'UNINPROTKB:{row["UNIPROTKB_SwissProt_AN"]}'
                 out.write(subj + '\t' + predicate + '\t' + obj + '\n')
@@ -475,7 +477,8 @@ def write_edges_file(ulog: ubkgLogging, uext: ubkgExtract, df: pd.DataFrame, pat
             obj = ''
 
             # Assertion: (feature) located in (chromosome)
-            predicate = 'http://purl.obolibrary.org/obo/RO_0001025' # located in
+            #predicate = 'http://purl.obolibrary.org/obo/RO_0001025' # located in
+            predicate = 'located_in'
             # Obtain from GENCODE_VS the node_id for the node that corresponds
             # to the value from the chromosome_name column.
             if df_gencode_vs.loc[df_gencode_vs['node_label']==row['chromosome_name'],'node_id'].shape[0] > 0:
@@ -516,7 +519,8 @@ def write_edges_file(ulog: ubkgLogging, uext: ubkgExtract, df: pd.DataFrame, pat
             obj = ''
             # Assertion: (feature) has directional form of (strand)
             direction = ''
-            predicate ='http://purl.obolibrary.org/obo/RO_0004048' # has directional form of
+            #predicate ='http://purl.obolibrary.org/obo/RO_0004048' # has directional form of
+            predicate = 'has_directional_form_of'
             if row['genomic_strand'] == '+':
                 direction = 'positive'
             if row['genomic_strand'] == '-':
@@ -532,7 +536,8 @@ def write_edges_file(ulog: ubkgLogging, uext: ubkgExtract, df: pd.DataFrame, pat
             # Assertion: isa (type of Pseudogene)
             # Assume that the ont field can be a list of PGO IDs.
             # Assume that PGO nodes were ingested prior to the GENCODE ingestion.
-            predicate = 'subClassOf'
+            #predicate = 'subClassOf'
+            predicate = 'isa'
             if str(row['ont']).strip() != '':
                 list_pgo = str(row['ont']).split(',')
                 for pgo in list_pgo:
