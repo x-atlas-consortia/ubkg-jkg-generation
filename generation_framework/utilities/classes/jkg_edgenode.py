@@ -4,6 +4,7 @@ Class that manages the edge and node files of a SAB.
 """
 import os
 import polars as pl
+import pandas as pd
 from tqdm import tqdm
 
 from .ubkg_extract import ubkgExtract
@@ -65,11 +66,12 @@ class Jkgedgenode:
         lfile = ','.join(str(f) for f in file_names)
         raise FileNotFoundError('No file found with name in list: ' + lfile)
 
-    def _load_node_file(self) ->pl.DataFrame:
+    def _load_node_file(self) ->pd.DataFrame:
         """
-        Loads a node file into a Polars DataFrame.
+        Loads a node file into a Pandas DataFrame.
         """
 
         nodefilename = self._get_filename(filetype='node')
         nodefilepath = os.path.join(self.jkg_path, nodefilename)
-        return self.uextract.polars_scan_csv_with_timer(filename=nodefilepath, separator='\t')
+        return self.uextract.read_csv_with_progress_bar(path=nodefilepath, sep='\t')
+        #return self.uextract.polars_scan_csv_with_timer(filename=nodefilepath, separator='\t')

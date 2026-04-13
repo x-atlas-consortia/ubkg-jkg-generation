@@ -25,8 +25,9 @@ Primary differences between the output of this script (for JKG) and
 canonical OWLNETS:
 1. OWLNETS includes 3 types of files--edges; nodes; and relationships.
    The relations file is redundant for the purposes of UBKG-JKG.
-2. OWLNETS stores dode IDs (node_id in node file; subject and object ids in edge file) as full IRIs.
+2. OWLNETS stores code IDs (node_id in node file; subject and object ids in edge file) as full IRIs.
    UBKG needs codes in a standard SAB:Code format.
+3. OWLNETS stores relationships as full IRIs. UBKG needs relationship labels standardized for use in neo4j.
 
 """
 import os
@@ -99,7 +100,7 @@ def get_args(ulog:ubkgLogging) -> argparse.Namespace:
 
     # Process arguments.
     parser = argparse.ArgumentParser(
-        description='Run PheKnowLator on OWL file (required parameter).\n'
+        description='Run PheKnowLator on an OWL file.\n'
                     'Before running check to see if there are imports in the OWL file and exit if so'
                     'unless the --with_imports switch is also given.\n'
                     '\n'
@@ -232,10 +233,10 @@ def download_owl_file(ulog: ubkgLogging, usource: ubkgSources, url: str, sab: st
     os.chdir(download_dir)
 
     # Provide an estimate for download time.
-    dicthist = usource.get(sab=sab, key='download_history')
+    dicthist = usource.get(sab=sab, key='history')
     if dicthist:
-        histsize = dicthist.get('size_mb', 'unknown')
-        histtime = dicthist.get('max_time_minutes', 'unknown')
+        histsize = dicthist.get('download_size_mb', 'unknown')
+        histtime = dicthist.get('download_time_minutes', 0)
         minutes = "minute"
         if int(histtime) > 1:
             minutes = "minutes"
@@ -473,7 +474,7 @@ def get_owl_file(ulog: ubkgLogging, uextract: ubkgExtract, owl_dir: str, args: a
 
     if '.' not in working_file[len(working_file) - 5:len(working_file)]:
         # No extension. Rename the downloaded file.
-        working_file_new = args.owl_sab + '.OWL'
+        working_file_new = args.owl_sab + '.owl'
         ulog.print_and_logger_warning(f'The downloaded file does not have an extension. Renaming from {working_file} to {working_file_new}')
         os.system(f"mv {os.path.join(owl_dir, working_file)} {os.path.join(owl_dir, working_file_new)}")
         working_file = working_file_new
@@ -560,12 +561,14 @@ def print_divider(ulog: ubkgLogging):
     print('')
     ulog.print_and_logger_info('-----------------------')
 
-def get_rdf_graph(ulog: ubkgLogging, owl_dir: str, owl_file: str) -> Graph:
+def get_rdf_graph(ulog: ubkgLogging, usource: ubkgSources, owl_dir: str, owl_file: str, sab:str) -> Graph:
     """
     Converts an OWL file into a rdflib Graph object.
     :param ulog: logging object
+    :param usource: source object
     :param owl_dir: OWL directory
     :param owl_file: input OWL file name
+    :param sab: OWL sab
     :return: rdflib Graph object
     """
 
@@ -603,6 +606,14 @@ def get_rdf_graph(ulog: ubkgLogging, owl_dir: str, owl_file: str) -> Graph:
     print_divider(ulog=ulog)
     ulog.print_and_logger_info(f'Generating rdflib Graph of OWL file: {owl_file}')
 
+    dicthist = usource.get(sab=sab, key='history')
+    if dicthist:
+        histtime = dicthist.get('parse_time_seconds', 0)
+        seconds = "second"
+        if int(histtime) > 1:
+            seconds = "seconds"
+        ulog.print_and_logger_warning(f'Parsing time for {sab} has historically '
+                                      f'required <{histtime} {seconds}.')
     # Try to parse as XML.
     try:
         utimer = UbkgTimer(display_msg="Parsing")
@@ -644,7 +655,7 @@ def get_rdf_graph(ulog: ubkgLogging, owl_dir: str, owl_file: str) -> Graph:
 
     return graph
 
-def get_entity_metadata(ulog: ubkgLogging, graph: Graph) -> dict:
+def get_entity_metadata(ulog: ubkgLogging, graph: Graph) -> pd.DataFrame:
     """
     Obtains entity metadata used by PheKnowLator from a rdflib Graph.
 
@@ -874,30 +885,45 @@ def write_nodes_file(sab: str, ulog: ubkgLogging, uextractor: ubkgExtract, ustan
     node_metadata_filename: str = working_dir + os.sep + 'OWLNETS_node_metadata.txt'
     ulog.print_and_logger_info(f"Write node metadata results to '{node_metadata_filename}'")
 
-    with open(node_metadata_filename, 'w') as out:
-        out.write('node_id' + '\t'
-                  + 'node_label' + '\t' + 'node_definition'
-                  + '\t' + 'node_synonyms' + '\t'
-                  + 'node_dbxrefs' + '\n')
+    """
+    Convert entity_metadata to a DataFrame.
+    
+    The entity_metadata dict has schema
+    
+     "nodes": {
+        URL: {
+        "label": <label>,
+        "synonyms": <list of synonyms>,
+        "dbxrefs": <list of dbxrefs>,
+        "namespace": <namespace>,
+        "definitions": <list of definitions>
+        }
+        ...
+        },
+        "relations": ...
+    
+        The nodes object is a dict of dicts, keyed on node URL.
+        Transpose to flip rows and columns so that the node URL 
+        is the key of a row with each property as a column.
+    
+        Reset the index to be the node id URL.
+        Rename the index column to node_id.
+    
+    """
 
-        for node_id in tqdm(nodes):
-            if node_id in entity_metadata['nodes'].keys():
-                # Standardize the node id.
-                # The standardize_code function expects a Pandas Series object,
-                # so convert the node_id to a one-value series.
-                node_id_series= pd.Series({'label': node_id})
-                node_id_standardized_series = ustand.standardize_code(x=node_id_series, ingestSAB=sab)
-                node_id_standardized = node_id_standardized_series[0]
+    dfmeta: pd.DataFrame = pd.DataFrame(entity_metadata['nodes']).T.reset_index().rename(columns={'index': 'node_id'})
 
-                labels = entity_metadata['nodes'][node_id]['label']
-                definitions = entity_metadata['nodes'][node_id]['definitions']
-                synonyms = entity_metadata['nodes'][node_id]['synonyms']
-                dbxrefs = entity_metadata['nodes'][node_id]['dbxrefs']
+    dfmeta = dfmeta.replace('None', pd.NA)
 
-                out.write(node_id_standardized + '\t' + labels +
-                          '\t' + definitions + '\t' + synonyms +
-                          '\t' + dbxrefs + '\n')
+    # Filter to only nodes in the nodes set
+    dfmeta = dfmeta[dfmeta['node_id'].isin(nodes)]
 
+    # Vectorized code standardization
+    dfmeta['node_id'] = ustand.standardize_code(x=dfmeta['node_id'], ingestSAB=sab)
+
+    header = ['node_id', 'node_label', 'node_definition', 'node_synonyms', 'node_dbxrefs']
+    dfmeta = dfmeta[['node_id', 'label', 'definitions', 'synonyms', 'dbxrefs']]
+    uextractor.to_csv_with_progress_bar(df=dfmeta, path=node_metadata_filename, sep='\t', index=False)
 
 def do_file_housekeeping(ulog: ubkgLogging, args: argparse.Namespace):
     """
@@ -1026,7 +1052,7 @@ def main():
     # ------
     # CONVERT THE OWL FILE INTO A rdflib GRAPH.
     # ------
-    graph = get_rdf_graph(ulog=ulog, owl_dir=owl_dir, owl_file=owl_file)
+    graph = get_rdf_graph(ulog=ulog, usource=usource, owl_dir=owl_dir, owl_file=owl_file, sab=args.owl_sab)
 
     # ------
     # EXTRACT ENTITY METADATA FROM GRAPH.

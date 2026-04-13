@@ -27,9 +27,33 @@ class ubkgStandardizer:
         self.repo_root = repo_root
 
         # Special prefix to SAB maps for code standardization
-        self.prefix_sab_maps = self._getprefix_sab_maps()
+        self.prefix_sab_maps = self._get_prefix_sab_maps()
 
-    def _getprefix_sab_maps(self) -> pd.DataFrame:
+    def _get_rel_label_maps(self) -> pd.DataFrame:
+        """
+        A number of edges in UBKG OWL sources use codes that are not
+        specified in the Relationship Ontology, but that can be
+        obtained from other sources, such as OBO.
+
+        These edges are mapped in a CSV file.
+        :return: Pandas DataFrame
+        """
+
+        # Find absolute path to file.
+        file = 'rel_label_maps.csv'
+        fpath = os.path.join(self.repo_root, 'generation_framework/utilities', file)
+        df = pd.DataFrame()
+
+        if os.path.exists(fpath):
+            self.ulog.print_and_logger_info(f"Using relationship-label map file at {fpath}")
+            df = pd.read_csv(fpath)
+        else:
+            # Using print here instead of logging to allow functioning with parsetester.py.
+            self.ulog.print_and_logger_error(f'Missing relationship-label map file {fpath}')
+            exit(1)
+        return df
+
+    def _get_prefix_sab_maps(self) -> pd.DataFrame:
         """
         A number of UBKG sources use idiosyncratic naming conventions
         for code identifiers. These cases are mapped manually to SABs
@@ -66,59 +90,63 @@ class ubkgStandardizer:
         :return:
         """
 
-        # APRIL 2026 - MAY NO LONGER BE THE CASE WITH JKG.
-        # JULY 2023 -
-        # 1. Assume that data from SABs from UMLS have been reformatted so that
-        #    HGNC HGNC:CODE -> HGNC CODE
-        #    GO GO:CODE -> GO CODE
-        #    HPO HP:CODE -> HPO CODE
-        # 2. Establishes the colon as the exclusive delimiter between SAB and code.
-        # -------
+        """
+        Because of the variety of formats used for codes in various sources, this standardization is
+        complicated.
 
-        # Because of the variety of formats used for codes in various sources, this standardization is
-        # complicated.
+        For the majority of nodes, especially those from either UMLS or from OBO-compliant OWL files in RDF/XML
+        serialization,
+        the formatting is straightforward. However, there are a number of special cases, which are handled below.
 
-        # For the majority of nodes, especially those from either UMLS or from OBO-compliant OWL files in RDF/XML
-        # serialization,
-        # the formatting is straightforward. However, there are a number of special cases, which are handled below.
+        For some SABs, the reformatting is complicated enough to warrant a resource file of prefix maps, which
+        should be in the utilities folder.
 
-        # For some SABs, the reformatting is complicated enough to warrant a resource file named prefixes.csv, which
-        # should be in the application folder.
+        1. Assume that data from SABs from UMLS have been reformatted so that
+           HGNC HGNC:CODE -> HGNC CODE
+           GO GO:CODE -> GO CODE
+           HPO HP:CODE -> HPO CODE
+        2. The colon is the exclusive delimiter between SAB and code.
+        
+        """
 
-        # ---------------
-        # DEFAULT
-        # Convert the code string to the CodeID format.
-        # The colon, underscore, and space characters are reserved as delimiters between SAB and code in input sources--e.g.,
-        #   SAB:CODE
-        #   SAB_CODE
-        #   SAB CODE
-        # However, the underscore is also used in code strings in some cases--e.g., RefSeq, with REFSEQ:NR_number.
+        """
+        DEFAULT
+        Convert the code string to the CodeID format.
+        The colon, underscore, and space characters are reserved as delimiters between SAB and code in input sources--e.g.,
+          SAB:CODE
+          SAB_CODE
+          SAB CODE
+          
+        However, the underscore is also used in code strings in some cases--e.g., RefSeq, with REFSEQ:NR_number.
 
-        # In addition, the hash and backslash figure are delimiters in URIs--e.g., ...#/SAB_CODE
+        In addition, the hash and backslash figure are delimiters in URIs--e.g., ...#/SAB_CODE
+        """
 
         # Start by reformatting as SAB<space>CODE. The exclusive delimiter (colon) will be added at the end of this
         # script.
         ret = x.str.replace(':', ' ').str.replace('#', ' ').str.replace('_', ' ').str.split('/').str[-1]
 
-        # --------------
-        # SPECIAL CONVERSIONS: UMLS SABS
-        # 1. Standardize SABs--e.g., convert NCBITaxon (from IRIs) to NCBI (in UMLS); MESH to MSH; etc.
-        # 2. For various reasons, some SABs in the UMLS diverge from the standard format.
-        #    A common divergence is the case in which the SAB is included in the code to account
-        #    for codes with leading zeroes
-        #    -- e.g., HGNC, GO, HPO
-
-        # July 2023 - replaced space with colon for delimiter.
+        """
+        SPECIAL CONVERSIONS: UMLS SABS
+        1. Standardize SABs--e.g., convert NCBITaxon (from IRIs) to NCBI (in UMLS); MESH to MSH; etc.
+        2. For various reasons, some SABs in the UMLS diverge from the standard format.
+           A common divergence is the case in which the SAB is included in the code to account
+           for codes with leading zeroes
+           -- e.g., HGNC, GO, HPO
+        """
 
         # NCI Thesaurus
         ret = ret.str.replace('NCIT ', 'NCI:', regex=False)
+
         # MESH
         ret = ret.str.replace('MESH ', 'MSH:', regex=False)
 
         # NCBI Taxonomy
         ret = ret.str.replace('NCBITaxon ', 'NCBI:', regex=False)
+
         # UMLS
         ret = ret.str.replace('.*UMLS.*\s', 'UMLS:', regex=True)
+
         # SNOMED
         ret = ret.str.replace('.*SNOMED.*\s', 'SNOMEDCT_US:', regex=True)
 
@@ -126,51 +154,43 @@ class ubkgStandardizer:
         ret = ret.str.replace('^fma', 'FMA:', regex=True)
 
         # HGNC
-        # Note that non-UMLS sets of assertions may also refer to HGNC codes differently. See below.
+        # Note that non-UMLS sets of assertions may also refer to HGNC codes differently.
+        # See below.
         ret = ret.str.replace('Hugo.owl HGNC ', 'HGNC:', regex=False)
-
-        # Deprecated July 2023; the incoming format is now HGNC:code.
-        # ret = ret.str.replace('HGNC ', 'HGNC HGNC:', regex=False)
-        # Changed July 2023
-        # ret = ret.str.replace('gene symbol report?hgnc id=', 'HGNC HGNC:', regex=False)
         ret = ret.str.replace('gene symbol report?hgnc id=', 'HGNC:', regex=False)
 
-        # -------------
+        # -----------
         # SPECIAL CASES - Non-UMLS sets of assertions
+        # -----------
 
         # Ontologies such as HRAVS refer to NCI Thesaurus nodes by IRI.
         ret = np.where(x.str.contains('Thesaurus.owl'), 'NCI:' + x.str.split('#').str[-1], ret)
 
-        # UNIPROTKB
-        # The HGNC codes in the UNIPROTKB ingest files were in the expected format of HGNC HGNC:code.
-        # Remove duplications introduced from earlier conversions in this script.
-        # Deprecated July 2023: incoming format is now HGNC:code.
-        # ret = np.where(x.str.contains('HGNC HGNC:'), x, ret)
+        """
+        EDAM
+        
+        EDAM uses subdomains--e.g, format_3750, which translates to a SAB of "format". 
+        Force all EDAM nodes to be in a SAB named EDAM.
 
-        # EDAM
-        # EDAM uses subdomains--e.g, format_3750, which translates to a SAB of "format". Force all
-        # EDAM nodes to be in a SAB named EDAM.
+        EDAM has two cases:
+        1. When obtained from edge file for source or object nodes, EDAM IRIs are in the format
+           http://edamontology.org/<domain>_<id>
+           e.g., http://edamontology.org/format_3750
+        2. When obtained from node file for dbxref, EDAM codes are in the format
+           EDAM:<domain>_<id>
 
-        # EDAM has two cases:
-        # 1. When obtained from edge file for source or object nodes, EDAM IRIs are in the format
-        #    http://edamontology.org/<domain>_<id>
-        #    e.g., http://edamontology.org/format_3750
-        # 2. When obtained from node file for dbxref, EDAM codes are in the format
-        #    EDAM:<domain>_<id>
-
-        # Case 2 (dbxref)
+        """
+        # EDAM Case 2 (dbxref)
         ret = np.where((x.str.contains('EDAM')), x.str.split(':').str[-1], ret)
-        # Case 1 (subject or object node)
+        # EDAM Case 1 (subject or object node)
         ret = np.where((x.str.contains('edam')), 'EDAM:' + x.str.replace(' ', '_').str.split('/').str[-1], ret)
+
 
         # MONDO
         # Two cases to handle:
         # 1. MONDO identifies genes with IRIs in format
         # http://identifiers.org/hgnc/<id>
         # Convert to HGNC HGNC:<id>
-        # Changed July 2023
-        # ret = np.where(x.str.contains('http://identifiers.org/hgnc'),
-                       #'HGNC HGNC:' + x.str.split('/').str[-1], ret)
         ret = np.where(x.str.contains('http://identifiers.org/hgnc'),
                        'HGNC:' + x.str.split('/').str[-1], ret)
         # 2. MONDO uses both OBO-3 compliant IRIs (e.g., "http://purl.obolibrary.org/obo/MONDO_0019052") and
@@ -178,39 +198,16 @@ class ubkgStandardizer:
         ret = np.where(x.str.contains('http://purl.obolibrary.org/obo/mondo#'),
                        'MONDO:' + x.str.split('#').str[-1], ret)
 
-        # MAY 2023
-        # PGO
-        # Restore changes made related to GO.
-        # PGO nodes are written as http://purl.obolibrary.org/obo/PGO_(code)
-        # Deprecated July 2023
-        # ret = np.where(x.str.contains('PGO'),
-                       # 'PGO PGO:' + x.str.split('_').str[-1], ret)
 
         # REFSEQ - restore underscore between NR and number.
-        # JULY 2023 - Refactored for SAB:CODE refactoring
         # Assumes that code at this point is in format REFSEQ NR X, to be reformatted as REFSEQ:NR_X.
         ret = np.where(x.str.contains('REFSEQ'), x.str.replace('REFSEQ ', 'REFSEQ:').str.replace(' ', '_'), ret)
 
-        # July 2023
         # MSIGDB - restore underscores.
         ret = np.where(x.str.contains('MSIGDB'), x.str.replace('MSIGDB ', 'MSIGDB:').str.replace(' ', '_'), ret)
 
-        # January 2025
         # REACTOME - restore underscores.
         ret = np.where(x.str.contains('REACTOME'), x.str.replace('REACTOME ', 'REACTOME:').str.replace(' ', '_'), ret)
-
-
-        # MAY 2023
-        # HPO
-        # If expected format (HPO HP:code) was used, revert to avoid duplication.
-        # Deprecated July 2023: incoming code format now HPO:CODE.
-        # ret = np.where(x.str.contains('HPO HP:'),
-                        #'HPO HP:' + x.str.split(':').str[-1], ret)
-
-        # HCOP
-        # The HCOP node_ids are formatted to resemble HGNC node_ids.
-        # Deprecated July 2023; no longer needed because HGNC is now formatted as HGNC:CODE.
-        # ret = np.where(x.str.contains('HCOP'),'HCOP HCOP:' + x.str.split(':').str[-1],ret)
 
         # SEPT 2023
         # CEDAR
@@ -285,26 +282,30 @@ class ubkgStandardizer:
         # Restore the underscore.
         ret = np.where(x.str.contains('SENOTYPE_VS'), x.str.replace('SENOTYPE:VS', 'SENOTYPE_VS'), ret)
 
-        # ---------------
-        # FINAL PROCESSING
+        """
+        FINAL PROCESSING
 
-        # At this point in the script, the code should be in one of two formats:
-        # 1. SAB CODE, where
-        #    a. SAB may be lowercase
-        #    b. CODE may be mixed case, wiht spaces.
-        # 2. The result of a custom formatting--e.g., HGNC:code.
+        At this point in the script, the code should be in one of two formats:
+        1. SAB CODE, where
+           a. SAB may be lowercase
+           b. CODE may be mixed case, wiht spaces.
+        2. The result of a custom formatting--e.g., HGNC:code.
 
-        # The assumption is that if there are spaces at this point, the first space is the one between the SAB
-        # and the code.
+        The assumption is that if there are spaces at this point, the first space 
+        is the one between the SAB and the code.
 
-        # Force SAB to uppercase. Force the colon to be the delimiter between SAB and code.
+        Force SAB to uppercase. 
+        Force the colon to be the delimiter between SAB and code.
 
-        # After the preceding conversions, ret has changed from a Pandas Series to a numpy array.
-        # 1. Split each element on the initial space, if one exists.
-        # 2. Convert the SAB portion (first element) to uppercase.
-        # 3. Add the colon between the SAB (first element) and the code.
+        After the preceding conversions, ret has changed from a 
+        Pandas Series to a numpy array.
+        1. Split each element on the initial space, if one exists.
+        2. Convert the SAB portion (first element) to uppercase.
+        3. Add the colon between the SAB (first element) and the code.
 
-        # Note: Special cases should already be in the correct code format of SAB:code.
+        Note: Special cases should already be in the correct code format of SAB:code.
+
+        """
 
         for idx, x in np.ndenumerate(ret):
             xsplit = x.split(sep=' ', maxsplit=1)
@@ -315,7 +316,7 @@ class ubkgStandardizer:
             elif len(x)>0:
                 # JULY 2023
                 # For the case of a CodeID that appears to be a "naked" UMLS CUI, format as UMLS:CUI.
-                # SEPT 2023 - Account for codes in the CEDAR SAB.
+                # Account for codes in the CEDAR SAB.
                 if x[0] == 'C' and not 'CEDAR' in x and x[1].isnumeric:
                  ret[idx] = 'UMLS:'+x
             else:
@@ -345,8 +346,11 @@ class ubkgStandardizer:
         # Relationship triples from Relations Ontology for relationship standardization.
         dfro = self._get_relationshiptriples_from_ro()
 
-        # Relationship edges from the Biological Spatial Ontology
-        dfbspo = self._get_edges_from_bspo()
+        # Relationships from the Biological Spatial Ontology
+        dfbspo = self._get_relationships_from_bspo()
+
+        # Special code to label maps for relationship standardization
+        dfrelmaps = self._get_rel_label_maps()
 
         # Perform a series of merge and rename resulting columns
         # to keep track of the source of relationship labels
@@ -461,10 +465,8 @@ class ubkgStandardizer:
         df['predicate_#'] = \
         df['predicate'].where(df['predicate'].str.contains('#', na=False)).str.split('#').str[-1]
 
-
-        # Finally, extract a custom label.
+        # Finally, extract a custom relationship label.
         df['predicate_label'] = df['predicate'].str.split('/').str[-1]
-
 
         # Order of precedence for relationship/inverse relationship data:
 
@@ -503,7 +505,7 @@ class ubkgStandardizer:
                                         df['predicate_label'],
                                         df['relation_label'])
 
-        # CUSTOM relationship label replacements.
+        # Apply custom relationship label replacements.
         # Replace subClassOf with isa.
         df['relation_label'] = np.where(df['relation_label'].str.contains('subClassOf'), 'isa', df['relation_label'])
 
@@ -516,95 +518,16 @@ class ubkgStandardizer:
             'isa',
             df['relation_label'])
 
-        df['relation_label'] = np.where(
-            df['relation_label'].str.contains('ido_0000664'),
-            'has_material_basis_in',
-            df['relation_label'])
+        # Apply custom relationship label maps.
+        for _, row in dfrelmaps.iterrows():
+            code = row['relationship_code']
+            label = row['relationship_label']
 
-        df['relation_label'] = np.where(
-            df['relation_label'].str.contains('cl_4030044'),
-            'has_not_completed',
-            df['relation_label'])
-
-        df['relation_label'] = np.where(
-            df['relation_label'].str.contains('efo_0000784'),
-            'has_disease_location',
-            df['relation_label'])
-
-        df['relation_label'] = np.where(
-            df['relation_label'].str.contains('efo_0001697'),
-            'has_unit_of',
-            df['relation_label'])
-
-        df['relation_label'] = np.where(
-            df['relation_label'].str.contains('efo_0006351'),
-            'has_about_it',
-            df['relation_label'])
-
-        df['relation_label'] = np.where(
-            df['relation_label'].str.contains('hancestro_0301'),
-            'hasancestrystatus',
-            df['relation_label'])
-
-        df['relation_label'] = np.where(
-            df['relation_label'].str.contains('obi_0000293'),
-            'has_specified_input',
-            df['relation_label'])
-
-        df['relation_label'] = np.where(
-            df['relation_label'].str.contains('obi_0000295'),
-            'is_specified_input_of',
-            df['relation_label'])
-
-        df['relation_label'] = np.where(
-            df['relation_label'].str.contains('obi_0000299'),
-            'has_specified_output',
-            df['relation_label'])
-
-        df['relation_label'] = np.where(
-            df['relation_label'].str.contains('mondo_0100332'),
-            'disease_has_primary_infectious_agent',
-            df['relation_label'])
-
-        df['relation_label'] = np.where(
-            df['relation_label'].str.contains('mondo_0100333'),
-            'disease_caused_by_reactivation_of_latent_infectious_agent',
-            df['relation_label'])
-
-        df['relation_label'] = np.where(
-            df['relation_label'].str.contains('gorel_0002004'),
-            'results_in_fission_of',
-            df['relation_label'])
-
-        df['relation_label'] = np.where(
-            df['relation_label'].str.contains('ilx_0112785'),
-            'is_part_of',
-            df['relation_label'])
-
-        df['relation_label'] = np.where(
-            df['relation_label'].str.contains('obi_0000312'),
-            'is_specified_output_of',
-            df['relation_label'])
-
-        df['relation_label'] = np.where(
-            df['relation_label'].str.contains('obi_0000417'),
-            'achieves_planned_objective',
-            df['relation_label'])
-
-        df['relation_label'] = np.where(
-            df['relation_label'].str.contains('obi_1110060'),
-            'process_is_result_of',
-            df['relation_label'])
-
-        df['relation_label'] = np.where(
-            df['relation_label'].str.contains('obi_0000643'),
-            'has_grain',
-            df['relation_label'])
-
-        df['relation_label'] = np.where(
-            df['relation_label'].str.contains('obi_0003385'),
-            'has_assay_target_context',
-            df['relation_label'])
+            # Check for custom relationship code to label map.
+            df['relation_label'] = np.where(
+                df['relation_label'].str.lower().str.endswith(code.lower()),
+                label,
+                df['relation_label'])
 
         # Finally, derive a generic inverse relationship
         # for relationships that do not have one.
@@ -787,7 +710,7 @@ class ubkgStandardizer:
 
         return dfrt
 
-    def _get_edges_from_bspo(self)-> pd.DataFrame:
+    def _get_relationships_from_bspo(self)-> pd.DataFrame:
 
         """
         Obtains relationship labels from the Biological Spatial Ontology.

@@ -167,8 +167,6 @@ def main():
         sab_jkg_dir = os.path.join(repo_root, cfg.get_value(section='directories', key='sab_jkg_dir'))
 
         if source_type == 'owl':
-            if args.fetch:
-                ulog.print_and_logger_info(f'Executing translator: PhenKnowLator')
 
             # Use PheKnowLator to convert OWL files to OWLNETS files.
             run_pheknowlator_for_sab(cfg=cfg,
