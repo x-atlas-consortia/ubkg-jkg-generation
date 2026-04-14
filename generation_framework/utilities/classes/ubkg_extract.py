@@ -352,7 +352,7 @@ class ubkgExtract:
             return response.json()
 
         except requests.exceptions.RequestException as e:
-            self.ulog.print_and_error_info(f'Error during GET request on {url}: {e}')
+            self.ulog.printer_and_error_info(f'Error during GET request on {url}: {e}')
             exit(1)
 
         except ValueError as e:
