@@ -29,7 +29,7 @@
   },
   "CEDAR_ENTITY": {
     "source_type": "cedar_entity",
-    "execute": "./translators/cedar_entity/cedar_entity.py CEDAR_ENTITY",
+    "execute": "./translators/cedar_entity2jkgen/cedar_entity2jkgen.py CEDAR_ENTITY",
     "name": "CEDAR-ENTITY",
     "description": "CEDAR-HuBMAP Provenance Entity mappings",
     "version": "2024-DEC-15"

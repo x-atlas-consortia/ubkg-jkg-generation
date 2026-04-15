@@ -23,18 +23,18 @@ import pandas as pd
 # The following allows for an absolute import from an adjacent script directory--i.e., up and over instead of down.
 # Find the absolute path. (This assumes that this script is being called from build_csv.py.)
 fpath = os.path.dirname(os.getcwd())
-fpath = os.path.join(fpath, 'generation_framework/ubkg_utilities')
+fpath = os.path.join(fpath, 'generation_framework/utilities')
 sys.path.append(fpath)
 
 # argparser
-from ubkg_args import RawTextArgumentDefaultsHelpFormatter
+from classes.ubkg_args import RawTextArgumentDefaultsHelpFormatter
 
 # Centralized logging module
-from find_repo_root import find_repo_root
-from ubkg_logging import ubkgLogging
+from functions.find_repo_root import find_repo_root
+from classes.ubkg_logging import ubkgLogging
 
 # config file
-from ubkg_config import ubkgConfigParser
+from classes.ubkg_config import ubkgConfigParser
 
 def initialize_file(path: str, ulog:ubkgLogging, file_type: str):
     """
@@ -50,7 +50,7 @@ def initialize_file(path: str, ulog:ubkgLogging, file_type: str):
     if file_type == 'edge':
         header = 'subject\tpredicate\tobject\n'
     else:
-        header = 'node_id\tnode_namespace\tnode_label\tnode_definition\tnode_synonyms\tnode_dbxrefs\n'
+        header = 'node_id\tnode_label\tnode_definition\tnode_synonyms\tnode_dbxrefs\n'
 
     with open(path, 'w') as out:
         out.write(header)
@@ -74,13 +74,13 @@ def main():
     repo_root = find_repo_root()
     log_dir = os.path.join(repo_root, 'generation_framework/builds/logs')
     # Set up centralized logging.
-    ulog = ubkgLogging(log_dir=log_dir, log_file='cedar_entity.log')
+    ulog = ubkgLogging(log_dir=log_dir, log_file='cedar_entity2jkgen.log')
 
     # Obtain runtime arguments.
     args = getargs()
 
     # Get application configuration.
-    cfgpath = os.path.join(os.path.dirname(os.getcwd()), 'generation_framework/cedar_entity/cedar_entity.ini')
+    cfgpath = os.path.join(os.path.dirname(os.getcwd()), 'generation_framework/translators/cedar_entity2jkgen/cedar_entity2jkgen.ini')
     cfg = ubkgConfigParser(path=cfgpath, ulog=ulog)
 
     # Get sab_source and sab_jkg directories.
@@ -112,7 +112,7 @@ def main():
 
     # BUILD THE NODE FILE.
     # Initialize the node file.
-    nodes_path: str = os.path.join(sab_jkg_dir, 'OWLNETS_node_metadata.txt')
+    nodes_path: str = os.path.join(sab_jkg_dir, 'jkg_nodes.tsv')
     ulog.print_and_logger_info(f'Writing nodes file at {nodes_path}...')
     initialize_file(path=nodes_path, ulog=ulog, file_type='node')
 
@@ -124,12 +124,12 @@ def main():
 
     # BUILD THE EDGE FILE.
     # Initialize the edge file.
-    edgelist_path: str = os.path.join(sab_jkg_dir, 'OWLNETS_edgelist.txt')
+    edgelist_path: str = os.path.join(sab_jkg_dir, 'jkg_edges.tsv')
     ulog.print_and_logger_info(f'Writing edge file to {edgelist_path}...')
     initialize_file(path=edgelist_path, ulog=ulog, file_type='edge')
 
     # Read the map of templates that do not map to dataset.
-    map_path: str = os.path.join(os.path.dirname(os.getcwd()), 'generation_framework/cedar_entity/cedar_entity.tsv')
+    map_path: str = os.path.join(os.path.dirname(os.getcwd()), 'generation_framework/translators/cedar_entity2jkgen/cedar_entity.tsv')
     dfmap = pd.read_csv(map_path, delimiter='\t')
 
     # Write 'used_in_entity' relationships between each CEDAR template node and the appropriate provenance entities in
