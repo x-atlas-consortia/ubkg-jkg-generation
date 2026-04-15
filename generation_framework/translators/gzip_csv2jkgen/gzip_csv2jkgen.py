@@ -20,29 +20,30 @@ import requests
 # Import UBKG utilities which is in a directory that is at the same level as the script directory.
 # Go "up and over" for an absolute path.
 fpath = os.path.dirname(os.getcwd())
-fpath = os.path.join(fpath,'generation_framework/ubkg_utilities')
+fpath = os.path.join(fpath,'generation_framework/utilities')
 sys.path.append(fpath)
 # Extraction module
-from ubkg_extract import ubkgExtract
+from classes.ubkg_extract import ubkgExtract
 
 # argparser
-from ubkg_args import RawTextArgumentDefaultsHelpFormatter
+from classes.ubkg_args import RawTextArgumentDefaultsHelpFormatter
 # Centralized logging module
-from find_repo_root import find_repo_root
-from ubkg_logging import ubkgLogging
+from functions.find_repo_root import find_repo_root
+from classes.ubkg_logging import ubkgLogging
 
 # config file
-from ubkg_config import ubkgConfigParser
+from classes.ubkg_config import ubkgConfigParser
 
-# Parser
-import ubkg_parsetools as uparse
+
+# UBKG-JGKG standardization object
+from classes.ubkg_standardizer import ubkgStandardizer
 
 def getAPIKey(ulog:ubkgLogging)->str:
 
     # Get an API key from a text file in the application directory.  (The file should be excluded from github via .gitignore.)
     # (To obtain an API key, create an account with NCBO. The API key is part of the account profile.)
     try:
-        fapikey = open(os.path.join(os.getcwd(), 'gzip_csv/apikey.txt'), 'r')
+        fapikey = open(os.path.join(os.getcwd(), 'translators/gzip_csv2jkgen/apikey.txt'), 'r')
         apikey = fapikey.read()
         fapikey.close()
     except FileNotFoundError as e:
@@ -148,14 +149,19 @@ def getargs()->argparse.Namespace:
     args = parser.parse_args()
     return args
 
-def write_edges_file(ulog: ubkgLogging, df:pd.DataFrame, sab_jkg_dir: str, has_component_IRI: str,sab:str):
+def write_edges_file(ulog: ubkgLogging, df:pd.DataFrame,
+                     sab_jkg_dir: str, has_component_lbl: str,
+                     sab:str, ustand:ubkgStandardizer,
+                     uext:ubkgExtract):
     """
 
     :param ulog: ubkgLogging object
     :param df: DataFrame of source data
     :param sab_jkg_dir: output directory
-    :param has_component_IRI: IRI for the 'has_component' relationship
+    :param has_component_lbl: label for the 'has_component' relationship
     :param sab: SAB
+    :param ustand: ubkgStandardizer object
+    :param uext: ubkgExtract object
     :return:
     """
 
@@ -182,102 +188,102 @@ def write_edges_file(ulog: ubkgLogging, df:pd.DataFrame, sab_jkg_dir: str, has_c
       ontologies such as HuBMAP, we use custom relationship strings.)
     """
 
-    edgelist_path: str = os.path.join(sab_jkg_dir, 'OWLNETS_edgelist.txt')
+    edgelist_path: str = os.path.join(sab_jkg_dir, 'jkg_edge.tsv')
     ulog.print_and_logger_info(f'Building: {os.path.abspath(edgelist_path)}')
 
-    # Convert the Class ID to a standard node ID for the subject.
-    df['subject'] = uparse.codeReplacements(df['Class ID'],sab)
+    # Standardize subject column
+    df['subject'] = ustand.standardize_code(df['Class ID'], sab=sab)
 
-    with open(edgelist_path, 'w') as out:
-        out.write('subject' + '\t' + 'predicate' + '\t' + 'object' + '\n')
-        for index, row in df.iterrows():
+    rows = []
 
-            if index >= 0:  # non-header
-                #subj = str(row['Class ID'])
-                subj = str(row['subject'])
+    # subClassOf=isa relationships from Parents column
+    dfparents = df[df['Parents'].notna() & (df['Parents'].astype(str) != 'nan')].copy()
 
-                # subClassOf
-                # Parents is a pipe-delimited string of IRIs.
-                if str(row['Parents']) not in (np.nan, 'nan'):
-                    parents = row['Parents'].split('|')
-                    for parent in parents:
-                        # Parse node ID. Assume OBO 3 IRI.
-                        obj = parent.replace(':', ' ').replace('#', ' ').replace('_', ' ').split('/')[-1]
-                        predicate = 'subClassOf'
-                        if parent !='':
-                            out.write(subj + '\t' + predicate + '\t' + obj + '\n')
+    if not dfparents.empty:
+        # Assign a row per parent
+        dfparents = dfparents.assign(Parents=dfparents['Parents'].str.split('|')).explode('Parents')
+        dfparents = dfparents[dfparents['Parents'] != '']
+        # Standardize the object code
+        dfparents['object'] = ustand.standardize_code(dfparents['Parents'], sab=sab)
+        dfparents['predicate'] = 'isa'
+        rows.append(dfparents[['subject', 'predicate', 'object']])
 
-                # has_component
-                predicate = has_component_IRI
-                if 'has_component' in df.columns:
-                    if str(row['has_component']) not in (np.nan, 'nan'):
-                        objIRI = str(row['has_component'])
-                        #obj = args.owl_sab + ' ' + objIRI[objIRI.rfind('/') + 1:len(objIRI)]
-                        #Parse node ID. Assume OBO 3 IRI.
-                        obj = objIRI.replace(':', ' ').replace('#', ' ').replace('_', ' ').split('/')[-1]
-                        out.write(subj + '\t' + predicate + '\t' + obj + '\n')
-    return
+    #dfparents.to_csv(edgelist_path, sep='\t', index=False)
+    # has_component relationships
+    if 'has_component' in df.columns:
+        dfcomp = df[df['has_component'].notna() & (df['has_component'].astype(str) != 'nan')].copy()
+        if not dfcomp.empty:
+            dfcomp['object'] = ustand.standardize_code(dfcomp['has_component'], sab=sab)
+            dfcomp['predicate'] = has_component_lbl
+            rows.append(dfcomp[['subject', 'predicate', 'object']])
 
-def write_nodes_file(ulog: ubkgLogging, df:pd.DataFrame, sab_jkg_dir: str, sab:str):
+    # Combine and write
+    if rows:
+        dfedges: pd.DataFrame = pd.concat(rows, ignore_index=True)
+    else:
+        dfedges = pd.DataFrame(columns=['subject', 'predicate', 'object'])
+
+    uext.to_csv_with_progress_bar(df=dfedges, path=edgelist_path, sep='\t', index=False)
+
+def write_nodes_file(ulog: ubkgLogging, df:pd.DataFrame, sab_jkg_dir: str, sab:str, ustand:ubkgStandardizer, uext:ubkgExtract):
 
     """
     Writes a nodes file in OWLNETS format.
     :param ulog: ubkgLogging object
     :param df: DataFrame of source information
     :param sab_jkg_dir: output directory
-    :param sab: SAB
+    :param sab: SAB,
+    :param ustand: ubkgStandardizer object
+    :param uext: ubkgExtractor object
     :return:
     """
 
     # NODE METADATA
     # Write a row for each unique concept in the 'code' column.
 
-    node_metadata_path: str = os.path.join(sab_jkg_dir, 'OWLNETS_node_metadata.txt')
+    node_metadata_path: str = os.path.join(sab_jkg_dir, 'jkg_node.tsv')
     ulog.print_and_logger_info(f'Building: {os.path.abspath(node_metadata_path)}')
 
-    with open(node_metadata_path, 'w') as out:
-        out.write(
-            'node_id' + '\t' + 'node_namespace' + '\t' + 'node_label' + '\t' + 'node_definition' + '\t' + 'node_synonyms' + '\t' + 'node_dbxrefs' + '\n')
-        # Root node
-        # out.write(args.owl_sab + '_top' + '\t' + args.owl_sab + '\t' + 'top node' + '\t' + 'top node' + '\t' + '\t' '\n')
-        for index, row in df.iterrows():
-            if index >= 0:  # non-header
-                node = str(row['Class ID'])
-                node_namespace = sab
-                node_label = str(row['Preferred Label'])
+    # Work on a copy
+    dfout: pd.DataFrame = df.copy()
 
-                if 'definition' in df.columns:
-                    node_definition = str(row['definition'])
-                if 'Definitions' in df.columns:
-                    node_definition = str(row['Definitions'])
+    # Standardize node IDs vectorized
+    dfout['node_id'] = ustand.standardize_code(dfout['Class ID'], sab)
 
-                # Note: The use case for which this was developed, XCO, has multiple synonym columns.
-                # Other ontology CSVs may name synonym columns differently.
-                if 'has_exact_synonyms' in df.columns:
-                    node_synonyms = str(row['has_exact_synonym'])
-                if 'Synonyms' in df.columns:
-                    node_synonyms = str(row['Synonyms'])
+    # Node label
+    dfout['node_label'] = dfout['Preferred Label'].astype(str)
 
-                # June 2023 - HRAVS uses a different column name for database_cross_reference.
-                # It's unclear whether the CSV format is standard--i.e., that there should be a column named
-                # database_cross_reference.
-                if 'database_cross_reference' in df.columns:
-                    node_dbxrefs = str(row['database_cross_reference'])
-                elif 'http://www.geneontology.org/formats/oboInOwl#hasDbXref' in df.columns:
-                    node_dbxrefs = str(row['http://www.geneontology.org/formats/oboInOwl#hasDbXref'])
-                else:
-                    node_dbxrefs = np.nan
+    # Node definition - handle different column names
+    if 'definition' in dfout.columns:
+        dfout['node_definition'] = dfout['definition'].astype(str)
+    elif 'Definitions' in dfout.columns:
+        dfout['node_definition'] = dfout['Definitions'].astype(str)
 
-                # The synonym field is an optional pipe-delimited list of string values.
-                if node_synonyms in (np.nan, 'nan'):
-                    node_synonyms = 'None'
-                # The dbxrefs field is an optional pipe-delimited list of cross-references.
-                if node_dbxrefs in (np.nan, 'nan'):
-                    node_dbxrefs = 'None'
+    # Node synonyms - handle different column names
+    if 'has_exact_synonym' in dfout.columns:
+        dfout['node_synonyms'] = dfout['has_exact_synonym'].astype(str)
+    elif 'Synonyms' in dfout.columns:
+        dfout['node_synonyms'] = dfout['Synonyms'].astype(str)
 
-                out.write(
-                    node + '\t' + node_namespace + '\t' + node_label + '\t' + node_definition + '\t' + node_synonyms + '\t' + node_dbxrefs + '\n')
-    return
+    # Node dbxrefs - handle different column names
+    if 'database_cross_reference' in dfout.columns:
+        dfout['node_dbxrefs'] = dfout['database_cross_reference'].astype(str)
+    elif 'http://www.geneontology.org/formats/oboInOwl#hasDbXref' in dfout.columns:
+        dfout['node_dbxrefs'] = dfout['http://www.geneontology.org/formats/oboInOwl#hasDbXref'].astype(str)
+    else:
+        dfout['node_dbxrefs'] = 'None'
+
+    # Replace nan with 'None'
+    dfout['node_synonyms'] = dfout['node_synonyms'].replace('nan', 'None').fillna('None')
+    dfout['node_dbxrefs'] = dfout['node_dbxrefs'].replace('nan', 'None').fillna('None')
+
+    # Write to file
+    #dfout[['node_id', 'node_label', 'node_definition', 'node_synonyms', 'node_dbxrefs']].to_csv(
+        #node_metadata_path, sep='\t', index=False
+    #)
+    dfout= dfout[['node_id', 'node_label', 'node_definition', 'node_synonyms', 'node_dbxrefs']]
+    uext.to_csv_with_progress_bar(df=dfout,path=node_metadata_path, sep='\t', index=False)
+
 
 def getdfcsv(ulog: ubkgLogging, uext: ubkgExtract, sab_source_dir: str, csv_file: str) -> pd.DataFrame:
     """
@@ -302,15 +308,16 @@ def main():
     # Locate the root directory of the repository for absolute
     # file paths.
     repo_root = find_repo_root()
+    # The log directory location is determined by the pkt-kg package
     log_dir = os.path.join(repo_root, 'generation_framework/builds/logs')
     # Set up centralized logging.
-    ulog = ubkgLogging(log_dir=log_dir, log_file='gzip_csv.log')
+    ulog = ubkgLogging(log_dir=log_dir, log_file='gzip_csv2jkgen.log')
 
     # Obtain runtime arguments.
     args = getargs()
 
     # Get application configuration.
-    cfgpath = os.path.join(os.path.dirname(os.getcwd()), 'generation_framework/gzip_csv/gzip_csv.ini')
+    cfgpath = os.path.join(os.path.dirname(os.getcwd()), 'generation_framework/translators/gzip_csv2jkgen/gzip_csv2jkgen.ini')
     cfg = ubkgConfigParser(path=cfgpath, ulog=ulog)
 
     # Get sab_source and sab_jkg directories.
@@ -352,8 +359,12 @@ def main():
         has_component_lbl = 'has_component'
 
     # Build OWLNETS text files.
-    write_edges_file(ulog=ulog, df=dfontology,sab_jkg_dir=sab_jkg_dir,has_component_IRI=has_component_IRI,sab=args.sab)
-    write_nodes_file(ulog=ulog, df=dfontology,sab_jkg_dir=sab_jkg_dir, sab=args.sab)
+    ustand = ubkgStandardizer(ulog=ulog, repo_root=repo_root)
+    write_edges_file(ulog=ulog, df=dfontology,sab_jkg_dir=sab_jkg_dir,
+                     has_component_lbl=has_component_lbl,
+                     sab=args.sab, ustand=ustand, uext=uext)
+    write_nodes_file(ulog=ulog, df=dfontology,sab_jkg_dir=sab_jkg_dir,
+                     sab=args.sab, ustand=ustand, uext=uext)
 
 
 if __name__ == "__main__":

@@ -233,9 +233,15 @@ class ubkgStandardizer:
         # The HRAVS IRIs are in format ...hravs#HRAVS_X, which results in HRAVS HRAVS X.
         ret = np.where(x.str.contains('https://purl.humanatlas.io/vocab/hravs#'),
                        'HRAVS:' + x.str.split('_').str[-1], ret)
-        # The gzip_csv converter script translates HRAVS IRIs to hravs HRAVS X.
+        # The gzip_csv2jkgen converter script translates HRAVS IRIs to hravs HRAVS X.
         ret = np.where(x.str.upper().str.contains('HRAVS HRAVS'),
                        'HRAVS:' + x.str.split(' ').str[-1], ret)
+        # NEMA codes
+        ret = np.where(x.str.contains('http://dicom.nema.org/resources/ontology/DCM/'),
+                       'DCM:' + x.str.split('/').str[-1], ret)
+        # LNC codes
+        ret = np.where(x.str.contains('http://purl.bioontology.org/ontology/LNC'),
+                       'LNC:' + x.str.split('/').str[-1], ret)
 
         # ORDO
         # ORDO uses Orphanet as a namespace.

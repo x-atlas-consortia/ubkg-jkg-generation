@@ -291,7 +291,7 @@
   },
   "HRAVS": {
     "source_type": "gzip_csv",
-    "execute": "./translators/gzip_csv/gzip_csv_owlnets.py HRAVS",
+    "execute": "./translators/gzip_csv2jkgen/gzip_csv2jkgen.py HRAVS",
     "name": "HuBMAP Research Attributes Value Set",
     "description": "HuBMAP Research Attributes Value Set",
     "version": "v2.14.10"
@@ -499,16 +499,10 @@
     "version": "v1.0"
   },
   "PGO": {
-    "source_type": "owl",
-    "execute": "./translators/gzip_csv/gzip_csv_owlnets.py HRAVS",
+    "source_type": "gzip_csv",
+    "execute": "./translators/gzip_csv2jkgen/gzip_csv2jkgen.py PGO",
     "name": "Pseudogene (PGO)",
-    "description": "Pseudogene",
-    "version": "v1.0",
-    "history": {
-      "download_size_mb": 3,
-      "download_time_minutes": 1,
-      "parse_time_seconds": 10
-    }
+    "description": "Pseudogene"
   },
   "PROTEOFORM": {
     "source_type": "ubkg_edge_node",
