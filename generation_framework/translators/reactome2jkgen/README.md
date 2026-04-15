@@ -2,7 +2,7 @@
 ## Reactome ingestion script
 
 ### Purpose
-The scripts in this folder generate files in UBKG edges/nodes format for ingestion of data from [Reactome](https://reactome.org/).
+The **reactome2jkgen** application generates files in JKG Edge/node (JKGEN) format for ingestion of data from [Reactome](https://reactome.org/).
 
 ### Scope
 
@@ -41,7 +41,6 @@ The ingestion script interrogates Reactome by means of its Content Services API:
    - ubkg_config.py
 2. An application configuration file named **reactome2jkgen.ini.**
 
-
 #### REACTOME_VS
 The responses from the Content Services API include string values that are categorical--in paticular, event types like "Reaction" and "Pathway".
 
@@ -55,9 +54,11 @@ The REACTOME ETL script assumes that REACTOME_VS has already been ingested so th
 1. Copy and modify **reactome2jkgen.ini.example** to a file named **reactome2jkgen.ini** in the reactome directory.
 2. Execute **build_csv.sh -v REACTOME**.
 
-# Reactome assertions in UBKG
+### -f argument
+**reactome2jkgen** must fetch Reactome data for each execution. The _-f_ (_fetchnew_) argument must always be specified in the call to the script.
 
-UPDATE TO UBKG-JKG
+# Reactome assertions in UBKG
+# UPDATE TO UBKG-JKG
 
 Where possible, UBKG assertions use relationships from the Relations Ontology. Reactome does not
 expose the codes used for its relationships. 

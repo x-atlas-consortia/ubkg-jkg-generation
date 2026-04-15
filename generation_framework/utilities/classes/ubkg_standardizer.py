@@ -13,6 +13,9 @@ import os
 # Centralized logging
 from .ubkg_logging import ubkgLogging
 
+# Timer for block actions
+from .ubkg_timer import UbkgTimer
+
 class ubkgStandardizer:
 
     def __init__(self, ulog: ubkgLogging, repo_root: str):
@@ -125,6 +128,8 @@ class ubkgStandardizer:
 
         In addition, the hash and backslash figure are delimiters in URIs--e.g., ...#/SAB_CODE
         """
+
+        utime = UbkgTimer(f'Standardizing codes for {x.name}')
 
         # Start by reformatting as SAB<space>CODE. The exclusive delimiter (colon) will be added at the end of this
         # script.
@@ -326,6 +331,7 @@ class ubkgStandardizer:
             else:
                 ret[idx] = x
 
+        utime.stop()
         return ret
 
     def standardize_relationships(self, predicate: pd.Series) -> pd.Series:
@@ -347,6 +353,7 @@ class ubkgStandardizer:
 
         """
 
+
         # Relationship triples from Relations Ontology for relationship standardization.
         dfro = self._get_relationshiptriples_from_ro()
 
@@ -355,6 +362,7 @@ class ubkgStandardizer:
 
         # Special code to label maps for relationship standardization
         dfrelmaps = self._get_rel_label_maps()
+        utime = UbkgTimer(display_msg='Standardizing relationships')
 
         # Perform a series of merge and rename resulting columns
         # to keep track of the source of relationship labels
@@ -418,17 +426,19 @@ class ubkgStandardizer:
 
         """
         Check whether the predicate corresponds to a code in RO, treating the predicate 
-        as an abbreviated IRI in format RO:code. (Use case: GTEX)
+        as an abbreviated IRI in format RO:code. (Use case: MPMGI)
         
         """
         # Reformat the predicate string as a full IRI.
-        df['predicate_IRI'] = 'http://purl.obolibrary.org/obo/' + df['predicate'].str.replace(':', '_')
+        # Replace : with _ and cast to lowercase.
+        df['predicate_IRI'] = 'http://purl.obolibrary.org/obo/' + df['predicate'].str.lower().str.replace(':', '_')
 
         df = df.merge(dfro, how='left', left_on='predicate_IRI',
                       right_on='IRI').reset_index(drop=True)
 
         df = (df[[
             'predicate',
+            'predicate_IRI',
             'predicate_lower',
             'relation_label_RO_from_IRI',
             'inverse_label_RO_from_IRI',
@@ -441,6 +451,10 @@ class ubkgStandardizer:
                 'relation_label_RO': 'relation_label_RO_from_code',
                 'inverse_label_RO': 'inverse_label_RO_from_code'
         }))
+
+        #debug = os.path.join(self.repo_root, 'debug.tsv')
+        #df.to_csv(debug, sep='\t', index=False)
+        #exit(1)
 
         """
         Check whether the predicate corresponds to a relationship from BSPO.
@@ -471,6 +485,7 @@ class ubkgStandardizer:
 
         # Finally, extract a custom relationship label.
         df['predicate_label'] = df['predicate'].str.split('/').str[-1]
+
 
         # Order of precedence for relationship/inverse relationship data:
 
@@ -524,12 +539,13 @@ class ubkgStandardizer:
 
         # Apply custom relationship label maps.
         for _, row in dfrelmaps.iterrows():
-            code = row['relationship_code']
-            label = row['relationship_label']
+            code = row['relationship_code'].strip()
+            label = row['relationship_label'].strip()
 
             # Check for custom relationship code to label map.
             df['relation_label'] = np.where(
-                df['relation_label'].str.lower().str.endswith(code.lower()),
+                (df['relation_label'].str.strip().str.lower() == code.lower()) |
+                (df['relation_label'].str.strip().str.lower().str.endswith(code.lower())),
                 label,
                 df['relation_label'])
 
@@ -540,10 +556,12 @@ class ubkgStandardizer:
             'inverse_' + df['relation_label'],
             df['inverse_label']
         )
-        debug = os.path.join(self.repo_root, 'debug.tsv')
+
 
         df['relation_label'] = self._format_relationship_for_neo4j(df['relation_label'])
         df['inverse_label'] = self._format_relationship_for_neo4j(df['inverse_label'])
+
+        utime.stop()
 
         return df['relation_label']
 

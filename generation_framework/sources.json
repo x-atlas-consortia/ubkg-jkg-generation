@@ -1,7 +1,7 @@
 {
   "4DN": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py 4DN",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py 4DN",
     "name": "Data Distillery: 4D Nucleome (4DN)",
     "description": "Chromatin loops called from Hi-C experiments performed in select cell lines.",
     "version": "2023-AUG-24"
@@ -15,14 +15,14 @@
   },
   "BIOMARKER": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py BIOMARKER",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py BIOMARKER",
     "name": "Data Distillery: Biomarker",
     "description": "Biomarker Partnership Project",
     "version": "2025-APR-03"
   },
   "CEDAR": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py CEDAR",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py CEDAR",
     "name": "CEDAR",
     "description": "Export of CEDAR research metadata templates for HuBMAP",
     "version": "2025-JUNE-06"
@@ -60,21 +60,21 @@
   },
   "CLINGEN": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py CLINGEN",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py CLINGEN",
     "name": "Data Distillery: Clinical Genome (ClinGen)",
     "description": "Clinical Genome selected datasets",
     "version": "2024-JAN-26"
   },
   "CLINVAR": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py CLINVAR",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py CLINVAR",
     "name": "Data Distillery: ClinVar",
     "description": "Extract from ClinVar of associations between genes and diseases or phenotypes",
     "version": "2023-APR-07"
   },
   "CMAP": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py CMAP",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py CMAP",
     "name": "Data Distillery: Connectivity Map",
     "description": "Extract from CMAP of associations between genes and chemicals or drugs",
     "version": "2023-APR-07"
@@ -88,7 +88,7 @@
   },
   "DGN": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py DGN",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py DGN",
     "name": "Data Distillery: DisGeNET",
     "description": "A database of gene disease associations",
     "version": "2024-APR-12"
@@ -143,14 +143,14 @@
   },
   "ERCCREG": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py ERCCREG",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py ERCCREG",
     "name": "Data Distillery: ERCC Regulatory Elements (ERCCREG)",
     "description": "exRNA Research Portal Regulatory Elements",
     "version": "2023-JUN-23"
   },
   "ERCCRBP": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py ERCCRBP",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py ERCCRBP",
     "name": "Data Distillery: ERCC exRNA Remote Binding Proteins (ERCCRBP)",
     "description" : "exRNA Research Portal RNA Binding Proteins",
     "version": "2024-JUL-10"
@@ -176,14 +176,14 @@
   },
   "GENCODE": {
     "source_type": "gencode",
-    "execute": "./translators/gencode2edgenode/gencode2edgenode.py",
+    "execute": "./translators/gencode2jkgen/gencode2jkgen.py",
     "name": "Data Distillery: GenCode",
     "description": "Extract of annotation data from GenCode",
     "version": "version 41 (GRCh38 Ensembl 107) 2022-MAY-12"
   },
   "GENCODEHSCLO": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py GENCODEHSCLO",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py GENCODEHSCLO",
     "name": "Data Distillery: GENCODE - HSCLO mapping",
     "description": "GenCode - HSCLO mapping",
     "version": "2024-JAN-26"
@@ -197,7 +197,7 @@
   },
   "GLYCANS": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py GLYCANS",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py GLYCANS",
     "name": "Data Distillery: GlyGen GLYCANS",
     "description": "Glycans data",
     "version": "2024-FEB-06"
@@ -228,42 +228,42 @@
   },
   "GTEXCOEXP": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py GTEXCOEXP",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py GTEXCOEXP",
     "name": "Data Distillery: GTEXCOEXP",
     "description": "GTEX Coexpression",
     "version": "2025-AUG-14"
   },
   "GTEXEQTL": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py GTEXEQTL",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py GTEXEQTL",
     "name": "Data Distillery: GTEXEQTL",
     "description": "GTEX Expression quantitative trait loci (eQTL)",
     "version": "2025-AUG-14"
   },
   "GTEXEXP": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py GTEXEXP",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py GTEXEXP",
     "name": "Data Distillery: GTEXEXP",
     "description": "GTEX expression",
     "version": "2025-AUG-14"
   },
   "HCOP": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py HCOP",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py HCOP",
     "name": "Data Distillery: HCOPHGNC",
     "description": "Associations between genes in the Mouse Genome Database (MGD) and genes in HGNC",
     "version": "2024-JAN-20"
   },
   "HGNCHPO": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py HGNCHPO",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py HGNCHPO",
     "name": "Data Distillery: HGNCHPO",
     "description": "Associations between gene codes in HGNC and codes in the Human Phenotype Ontology (HPO)",
     "version": "2024-JAN-20"
   },
   "HMAZ": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py HMAZ",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py HMAZ",
     "name": "Data Distillery: HuBMAP Azimuth",
     "description": "HuBMAP Azimuth Cell Expression Summary",
     "version": "2023-AUG-23"
@@ -277,14 +277,14 @@
   },
   "HPOMP": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py HPOMP",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py HPOMP",
     "name": "Data Distillery: HPOMP",
     "description": "Human Phenotype Ontology to Mammalian Phenotype Ontology mapping",
     "version": "2024-JAN-20"
   },
   "HRA": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py HRA",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py HRA",
     "name": "Human Reference Atlas",
     "description": "Human Reference Atlas data exported to UBKG format",
     "version": "v2.4"
@@ -310,7 +310,7 @@
   },
   "HSCLO": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py HSCLO",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py HSCLO",
     "name": "Data Distillery: Homo sapiens Chromosomal Location Ontology",
     "description": "A knowledge-graph-ready framework for connecting genomic features at multiple resolutions",
     "version": "2024-JUL-09"
@@ -323,28 +323,28 @@
   },
   "IDGD": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py IDGD",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py IDGD",
     "name": "Data Distillery: IDGD",
     "description": "Illuminating the Druggable Genome Compound to Drug Interactions",
     "version": "2024-MAY-23"
   },
   "IDGP": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py IDGP",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py IDGP",
     "name": "Data Distillery: IDGP",
     "description": "Illuminating the Druggable Genome Compound to Protein Interactions",
     "version": "2024-MAY-23"
   },
   "KF": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py KF",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py KF",
     "name": "Data Distillery: Kids First",
     "description": "Gabriella Miller Kids First",
     "version": "2024-JAN-20"
   },
   "LINCS": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py LINCS",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py LINCS",
     "name": "Data Distillery: LINCS",
     "description": "Library of Integrated Network Based Cellular Signatures",
     "version": "2023-SEP-19"
@@ -374,7 +374,7 @@
   },
   "MOTRPAC": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py MOTRPAC",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py MOTRPAC",
     "name": "Data Distillery: MoTrPAC",
     "description": "Molecular Transducers of Physical Activity Consortium (MoTrPAC)",
     "version": "2023-SEP-12"
@@ -393,21 +393,21 @@
   },
   "MPMGI": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py MPMGI",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py MPMGI",
     "name": "Data Distillery: MPMGI",
     "description": "Associations between genes in the Mouse Genome Database (MGD) and phenotypes in MP",
     "version": "2024-JAN-20"
   },
   "MSIGDB": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py MSIGDB",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py MSIGDB",
     "name": "Data Distillery: Molecular Signatures Database (MSIGDB)",
     "description": "Annotated gene sets for use with Gene Set Enrichment Analysis (GSEA)",
     "version": "2024-JAN-26"
   },
   "MW": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py MW",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py MW",
     "name": "Data Distillery: Metabolic Workbench (MW)",
     "description": "Metabolics Workbench",
     "version": "2024-JUL-11"
@@ -474,7 +474,7 @@
   },
   "OTG": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py OTG",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py OTG",
     "name": "Data Distillery: Open Target Genomics (OTG)",
     "description": "Human genetics and genomics data for systematic drug target identification and prioritisation",
     "version": "2024_10_24"
@@ -499,29 +499,34 @@
     "version": "v1.0"
   },
   "PGO": {
-    "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py PGO",
+    "source_type": "owl",
+    "execute": "./translators/gzip_csv/gzip_csv_owlnets.py HRAVS",
     "name": "Pseudogene (PGO)",
     "description": "Pseudogene",
-    "version": "v1.0"
+    "version": "v1.0",
+    "history": {
+      "download_size_mb": 3,
+      "download_time_minutes": 1,
+      "parse_time_seconds": 10
+    }
   },
   "PROTEOFORM": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py PROTEOFORM",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py PROTEOFORM",
     "name": "Data Distillery: GlyGen PROTEOFORM",
     "description": "Proteoform",
     "version": "2023-JUNE-23"
   },
   "RATHCOP": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py RATHCOP",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py RATHCOP",
     "name": "Data Distillery: RATHCOP",
     "description": "ENSEMBL human to ENSEMBL Rat ortholog",
     "version": "2023-SEP-12"
   },
   "REACTOME": {
     "source_type": "reactome2edgenode",
-    "execute": "./translators/reactome2edgenode/reactome2edgenode.py",
+    "execute": "./translators/reactome2jkgen/reactome2jkgen.py",
     "name": "Reactome",
     "description": "Extract of pathway information from Reactome",
     "version": "2025-DEC-02"
@@ -568,7 +573,7 @@
   },
   "STRING": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py STRING",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py STRING",
     "name": "Data Distillery: StringDB",
     "description": "StringDB Protein-Protein Interaction Network",
     "version": "2024-JUL-09"
@@ -637,7 +642,7 @@
   },
   "WP": {
     "source_type": "ubkg_edge_node",
-    "execute": "./translators/ubkg_edgenode2edgenode/ubkg_edgenode2edgenode.py WP",
+    "execute": "./translators/ubkgen2jkgen/ubkgen2jkgen.py WP",
     "name": "Data Distillery: WikiPathways",
     "description": "WikiPathways",
     "version": "2023-DEC-18"

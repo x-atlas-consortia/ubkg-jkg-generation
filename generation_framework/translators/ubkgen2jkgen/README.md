@@ -1,30 +1,30 @@
 # Unified Biomedical Knowledge Graph
 
-# ubkg_edges_nodes script
+# ubkgen2jkgen script
 
-The scripts in this folder allow the UBKG generation framework to work with locally stored files in one of two formats:
-1. a set of ingest files in UBKG edges/node format
-2. a file serialized in one of the OWL formats
+The scripts in this folder convert a set of files in UBKG edges/node (UBKGEN) format
+to the JKG Edge/node (JKEN) format
+
 
 # Content
-- **edges_nodes.py** - Does the following:
+- **ubkden2jkgen.py** - Does the following:
    - Reads a configuration file.
    - Examines the files in the local file path associated with an SAB.
    - If the files in the local path are in edges/nodes format, copies them to the appropriate path in the local repo.
-   - If the files are not in edges/nodes format, assumes that the folder contains one OWL file. The script then processes the file with the PheKnowLator script.
+   - Converts files to JKG Edge/Node (JKGEN) format
   
-- **edges_node.ini.example** - Annotated example of an ini file.
+- **ubkgen2jkgen.ini.example** - Annotated example of an ini file.
 
 # Dependencies
 1. Files in the **ubkg_utilities** folder:
    - ubkg_config.py
    - ubkg_logging.py
-2. An application configuration file named **edges_nodes.ini.**
+2. An application configuration file named **ubkgen2jkgen.ini.**
 3. The directory specified in the ini file should contain either a set of files in edges/node format or a single OWL file.
 
 # To run
-1. Copy and modify **edges_nodes.ini.example** to a file named **edges_nodes.ini** in the current directory.
-2. Configure the **ontologies.json** file at the generation_framework root to call edges_nodes.py with the appropriate SAB.
+1. Copy and modify **ubkgen2jkgen.ini.example** to a file named **edges_nodes.ini** in the current directory.
+2. Configure the **sources.json** file at the generation_framework root to call ubkgen2jkgen.py with the appropriate SAB.
 
 # Using with ingestion files stored in Globus
 The anticipated use case for this script is a set of ingest files provided by a participant in the Data Distillery project.

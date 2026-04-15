@@ -262,7 +262,7 @@ def getparticipantedges(uext: ubkgExtract, base_url: str, event_id: str) -> list
             listedges.append({'subject': event_id, 'predicate': pred, 'object': obj})
     return listedges
 
-def getallspeciesedges(ulog:ubkgLogging, cfg: ubkgConfigParser, uext: ubkgExtract,df_vs: pd.DataFrame) -> pd.DataFrame:
+def getallspeciesedges(ulog:ubkgLogging, cfg: ubkgConfigParser, uext: ubkgExtract,df_vs: pd.DataFrame):
     """
     Build edges for a set of specified species.
 
@@ -271,7 +271,6 @@ def getallspeciesedges(ulog:ubkgLogging, cfg: ubkgConfigParser, uext: ubkgExtrac
     :param cfg: application configuration object, which includes a list of species
     :param df_vs: DataFrame of the REACTOME_VS valueset.
 
-    :return: a dataframe representing edge assertions
     """
 
     listallspeciesedges = []
@@ -403,9 +402,9 @@ def main():
     dfnodes = getnodesfromedges(ulog=ulog, uext=uext, cfg=cfg, df=dfedges)
 
     # Write edges to file.
-    dfedges = dfedges[['subject', 'predicate', 'object']]
-    fout = os.path.join(sab_jkg_dir, 'edges.tsv')
-    dfedges.to_csv(fout, sep='\t', index=False)
+    #dfedges = dfedges[['subject', 'predicate', 'object']]
+    #fout = os.path.join(sab_jkg_dir, 'edges.tsv')
+    #dfedges.to_csv(fout, sep='\t', index=False)
 
     # Write nodes to file.
     dfnodes = dfnodes[['node_id', 'node_namespace', 'node_label', 'node_definition', 'node_dbxref']]

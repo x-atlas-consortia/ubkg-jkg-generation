@@ -800,13 +800,13 @@ def main():
     # The log directory is determined by the pkt-kg package.
     log_dir = os.path.join(repo_root, 'generation_framework/builds/logs')
     # Set up centralized logging.
-    ulog = ubkgLogging(log_dir=log_dir, log_file='gencode2jkgedgenode.log')
+    ulog = ubkgLogging(log_dir=log_dir, log_file='gencode2jkgen.log')
 
     # Obtain runtime arguments.
     args = getargs()
 
     # Get application configuration.
-    cfgpath = os.path.join(os.path.dirname(os.getcwd()), 'generation_framework/translators/gencode2jkgedgenode/gencode2jkgedgenode.ini')
+    cfgpath = os.path.join(os.path.dirname(os.getcwd()), 'generation_framework/translators/gencode2jkgen/gencode2jkgen.ini')
     cfg = ubkgConfigParser(path=cfgpath, ulog=ulog)
 
     # Get sab_source and sab_jkg directories.

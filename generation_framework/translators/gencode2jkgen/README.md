@@ -2,10 +2,10 @@
 ## GenCode ingestion script
 
 ### Purpose
-The scripts in this folder generate files in UBKG edges/nodes format for ingestion of data from GenCode.
+The scripts in this folder generate files in JKG Edge/nodes (JKGEN) format for ingestion of data from GenCode.
 
 ### Content
-- **gencode2jkgedgenode.py** does the following:
+- **gencode2jkgen.py** does the following:
   - downloads GZIPped files from the GenCode FTP site, including:
      - the main annotation file
      - metadata files for 
@@ -26,7 +26,7 @@ The scripts in this folder generate files in UBKG edges/nodes format for ingesti
    - ubkg_extract.py
    - ubkg_logging.py
    - ubkg_config.py
-2. An application configuration file named **gencode2jkgedgenode.ini.**
+2. An application configuration file named **gencode2jkgen.ini.**
 
 ### Precursor Assertions
 Some GenCode assertions employ nodes from other sets of assertions, including:
@@ -43,7 +43,7 @@ that the file **OWLNETS_node_metadata.txt** is available.
 Codes in GENCODE_VS are obtained from the [biotypes](https://www.gencodegenes.org/pages/biotypes.html) page of the GENCODE website.
 
 ### To run
-Copy and modify **gencode2jkgedgenode.ini.example** to a file named **gencode.ini** in the gencode directory.
+Copy and modify **gencode2jkgen.ini.example** to a file named **gencode2jkgen.ini** in the gencode directory.
 
 # GenCode Model
 

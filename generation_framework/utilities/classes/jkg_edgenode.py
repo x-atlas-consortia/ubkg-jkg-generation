@@ -1,9 +1,11 @@
 """
 jkg_edgenode.py
 Class that manages the edge and node files of a SAB.
+Works with files in either UBKG edge node or JKG edge node formats.
 """
 import os
-import polars as pl
+import sys
+#import polars as pl
 import pandas as pd
 from tqdm import tqdm
 
@@ -15,14 +17,28 @@ from .ubkg_config import ubkgConfigParser
 # Source file load manager
 from .ubkg_extract import ubkgExtract
 
-from ..functions.find_repo_root import find_repo_root
+# The following allows for an absolute import from an adjacent script directory--i.e., up and over instead of down.
+# Find the absolute path. (This assumes that this script is being called from build_csv.py.)
+fpath = os.path.dirname(os.getcwd())
+fpath = os.path.join(fpath, 'generation_framework/utilities')
+sys.path.append(fpath)
+
+from functions.find_repo_root import find_repo_root
 
 class Jkgedgenode:
 
-    def __init__(self, log: ubkgLogging, cfg: ubkgConfigParser, sab: str):
+    def __init__(self, log: ubkgLogging, cfg: ubkgConfigParser, sab: str, filedir:str):
+
+        """
+
+        :param log: ubkgLogging object
+        :param cfg: application config object
+        :param sab: SAB
+        :param filedir: path to edge and node files
+        """
 
         # Prevent truncation, especially of columns with URLs.
-        pl.Config.set_fmt_str_lengths(200)
+        #pl.Config.set_fmt_str_lengths(200)
 
         self.log = log
         self.cfg = cfg
@@ -31,14 +47,15 @@ class Jkgedgenode:
         self.uextract = ubkgExtract(ulog=log)
 
         # Get the path to the directory that contains the edge and node files.
-        self.jkg_dir = cfg.get_value(section='directories', key='sab_jkg_dir')
-        self.jkg_path = os.path.join(find_repo_root(),self.jkg_dir, sab)
+        #self.jkg_dir = cfg.get_value(section='Directories', key='sab_jkg_dir')
+        self.filedir = filedir
+        self.jkg_path = os.path.join(find_repo_root(),self.filedir)
 
-        # Load the node file.
-        self.jkg_nodes = self._load_node_file()
+        # Load the edge and node files.
+        self.edges = self._load_file(filetype='edge')
+        self.nodes = self._load_file(filetype='node')
 
-
-    def _get_filename(self, filetype: str) -> str:
+    def get_filename(self, filetype: str) -> str:
         """
         Source files can be named in various ways. For example, the node file can be named:
         - OWLNETS_node_metadata.txt (the output of PheKnowLator)
@@ -64,14 +81,18 @@ class Jkgedgenode:
 
         # Error case: no file found with name in argument list.
         lfile = ','.join(str(f) for f in file_names)
-        raise FileNotFoundError('No file found with name in list: ' + lfile)
+        raise FileNotFoundError(f'No {filetype} file found with name in list: ' + lfile)
 
-    def _load_node_file(self) ->pd.DataFrame:
+    def _load_file(self, filetype: str) ->pd.DataFrame:
         """
-        Loads a node file into a Pandas DataFrame.
+        Loads an edge file into a Pandas DataFrame.
+        :param filetype: the type of file (edge or node)
         """
 
-        nodefilename = self._get_filename(filetype='node')
-        nodefilepath = os.path.join(self.jkg_path, nodefilename)
-        return self.uextract.read_csv_with_progress_bar(path=nodefilepath, sep='\t')
+        edgefilename = self.get_filename(filetype=filetype)
+        edgefilepath = os.path.join(self.jkg_path, edgefilename)
+        self.log.print_and_logger_info(f'Loading file: {edgefilepath}')
+        return self.uextract.read_csv_with_progress_bar(path=edgefilepath, sep='\t')
+
+        # If using Polars instead of Pandas
         #return self.uextract.polars_scan_csv_with_timer(filename=nodefilepath, separator='\t')
