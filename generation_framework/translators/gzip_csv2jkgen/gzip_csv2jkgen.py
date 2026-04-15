@@ -138,7 +138,7 @@ def getargs()->argparse.Namespace:
 
     # Parse command line arguments.
     parser = argparse.ArgumentParser(
-    description='Convert the CSV file of the ontology (of which the URL is the required parameter) ontology to OWLNETs .\n'
+    description='Convert the CSV file of the ontology (of which the URL is the required parameter) ontology to JKG Edge/Node (JKGEN) format .\n'
                 'In general you should not have the change any of the optional arguments.',
     formatter_class=RawTextArgumentDefaultsHelpFormatter)
     parser.add_argument("sab", help="SAB for metadata field ontology")

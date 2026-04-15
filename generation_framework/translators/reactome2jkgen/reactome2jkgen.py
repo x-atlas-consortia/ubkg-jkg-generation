@@ -36,7 +36,7 @@ def getargs() -> argparse.Namespace:
 
     # Parse arguments.
     parser = argparse.ArgumentParser(
-    description='Convert REACTOME data to OWLNETs',
+    description='Convert REACTOME data to JKG Edge/Node (JKGEN) format',
     formatter_class=RawTextArgumentDefaultsHelpFormatter)
     # positional arguments
     parser.add_argument("-f", "--fetchnew", action="store_true", help="fetch new set of annotation files ")

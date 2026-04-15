@@ -2,21 +2,21 @@
 ## HMFIELD ingestion script
 
 ### Purpose
-The script in this folder generates files in UBKG edges/nodes format for an ontology with SAB **HMFIELD**. 
+The script in this folder generates files in JKG Edge/node (JKGEN) format for an ontology with SAB **HMFIELD**. 
 
 ### Script Content
-- **hmfields.py**: translates YAML content into a ontology graph in UBKG 
-- **hmfields.ini.example**: Annotated example configuration file for script
+- **hmfield2jkgen.py**: translates YAML content into a ontology graph in UBKG 
+- **hmfields2jkgen.ini.example**: Annotated example configuration file for script
 
 ### Script File Dependencies
-1. Files in the **ubkg_utilities** folder:
+1. Files in the **utilities** folder:
    - ubkg_logging.py
    - ubkg_config.py
-2. An application configuration file named **hmfields.ini.** Create this file by copying **hmfields.ini.example**.
+2. An application configuration file named **hmfield2jkgen.ini.** Create this file by copying **hmfields.ini.example**.
 
 ### Script Content
-- **hmfields.py**: translates YAML content into a ontology graph in UBKG 
-- **hmfields.ini.example**: Annotated example configuration file for script
+- **hmfield2jkgen.py**: translates YAML content into a ontology graph in UBKG 
+- **hmfield2jkgen.ini.example**: Annotated example configuration file for script
 
 ### UBKG Dependency
 Unlike other ingestions, the HMFIELD ontology queries an instance of

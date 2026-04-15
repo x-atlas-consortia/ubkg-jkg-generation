@@ -294,7 +294,7 @@ def write_nodes_file(ulog:ubkgLogging, df: pd.DataFrame, sab_jkg_dir: str, paren
 
 def getargs()->argparse.Namespace:
     # Parse command line arguments.
-    parser = argparse.ArgumentParser(description='Builds ontology files in OWLNETS format from the HRA 2D FTU spreadsheet.',
+    parser = argparse.ArgumentParser(description='Builds ontology files in JKG Edge/Node (JKGEN) format from the HRA 2D FTU spreadsheet.',
     formatter_class=RawTextArgumentDefaultsHelpFormatter)
     parser.add_argument("sab", help="Identifier for cell type annotation")
     parser.add_argument("-f", "--fetchnew", action="store_true", help="fetch new set of edge/node files ")

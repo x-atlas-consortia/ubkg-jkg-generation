@@ -270,7 +270,7 @@
   },
   "HMFIELD": {
     "source_type": "hmfield",
-    "execute": "./translators/hmfield/hmfield.py HMFIELD",
+    "execute": "./translators/hmfield2jkgen/hmfield2jkgen.py HMFIELD",
     "name": "HuBMAP legacy field metadata",
     "description": "HuBMAP pre-CEDAR metadata",
     "version": "2024-JUN-14"

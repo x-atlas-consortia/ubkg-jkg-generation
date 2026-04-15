@@ -59,7 +59,7 @@ def initialize_file(path: str, ulog:ubkgLogging, file_type: str):
 
 def getargs()->argparse.Namespace:
     # Parse command line arguments.
-    parser = argparse.ArgumentParser(description='Builds ontology files in OWLNETS format from CEDAR entities.',
+    parser = argparse.ArgumentParser(description='Builds ontology files in JKG Edge/node (JKGEN) format from CEDAR entities.',
     formatter_class=RawTextArgumentDefaultsHelpFormatter)
     parser.add_argument("sab", help="SAB")
     parser.add_argument("-f", "--fetchnew", action="store_true", help="fetch new set of edge/node files ")

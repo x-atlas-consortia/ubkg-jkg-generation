@@ -211,7 +211,7 @@ def write_nodes_file(dfsk: pd.DataFrame, out_dir: str, ulog: ubkgLogging):
 def getargs()->argparse.Namespace:
 
     # Parse command line arguments.
-    parser = argparse.ArgumentParser(description='Builds ontology files in OWLNETS format from a spreadsheet in SimpleKnowledge format.',
+    parser = argparse.ArgumentParser(description='Builds ontology files in JKG Edge/Node (JKGEN) format from a spreadsheet in SimpleKnowledge format.',
     formatter_class=RawTextArgumentDefaultsHelpFormatter)
     parser.add_argument("sab", help="SAB for the SimpleKnowledge ontology")
     parser.add_argument("-f", "--fetchnew", action="store_true", help="fetch new Simpleknowledge spreadsheet ")

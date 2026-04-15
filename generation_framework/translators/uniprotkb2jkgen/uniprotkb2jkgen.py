@@ -382,7 +382,7 @@ def write_nodes_file(df: pd.DataFrame,  ulog: ubkgLogging, sab_jkg_dir: str):
 def getargs()->argparse.Namespace:
     # Parse command line arguments.
     parser = argparse.ArgumentParser(
-        description='Builds OWLNETS files from UNIPROTKB source',
+        description='Builds JKG Edge/Node (JKGEN) files from UNIPROTKB source',
         formatter_class=RawTextArgumentDefaultsHelpFormatter)
     parser.add_argument("-f", "--fetchnew", action="store_true", help="fetch new set of annotation files ")
 

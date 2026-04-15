@@ -77,7 +77,7 @@ def getowlfilename(path: str) -> str:
 def getargs() -> argparse.Namespace:
     # Parse command line arguments.
     parser = argparse.ArgumentParser(
-        description='Copies ingest files in UBKG edges/nodes format from a local directory.',
+        description='Converts UBKG edges/nodes files into JKG Edge/Node (JKGEN) format.',
         formatter_class=RawTextArgumentDefaultsHelpFormatter)
     parser.add_argument('sab', help='SAB for ingest files')
     parser.add_argument("-f", "--fetchnew", action="store_true", help="fetch new set of edge/node files ")

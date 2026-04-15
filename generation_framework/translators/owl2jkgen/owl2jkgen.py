@@ -86,7 +86,7 @@ from classes.ubkg_sources import ubkgSources
 # Config file
 from classes.ubkg_config import ubkgConfigParser
 
-def get_args(ulog:ubkgLogging) -> argparse.Namespace:
+def getargs(ulog:ubkgLogging) -> argparse.Namespace:
     """
     Processes command line arguments.
     :param ulog: logging object
@@ -979,7 +979,7 @@ def main():
     ulog.print_and_logger_info('OWL-JKG EDGE NODE SCRIPT')
 
     # Process and document command line arguments.
-    args = get_args(ulog=ulog)
+    args = getargs(ulog=ulog)
 
     # Initialize extractor object, used to handle the case in which the
     # downloaded OWL file is a compressed file that must be expanded.

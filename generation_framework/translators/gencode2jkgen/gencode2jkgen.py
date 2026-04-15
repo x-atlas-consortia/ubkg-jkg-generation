@@ -379,7 +379,7 @@ def getargs() -> argparse.Namespace:
 
     # Parse arguments.
     parser = argparse.ArgumentParser(
-    description='Convert GENCODE annotation files to OWLNETs',
+    description='Convert GENCODE annotation files to JKG Edge/Node (JKGEN) format',
     formatter_class=RawTextArgumentDefaultsHelpFormatter)
     # positional arguments
     parser.add_argument("-f", "--fetchnew", action="store_true", help="fetch new set of annotation files ")
