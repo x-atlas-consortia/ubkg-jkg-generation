@@ -1,15 +1,15 @@
 # Human Reference Atlas Cell Annotation Digital Object  to OWLNETS converter
 
 Uses cell annotation Digital Objects in the [Human Reference Atlas](https://apps.humanatlas.io/kg-explorer/?do=ctann) (HRA) Knowledge Graph site
-to generate a set of text files that comply with the OWLNETS format, as described [here](https://github.com/callahantiff/PheKnowLator/blob/master/notebooks/OWLNETS_Example_Application.ipynb).
+to generate a set of files in JKG Edge/Node (JKGEN) format as described [here](https://github.com/callahantiff/PheKnowLator/blob/master/notebooks/OWLNETS_Example_Application.ipynb).
 
 
 # Content
-- **hra_do.py** - Does the following:
-   - Reads the configuration file **hra_do.ini**
+- **hra_do2jkgen.py** - Does the following:
+   - Reads the configuration file **hra_do2jkgen.ini**
    - Downloads the cell annotation crosswalk CSV that corresponds to the SAB argument.
    - Generates files in OWLNETS format based on the spreadsheet.
-- **hra_do.ini** - INI file with URL links to the HRA cell annotation crosswalk CSVs
+- **hra_do2jkgen.ini** - INI file with URL links to the HRA cell annotation crosswalk CSVs
 
 
 # Arguments
@@ -21,12 +21,12 @@ to generate a set of text files that comply with the OWLNETS format, as describe
    - ubkg_logging.py
    - ubkg_config.py
    - ubkg_parsetools.py
-2. An application configuration file named **hra_do.ini.**
+2. An application configuration file named **hra_do2jkgen.ini.**
 3. A cell annotation CSV.
 
 # To run
-1. Modify **hra_do.ini**.
-2. Configure the **ontologies.json** file at the generation_framework root to call hra_do.py with the appropriate SAB.
+1. Modify **hra_do2jkgen.ini**.
+2. Configure the **sources.json** file at the generation_framework root to call hra_do2jkgen.py with the appropriate SAB.
 
 
 # Format of HRA cell annotation crosswalk CSVs

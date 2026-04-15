@@ -36,21 +36,22 @@ from urllib.parse import urlparse
 # The following allows for an absolute import from an adjacent script directory--i.e., up and over instead of down.
 # Find the absolute path. (This assumes that this script is being called from build_csv.py.)
 fpath = os.path.dirname(os.getcwd())
-fpath = os.path.join(fpath, 'generation_framework/ubkg_utilities')
+fpath = os.path.join(fpath, 'generation_framework/utilities')
 sys.path.append(fpath)
 
 # argparser
-from ubkg_args import RawTextArgumentDefaultsHelpFormatter
+from classes.ubkg_args import RawTextArgumentDefaultsHelpFormatter
 # Centralized logging module
-from find_repo_root import find_repo_root
-from ubkg_logging import ubkgLogging
+from functions.find_repo_root import find_repo_root
+from classes.ubkg_logging import ubkgLogging
 
 # config file
-from ubkg_config import ubkgConfigParser
+from classes.ubkg_config import ubkgConfigParser
 
-import ubkg_parsetools as uparse
+# Standardization object
+from classes.ubkg_standardizer import ubkgStandardizer
 # Extraction module
-from ubkg_extract import ubkgExtract
+from classes.ubkg_extract import ubkgExtract
 
 
 def download_source_file(cfg:ubkgConfigParser, ulog:ubkgLogging, uext:ubkgExtract, sab: str, sab_source_dir: str, sab_jkg_dir: str) -> str:
@@ -113,7 +114,7 @@ def write_edges_file(ulog: ubkgLogging, df: pd.DataFrame, parents: dict, dforgan
     :param sab: sab for annotation
     """
 
-    edgelist_path: str = os.path.join(sab_jkg_dir, 'OWLNETS_edgelist.txt')
+    edgelist_path: str = os.path.join(sab_jkg_dir, 'jkg_edge.tsv')
     ulog.print_and_logger_info('Building: ' + os.path.abspath(edgelist_path))
 
     with open(edgelist_path, 'w') as out:
@@ -176,13 +177,13 @@ def write_nodes_file(ulog: ubkgLogging, df: pd.DataFrame, sab_jkg_dir: str, pare
     :param sab: sab for annotation
     """
 
-    node_metadata_path: str = os.path.join(sab_jkg_dir, 'OWLNETS_node_metadata.txt')
+    node_metadata_path: str = os.path.join(sab_jkg_dir, 'jkg_node.tsv')
     ulog.print_and_logger_info('Building: ' + os.path.abspath(node_metadata_path))
 
     node_namespace = sab
     with open(node_metadata_path, 'w') as out:
         out.write(
-            'node_id' + '\t' + 'node_namespace' + '\t' + 'node_label' + '\t' + 'node_definition' + '\t' + 'node_synonyms' + '\t' + 'node_dbxrefs' + '\n')
+            'node_id' + '\t' + 'node_label' + '\t' + 'node_definition' + '\t' + 'node_synonyms' + '\t' + 'node_dbxrefs' + '\n')
 
         node_definition = ''
         node_synonyms = ''
@@ -239,7 +240,7 @@ def write_nodes_file(ulog: ubkgLogging, df: pd.DataFrame, sab_jkg_dir: str, pare
                     node_dbxrefs = ''
 
                 out.write(
-                    node_id + '\t' + node_namespace + '\t' + node_label + '\t' + node_definition + '\t' + node_synonyms + '\t' + node_dbxrefs + '\n')
+                    node_id + '\t' + node_label + '\t' + node_definition + '\t' + node_synonyms + '\t' + node_dbxrefs + '\n')
 
 
 def getargs()->argparse.Namespace:
@@ -259,13 +260,13 @@ def main():
     repo_root = find_repo_root()
     log_dir = os.path.join(repo_root, 'generation_framework/builds/logs')
     # Set up centralized logging.
-    ulog = ubkgLogging(log_dir=log_dir, log_file='hra_do.log')
+    ulog = ubkgLogging(log_dir=log_dir, log_file='hra_do2jkgen.log')
 
     # Obtain runtime arguments.
     args = getargs()
 
     # Get application configuration.
-    cfgpath = os.path.join(os.path.dirname(os.getcwd()), 'generation_framework/hra_digital_objects/hra_do.ini')
+    cfgpath = os.path.join(os.path.dirname(os.getcwd()), 'generation_framework/translators/hra_do2jkgen/hra_do2jkgen.ini')
     cfg = ubkgConfigParser(path=cfgpath, ulog=ulog)
 
     # Get sab_source and sab_jkg directories.

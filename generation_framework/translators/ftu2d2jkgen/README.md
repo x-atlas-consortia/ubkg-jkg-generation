@@ -5,28 +5,28 @@ to generate a set of text files that comply with the OWLNETS format, as describe
 
 
 # Content
-- **ftu2d.py** - Does the following:
+- **ftu2d2jkgen.py** - Does the following:
    - Reads the configuration file **ftu2d.ini**
    - Downloads the 2D FTU crosswalk CSV that corresponds to the SAB argument.
-   - Generates files in OWLNETS format based on the spreadsheet.
-- **ftu2d.ini** - INI file with URL links to the FTU2D files.
+   - Generates files in JKG Edge/Node (JKGEN) format based on the spreadsheet.
+- **ftu2d2jkgen.ini** - INI file with URL links to the FTU2D files.
 
 
 # Arguments
 1. The SAB for the ontology--i.e., FTU2D
 
 # Dependencies
-1. Files in the **ubkg_utilities** folder:
+1. Files in the **utilities** folder:
    - ubkg_extract.py
    - ubkg_logging.py
    - ubkg_config.py
    - ubkg_parsetools.py
-2. An application configuration file named **ftu2d.ini.**
+2. An application configuration file named **ftu2d2jkgen.ini.**
 3. The HRA FTU2D CSV.
 
 # To run
-1. Modify **ftu2d.ini**.
-2. Configure the **sabs.json** file at the generation_framework root to call ftu2d.py with the appropriate SAB.
+1. Modify **ftu2d2jkg3n.ini**.
+2. Configure the **sources.json** file at the generation_framework root to call ftu2d2jkgen.py with the appropriate SAB.
 
 
 # Format of HRA FTU2D crosswalk CSV

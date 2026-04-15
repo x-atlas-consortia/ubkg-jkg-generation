@@ -8,7 +8,7 @@
   },
   "AZ": {
     "source_type": "hra_do",
-    "execute": "./translators/hra_digital_objects/hra_do.py AZ",
+    "execute": "./translators/hra_do2jkgen/hra_do2jkgen.py AZ",
     "name": "Azimuth-Cell Ontology mappings",
     "description": "Maps of cell type annotations from Azimuth (Hao et al. 2021) to Cell Ontology, obtained from the crosswalk CSV maintained by the Human Reference Atlas",
     "version": "v1.2"
@@ -81,7 +81,7 @@
   },
   "DCTH": {
     "source_type": "hra_do",
-    "execute": "./translators/hra_digital_objects/hra_do.py DCTH",
+    "execute": "./translators/hra_do2jkgen/hra_do2jkgen.py DCTH",
     "name": "DeepCellType (DCTH) annotations",
     "description": "DeepCellType (DCTH) annotations",
     "version": "v1.0"
@@ -169,7 +169,7 @@
   },
   "FTU2D": {
     "source_type": "ftu2d",
-    "execute": "./translators/ftu2d/ftu2d.py FTU2D",
+    "execute": "./translators/ftu2d2jkgen/ftu2d2jkgen.py FTU2D",
     "name": "Human Reference Atlas 2D Functional Tissue Unit (FTU) ontology",
     "description": "A summarized view of the number of anatomical structures and cell types per functional tissue unit.",
     "version": "v2.3"
@@ -493,7 +493,7 @@
   },
   "PAZ": {
     "source_type": "hra_do",
-    "execute": "./translators/hra_digital_objects/hra_do.py PAZ",
+    "execute": "./translators/hra_do2jkgen/hra_do2jkgen.py PAZ",
     "name": "Pan-organ Azimuth annotations",
     "description": "Pan-organ Azimuth annotations",
     "version": "v1.0"
@@ -534,7 +534,7 @@
   },
   "RIBCA": {
     "source_type": "hra_do",
-    "execute": "./translators/hra_digital_objects/hra_do.py RIBCA",
+    "execute": "./translators/hra_do2jkgen/hra_do2jkgen.py RIBCA",
     "name": "Robust Image-Based Cell Annotator (RIBCA)",
     "description": "RIBCA annotations",
     "source": "v1.0"
@@ -560,7 +560,7 @@
   },
   "STELLAR": {
     "source_type": "hra_do",
-    "execute": "./translators/hra_digital_objects/hra_do.py STELLAR",
+    "execute": "./translators/hra_do2jkgen/hra_do2jkgen.py STELLAR",
     "name": "STELLAR (SpaTial cElL LeARning) to Cell Ontology mappings",
     "description": "STELLAR annotations",
     "version": "v1.0"
@@ -629,7 +629,7 @@
   },
   "VCCF": {
     "source_type": "hra_do",
-    "execute": "./translators/hra_digital_objects/hra_do.py VCCF",
+    "execute": "./translators/hra_do2jkgen/hra_do2jkgen.py VCCF",
     "name": "Vasculature Common Coordinate Framework (VCCF)",
     "description": "VCCF annotations",
     "version": "v1.0"
