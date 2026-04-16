@@ -32,6 +32,9 @@ from classes.ubkg_config import ubkgConfigParser
 # Extraction module
 from classes.ubkg_extract import ubkgExtract
 
+# JKEN output file names
+from classes.jkg_out import Jkgout
+
 def getargs() -> argparse.Namespace:
 
     # Parse arguments.
@@ -342,13 +345,25 @@ def getnodesfromedges(ulog: ubkgLogging, uext: ubkgExtract, cfg: ubkgConfigParse
     dfret = pd.DataFrame(listnodes)
     return dfret
 
-def getvs(ulog: ubkgLogging, uext:ubkgExtract, path: str) -> pd.DataFrame:
+def getvs(ulog: ubkgLogging,
+          uext:ubkgExtract,
+          path: str,
+          jout: Jkgout) -> pd.DataFrame:
 
-    # Responses from the Reactome Content Services API have values that have been encoded as nodes in the REACTOME_VS
-    # set of assertions.
-    # Load the nodes file related to the prior ingestion.
+    """
+    Responses from the Reactome Content Services API have values
+    that have been encoded as nodes in the REACTOME_VS
+    set of assertions.
+    Load the nodes file related to the prior ingestion.
 
-    nodefile = os.path.join(path, 'OWLNETS_node_metadata.txt')
+    :param ulog: ubkgLogging object
+    :param uext: ubkgExtract object
+    :param path: path to REACTOME_VS directory
+    :param jout: JKGEN output file manager
+    :return: dataframe of REACTOME_VS assertions
+    """
+
+    nodefile = os.path.join(path, jout.jkg_node)
 
     try:
         return uext.read_csv_with_progress_bar(nodefile, sep='\t')
@@ -389,11 +404,14 @@ def main():
     if not args.fetchnew:
         exit(0)
 
-        # Instantiate UbkgExtract class
+    # Instantiate UbkgExtract class
     uext = ubkgExtract(ulog=ulog)
 
+    # Obtain JKGEN output file names.
+    jout = Jkgout(ulog=ulog)
+
     # Obtain the REACTOME_VS valueset.
-    df_vs = getvs(ulog=ulog, uext=uext, path=vs_dir)
+    df_vs = getvs(ulog=ulog, uext=uext, path=vs_dir, jout=jout)
 
     # Build the edges for the specified set of species.
     dfedges = getallspeciesedges(ulog=ulog, uext=uext, cfg=cfg, df_vs=df_vs)
@@ -401,15 +419,18 @@ def main():
     # Build the nodes file, using the edge DataFrame.
     dfnodes = getnodesfromedges(ulog=ulog, uext=uext, cfg=cfg, df=dfedges)
 
+
     # Write edges to file.
-    #dfedges = dfedges[['subject', 'predicate', 'object']]
-    #fout = os.path.join(sab_jkg_dir, 'edges.tsv')
+    dfedges = dfedges[['subject', 'predicate', 'object']]
+    fout = os.path.join(sab_jkg_dir, jout.jkg_edge)
+    uext.to_csv_with_progress_bar(df=dfedges, path=fout, sep='\t', index=False)
     #dfedges.to_csv(fout, sep='\t', index=False)
 
     # Write nodes to file.
     dfnodes = dfnodes[['node_id', 'node_namespace', 'node_label', 'node_definition', 'node_dbxref']]
-    fout = os.path.join(sab_jkg_dir, 'nodes.tsv')
-    dfnodes.to_csv(fout, sep='\t', index=False)
+    fout = os.path.join(sab_jkg_dir, jout.jkg_node)
+    uext.to_csv_with_progress_bar(df=dfnodes, path=fout, sep='\t', index=False)
+    #dfnodes.to_csv(fout, sep='\t', index=False)
 
 if __name__ == "__main__":
     main()

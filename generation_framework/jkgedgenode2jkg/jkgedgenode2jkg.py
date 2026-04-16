@@ -32,21 +32,21 @@ fpath = os.path.join(fpath, 'ubkg_utilities')
 sys.path.append(fpath)
 
 # argparser
-from ubkg_args import RawTextArgumentDefaultsHelpFormatter
+from classes.ubkg_args import RawTextArgumentDefaultsHelpFormatter
 # Centralized logging module
-from find_repo_root import find_repo_root
-from ubkg_logging import ubkgLogging
+from functions.find_repo_root import find_repo_root
+from classes.ubkg_logging import ubkgLogging
 
 # config file
-from ubkg_config import ubkgConfigParser
+from classes.ubkg_config import ubkgConfigParser
 
-from ubkg_extract import ubkgExtract
+from classes.ubkg_extract import ubkgExtract
 
 def getargs() -> argparse.Namespace:
 
     # Parse arguments.
     parser = argparse.ArgumentParser(
-    description='Convert UBKG edge and node files to JKG JSON format',
+    description='Convert JKG Edge/Node (JKGEN) files to JKG JSON format',
     formatter_class=RawTextArgumentDefaultsHelpFormatter)
     parser.add_argument("sab", help="Identifier for cell type annotation")
     args = parser.parse_args()

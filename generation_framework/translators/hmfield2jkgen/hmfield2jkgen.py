@@ -32,6 +32,9 @@ from classes.ubkg_logging import ubkgLogging
 # config file
 from classes.ubkg_config import ubkgConfigParser
 
+# JKEN output file names
+from classes.jkg_out import Jkgout
+
 def load_yaml(url: str) -> dict:
     """
     Loads a YAML file with a simple list format.
@@ -558,6 +561,9 @@ def main():
     cfgpath = os.path.join(os.path.dirname(os.getcwd()), 'generation_framework/translators/hmfield2jkgen/hmfield2jkgen.ini')
     cfg = ubkgConfigParser(path=cfgpath, ulog=ulog)
 
+    # Obtain JKGEN output file names.
+    jout = Jkgout(ulog=ulog)
+
     # Get sab_source and sab_jkg directories.
     # The config file contains absolute paths to the parent directories in the local repo.
     # Affix the SAB to the paths.
@@ -639,7 +645,7 @@ def main():
                                            urlbase=ubkg_url)
 
     # Initialize the node file.
-    nodes_path: str = os.path.join(sab_jkg_dir, 'jkg_node.txt')
+    nodes_path: str = os.path.join(sab_jkg_dir, jout.jkg_node)
     ulog.print_and_logger_info(f'Writing nodes file at {nodes_path}...')
     initialize_file(ulog=ulog, path=nodes_path, file_type='node')
 
@@ -655,7 +661,7 @@ def main():
     # Build the edge file.
 
     # Initialize the edge file.
-    edgelist_path: str = os.path.join(sab_jkg_dir, 'jkg_edge.tsv')
+    edgelist_path: str = os.path.join(sab_jkg_dir, jout.jkg_edge)
     ulog.print_and_logger_info(f'Writing edge file to {edgelist_path}...')
     initialize_file(ulog=ulog, path=edgelist_path, file_type='edge')
 

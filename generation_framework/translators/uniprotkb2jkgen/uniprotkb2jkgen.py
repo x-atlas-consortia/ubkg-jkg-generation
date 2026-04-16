@@ -41,6 +41,9 @@ from classes.ubkg_logging import ubkgLogging
 # config file
 from classes.ubkg_config import ubkgConfigParser
 
+# JKEN output file names
+from classes.jkg_out import Jkgout
+
 # -----------------------------
 
 def getuniprotkb(cfg: ubkgConfigParser, ulog: ubkgLogging, uext:ubkgExtract, sab_source_dir: str, sab_jkg_dir: str) -> pd.DataFrame:
@@ -203,13 +206,18 @@ def write_go_annotation_edges(subject: str, go_column: str, go_aspect: str, out)
         out.write(subject + '\t' + pred + '\t' + goid + '\n')
 
 
-def write_edges_file(df: pd.DataFrame, ulog: ubkgLogging, dfhgnc:pd.DataFrame, sab_jkg_dir: str):
+def write_edges_file(df: pd.DataFrame,
+                     ulog: ubkgLogging,
+                     dfhgnc:pd.DataFrame,
+                     sab_jkg_dir: str,
+                     jout: Jkgout):
 
     """
     Writes an edges file in OWLNETS format.
     :param df: DataFrame of UNIPROTKB data
     :param dfhgnc: DataFrame of HGNC data
     :param sab_jkg_dir: output directory
+    :param jout: JKGEN output file object
     :return:
     """
     """
@@ -228,8 +236,7 @@ def write_edges_file(df: pd.DataFrame, ulog: ubkgLogging, dfhgnc:pd.DataFrame, s
 
     """
 
-    #edgelist_path: str = os.path.join(sab_jkg_dir, 'OWLNETS_edgelist.txt')
-    edgelist_path: str = os.path.join(sab_jkg_dir, 'jkg_edge.tsv')
+    edgelist_path: str = os.path.join(sab_jkg_dir, jout.jkg_edge)
 
     ulog.print_and_logger_info('Building: ' + os.path.abspath(edgelist_path))
 
@@ -297,13 +304,17 @@ def parenthetic_contents(strparen: str) -> tuple:
                 yield len(stack), strparen[start + 1: i]
 
 
-def write_nodes_file(df: pd.DataFrame,  ulog: ubkgLogging, sab_jkg_dir: str):
+def write_nodes_file(df: pd.DataFrame,
+                     ulog: ubkgLogging,
+                     sab_jkg_dir: str,
+                     jout: Jkgout):
 
     """
     Writes a nodes file in OWLNETS format.
     :param df: DataFrame of source information
     :param ulog: ubkgLogging object
-    :param sab_jkg_dir:
+    :param sab_jkg_dir: output directory
+    :param jout: JKGEN output file object
     :return:
     """
 
@@ -313,8 +324,7 @@ def write_nodes_file(df: pd.DataFrame,  ulog: ubkgLogging, sab_jkg_dir: str):
     # Only UNIPROTKB codes need to be in the nodes file.
     # HGNC IDs are part of the UMLS data.
 
-    #node_metadata_path: str = os.path.join(sab_jkg_dir, 'OWLNETS_node_metadata.txt')
-    node_metadata_path: str = os.path.join(sab_jkg_dir, 'jkg_nodes.tsv')
+    node_metadata_path: str = os.path.join(sab_jkg_dir, jout.jkg_node)
 
     ulog.print_and_logger_info('Building: ' + os.path.abspath(node_metadata_path))
 
@@ -438,9 +448,20 @@ def main():
         dfhgnc = uext.read_csv_with_progress_bar(hgncpath, sep='\t')
         dfhgnc = dfhgnc.replace(np.nan, '', regex=True)
 
+    # Obtain JKGEN output file names.
+    jout = Jkgout(ulog=ulog)
+
     # Build OWLNETS text files.
-    write_edges_file(df=dfuniprotkb, ulog=ulog, dfhgnc=dfhgnc, sab_jkg_dir=sab_jkg_dir)
-    write_nodes_file(df=dfuniprotkb, ulog=ulog, sab_jkg_dir=sab_jkg_dir)
+    write_edges_file(df=dfuniprotkb,
+                     ulog=ulog,
+                     dfhgnc=dfhgnc,
+                     sab_jkg_dir=sab_jkg_dir,
+                     jout=jout)
+
+    write_nodes_file(df=dfuniprotkb,
+                     ulog=ulog,
+                     sab_jkg_dir=sab_jkg_dir,
+                     jout=jout)
 
 if __name__ == "__main__":
     main()

@@ -12,14 +12,9 @@ data obtained from [UniProt.org](https://www.uniprot.org/).
 - **uniprotkb2edgenode.ini.example** - Annotated example of an ini file.
 
 # Dependencies
-1. Files in the **utilities/classes** folder:
-   - ubkg_extract.py
-   - ubkg_logging.py
-   - ubkg_config.py
-   - ubkg_args.py
-2. Files in the **utilities/functions** folder:
-   - find_repo_root.py
-3. An application configuration file named **uniprotkb2jkgen.ini.**
+The script uses:
+1. Classes and functions from the _/utilities_ path.
+2. An application configuration file named **uniprotkb2jkgen.ini.**
 
 # To run
 1. Copy and modify **uniprotkb2jkgen.ini.example** to a file named **uniprotkb2jkgen.ini** in the current directory.

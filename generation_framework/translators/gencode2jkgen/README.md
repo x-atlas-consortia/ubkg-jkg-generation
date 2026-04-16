@@ -22,10 +22,8 @@ The scripts in this folder generate files in JKG Edge/nodes (JKGEN) format for i
 - **gencode.ini.example**: annotated example of an application configuration file.
 
 ### File Dependencies
-1. Files in the **ubkg_utilities** folder:
-   - ubkg_extract.py
-   - ubkg_logging.py
-   - ubkg_config.py
+The script uses:
+1. Classes and functions from the _/utilities_ path.
 2. An application configuration file named **gencode2jkgen.ini.**
 
 ### Precursor Assertions

@@ -36,6 +36,9 @@ from classes.ubkg_logging import ubkgLogging
 # config file
 from classes.ubkg_config import ubkgConfigParser
 
+# JKEN output file names
+from classes.jkg_out import Jkgout
+
 def initialize_file(path: str, ulog:ubkgLogging, file_type: str):
     """
     Creates and writes header for edge and node file.
@@ -109,10 +112,12 @@ def main():
         idsplit = row['subject'].split('/')
         listcedarids.append(f'CEDAR:{idsplit[len(idsplit)-1]}')
 
+    # Get JKGEN output file names.
+    jout = Jkgout(ulog=ulog)
 
     # BUILD THE NODE FILE.
     # Initialize the node file.
-    nodes_path: str = os.path.join(sab_jkg_dir, 'jkg_nodes.tsv')
+    nodes_path: str = os.path.join(sab_jkg_dir, jout.jkg_node)
     ulog.print_and_logger_info(f'Writing nodes file at {nodes_path}...')
     initialize_file(path=nodes_path, ulog=ulog, file_type='node')
 
@@ -124,7 +129,7 @@ def main():
 
     # BUILD THE EDGE FILE.
     # Initialize the edge file.
-    edgelist_path: str = os.path.join(sab_jkg_dir, 'jkg_edges.tsv')
+    edgelist_path: str = os.path.join(sab_jkg_dir, jout.jkg_edge)
     ulog.print_and_logger_info(f'Writing edge file to {edgelist_path}...')
     initialize_file(path=edgelist_path, ulog=ulog, file_type='edge')
 

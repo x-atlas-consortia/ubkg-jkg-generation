@@ -50,6 +50,9 @@ from classes.ubkg_logging import ubkgLogging
 # config file
 from classes.ubkg_config import ubkgConfigParser
 
+# JKEN output file names
+from classes.jkg_out import Jkgout
+
 def download_source_file(cfg: ubkgConfigParser, ulog:ubkgLogging, uext:ubkgExtract, sab: str, sab_source_dir: str, sab_jkg_dir: str) -> str:
     """
     Reads the 2D FTU CSV.
@@ -79,7 +82,12 @@ def download_source_file(cfg: ubkgConfigParser, ulog:ubkgLogging, uext:ubkgExtra
 
     return filepath
 
-def write_edges_file(ulog:ubkgLogging, df: pd.DataFrame, parents: dict, sab_jkg_dir: str, sab:str):
+def write_edges_file(ulog:ubkgLogging,
+                     df: pd.DataFrame,
+                     parents: dict,
+                     sab_jkg_dir: str,
+                     sab:str,
+                     jout:Jkgout):
 
     """
     Writes an edge file in OWLNETS format.
@@ -88,11 +96,11 @@ def write_edges_file(ulog:ubkgLogging, df: pd.DataFrame, parents: dict, sab_jkg_
     :param df: DataFrame from a HRA cell type annotation CSV.
     :param sab_jkg_dir: output directory
     :param parents: dict of parent nodes
-    :param dforgan: DataFrame of organ level node information
     :param sab: sab for annotation
+    :param jout: Jkg output object
     """
 
-    edgelist_path: str = os.path.join(sab_jkg_dir, 'jkg_edge.tsv')
+    edgelist_path: str = os.path.join(sab_jkg_dir, jout.jkg_edge)
     ulog.print_and_logger_info('Building: ' + os.path.abspath(edgelist_path))
 
     with open(edgelist_path, 'w') as out:
@@ -197,7 +205,12 @@ def write_edges_file(ulog:ubkgLogging, df: pd.DataFrame, parents: dict, sab_jkg_
                 out.write(subj + '\t' + predicate_uri + '\t' + str(obj) + '\n')
                 ftu_ftu_parts.get(ftu_label).append(ftu_part_node_id)
 
-def write_nodes_file(ulog:ubkgLogging, df: pd.DataFrame, sab_jkg_dir: str, parents: dict, sab:str):
+def write_nodes_file(ulog:ubkgLogging,
+                     df: pd.DataFrame,
+                     sab_jkg_dir: str,
+                     parents: dict,
+                     sab:str,
+                     jout:Jkgout):
 
     """
     Writes a nodes file in OWLNETS format.
@@ -206,9 +219,10 @@ def write_nodes_file(ulog:ubkgLogging, df: pd.DataFrame, sab_jkg_dir: str, paren
     :param sab_jkg_dir: output directory
     :param parents: dict of parent nodes
     :param sab: SAB
+    :param jout: JKGEN output file manager
     """
 
-    node_metadata_path: str = os.path.join(sab_jkg_dir, 'jkg_nodes.tsv')
+    node_metadata_path: str = os.path.join(sab_jkg_dir, jout.jkg_node)
     ulog.print_and_logger_info('Building: ' + os.path.abspath(node_metadata_path))
 
     node_namespace = sab
@@ -379,8 +393,21 @@ def main():
     parents = getparentnodes(args.sab)
 
     # Generate the OWLNETS files.
-    write_nodes_file(ulog=ulog, df=df_crosswalk_sorted, sab_jkg_dir=sab_jkg_dir, parents=parents, sab=args.sab)
-    write_edges_file(ulog=ulog, df=df_crosswalk_sorted, sab_jkg_dir=sab_jkg_dir, parents=parents, sab=args.sab)
+    # Get JKGEN output file names.
+    jout = Jkgout(ulog=ulog)
+
+    write_nodes_file(ulog=ulog,
+                     df=df_crosswalk_sorted,
+                     sab_jkg_dir=sab_jkg_dir,
+                     parents=parents,
+                     sab=args.sab,
+                     jout=jout)
+    write_edges_file(ulog=ulog,
+                     df=df_crosswalk_sorted,
+                     sab_jkg_dir=sab_jkg_dir,
+                     parents=parents,
+                     sab=args.sab,
+                     jout=jout)
 
 if __name__ == "__main__":
     main()

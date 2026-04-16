@@ -86,6 +86,9 @@ from classes.ubkg_sources import ubkgSources
 # Config file
 from classes.ubkg_config import ubkgConfigParser
 
+# JKEN output file names
+from classes.jkg_out import Jkgout
+
 def getargs(ulog:ubkgLogging) -> argparse.Namespace:
     """
     Processes command line arguments.
@@ -835,7 +838,13 @@ def get_owlnets(ulog: ubkgLogging, graph: Graph, working_dir: str, args: argpars
 
     return owlnets
 
-def write_edges_file(sab:str, ulog: ubkgLogging, ustand: ubkgStandardizer, uextractor: ubkgExtract, working_dir: str, owlnets: pkt.OwlNets):
+def write_edges_file(sab:str,
+                     ulog: ubkgLogging,
+                     ustand: ubkgStandardizer,
+                     uextractor: ubkgExtract,
+                     working_dir: str,
+                     owlnets: pkt.OwlNets,
+                     jout: Jkgout):
     """
     Writes an edges file in OWLNETS format.
     :param sab: SAB that is to be standardized
@@ -844,11 +853,12 @@ def write_edges_file(sab:str, ulog: ubkgLogging, ustand: ubkgStandardizer, uextr
     :param uextractor: UBKG extractor object
     :param working_dir: output directory
     :param owlnets: OWLNets object
+    :param jout: JKEN output file manager object
     :return:
     """
 
     print_divider(ulog=ulog)
-    edge_list_filename: str = working_dir + os.sep + 'jkg_edge.tsv'
+    edge_list_filename: str = working_dir + os.sep + jout.jkg_edge
     ulog.print_and_logger_info(f"Write edge list results to '{edge_list_filename}'")
 
     # Standardize IRIs to SAB:code format.
@@ -866,7 +876,14 @@ def write_edges_file(sab:str, ulog: ubkgLogging, ustand: ubkgStandardizer, uextr
 
     uextractor.to_csv_with_progress_bar(df=df, path=edge_list_filename, sep='\t', index=False)
 
-def write_nodes_file(sab: str, ulog: ubkgLogging, uextractor: ubkgExtract, ustand: ubkgStandardizer, working_dir: str, owlnets: pkt.OwlNets, entity_metadata: dict):
+def write_nodes_file(sab: str,
+                     ulog: ubkgLogging,
+                     uextractor: ubkgExtract,
+                     ustand: ubkgStandardizer,
+                     working_dir: str,
+                     owlnets: pkt.OwlNets,
+                     entity_metadata: dict,
+                     jout: Jkgout):
     """
     Writes an edges file in OWLNETS format.
     :param sab: SAB for standardizing codes
@@ -876,6 +893,7 @@ def write_nodes_file(sab: str, ulog: ubkgLogging, uextractor: ubkgExtract, ustan
     :param working_dir: output directory
     :param owlnets: OWLNets object
     :param entity_metadata: OWLNets entity metadata
+    :param jout: JKEN output file manager object
     :return:
     """
     print_divider(ulog=ulog)
@@ -885,7 +903,7 @@ def write_nodes_file(sab: str, ulog: ubkgLogging, uextractor: ubkgExtract, ustan
     nodes = set([x for y in [[str(x[0]), str(x[2])] for x in owlnets.graph] for x in y])
 
     #node_metadata_filename: str = working_dir + os.sep + 'OWLNETS_node_metadata.txt'
-    node_metadata_filename: str = working_dir + os.sep + 'jkg_node.tsv'
+    node_metadata_filename: str = working_dir + os.sep + jout.jkg_node
     ulog.print_and_logger_info(f"Write node metadata results to '{node_metadata_filename}'")
 
     """
@@ -985,7 +1003,6 @@ def main():
     # downloaded OWL file is a compressed file that must be expanded.
     uextract = ubkgExtract(ulog=ulog)
 
-
     # Obtain application configuration.
     cfg = ubkgConfigParser(path='ubkgjkg.ini', ulog=ulog)
 
@@ -1077,8 +1094,25 @@ def main():
     print_divider(ulog=ulog)
     ustandardizer = ubkgStandardizer(ulog=ulog, repo_root=repo_root)
 
-    write_edges_file(sab=args.owl_sab, ulog=ulog, ustand=ustandardizer, uextractor=uextract, working_dir=working_dir, owlnets=owlnets)
-    write_nodes_file(sab=args.owl_sab, ulog=ulog, uextractor=uextract, ustand=ustandardizer, working_dir=working_dir, owlnets=owlnets, entity_metadata=entity_metadata)
+    # Get JKGEN output file names.
+    jout = Jkgout(ulog=ulog)
+
+    write_edges_file(sab=args.owl_sab,
+                     ulog=ulog,
+                     ustand=ustandardizer,
+                     uextractor=uextract,
+                     working_dir=working_dir,
+                     owlnets=owlnets,
+                     jout=jout)
+
+    write_nodes_file(sab=args.owl_sab,
+                     ulog=ulog,
+                     uextractor=uextract,
+                     ustand=ustandardizer,
+                     working_dir=working_dir,
+                     owlnets=owlnets,
+                     entity_metadata=entity_metadata,
+                     jout=jout)
 
     log_files_and_sizes(ulog=ulog, procdir=working_dir)
 

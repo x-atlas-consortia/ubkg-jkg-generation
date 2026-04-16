@@ -46,6 +46,9 @@ from classes.ubkg_standardizer import ubkgStandardizer
 # timer object
 from classes.ubkg_timer import UbkgTimer
 
+# JKEN output file names
+from classes.jkg_out import Jkgout
+
 def containsedgenodefiles(path: str) -> bool:
     # Checks files in a local path.
 
@@ -110,7 +113,8 @@ def unzipfiles(path: str, uext: ubkgExtract, ulog: ubkgLogging) -> None:
 def write_edges_file(target_path: str, sab:str,
                      jkgen: Jkgedgenode, ulog: ubkgLogging,
                      ustand: ubkgStandardizer,
-                     uext: ubkgExtract) -> None:
+                     uext: ubkgExtract,
+                     jout: Jkgout) -> None:
     """
     Translates a UBKG edge file into a JKG edge file.
     :param target_path: path to target JKG edge file
@@ -119,6 +123,7 @@ def write_edges_file(target_path: str, sab:str,
     :param ulog: ubkgLogging object
     :param ustand: Ustandardizer object for codes and relationships
     :param uext: ubkgExtract object
+    :param jout: JKGEN output file object
 
     """
 
@@ -129,14 +134,15 @@ def write_edges_file(target_path: str, sab:str,
     df_edge_out['object'] = ustand.standardize_code(x=df_edge_out['object'], sab=sab)
     df_edge_out['predicate'] = ustand.standardize_relationships(df_edge_out['predicate'])
 
-    edge_file = os.path.join(target_path, 'jkg_edge.tsv')
+    edge_file = os.path.join(target_path, jout.jkg_edge)
     ulog.print_and_logger_info(f'Writing edge file to {edge_file}')
     uext.to_csv_with_progress_bar(df=df_edge_out, path=edge_file, sep='\t', index=False)
 
 def write_nodes_file(target_path: str, sab:str,
                      jkgen: Jkgedgenode, ulog: ubkgLogging,
                      ustand: ubkgStandardizer,
-                     uext: ubkgExtract) -> None:
+                     uext: ubkgExtract,
+                     jout: Jkgout) -> None:
     """
     Translates a UBKG node file into a JKG node file.
     :param target_path: path to target JKG node file
@@ -145,6 +151,7 @@ def write_nodes_file(target_path: str, sab:str,
     :param ulog: ubkgLogging object
     :param ustand: Ustandardizer object for codes and relationships
     :param uext: ubkgExtract object
+    :param jout: JKGEN output file object
 
     """
 
@@ -154,7 +161,7 @@ def write_nodes_file(target_path: str, sab:str,
 
     df_node_out['node_id'] = ustand.standardize_code(x=df_node_out['node_id'], sab=sab)
 
-    node_file = os.path.join(target_path, 'jkg_node.tsv')
+    node_file = os.path.join(target_path, jout.jkg_node)
     ulog.print_and_logger_info(f'Writing node file to {node_file}')
     uext.to_csv_with_progress_bar(df=df_node_out, path=node_file, sep='\t', index=False)
 
@@ -208,20 +215,25 @@ def main():
         jkgen = Jkgedgenode(log=ulog, cfg=config, sab=args.sab, filedir=sab_source_dir_sab)
         ustand = ubkgStandardizer(ulog=ulog, repo_root=repo_root)
 
+        # Obtain JKGEN output file names.
+        jout = Jkgout(ulog=ulog)
+
         # Translate to JKG OWLNETS format.
         write_edges_file(target_path=sab_jkg_dir_sab,
                          sab=args.sab,
                          jkgen=jkgen,
                          ulog=ulog,
                          ustand=ustand,
-                         uext=uext)
+                         uext=uext,
+                         jout=jout)
 
         write_nodes_file(target_path=sab_jkg_dir_sab,
                          sab=args.sab,
                          jkgen=jkgen,
                          ulog=ulog,
                          ustand=ustand,
-                         uext=uext)
+                         uext=uext,
+                         jout=jout)
 
     else:
 

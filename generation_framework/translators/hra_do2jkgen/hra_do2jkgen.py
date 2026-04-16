@@ -50,9 +50,12 @@ from classes.ubkg_config import ubkgConfigParser
 
 # Standardization object
 from classes.ubkg_standardizer import ubkgStandardizer
+
 # Extraction module
 from classes.ubkg_extract import ubkgExtract
 
+# JKEN output file names
+from classes.jkg_out import Jkgout
 
 def download_source_file(cfg:ubkgConfigParser, ulog:ubkgLogging, uext:ubkgExtract, sab: str, sab_source_dir: str, sab_jkg_dir: str) -> str:
 
@@ -101,7 +104,12 @@ def encode_organ_level_nodes(df: pd.DataFrame, parents: dict, sab:str) -> pd.Dat
 
     return dforgan[['Organ_Level','Organ_ID','Organ_AZ_code']]
 
-def write_edges_file(ulog: ubkgLogging, df: pd.DataFrame, parents: dict, dforgan: pd.DataFrame, sab_jkg_dir: str, sab:str):
+def write_edges_file(ulog: ubkgLogging,
+                     df: pd.DataFrame,
+                     parents: dict,
+                     dforgan: pd.DataFrame,
+                     sab_jkg_dir: str,
+                     jout: Jkgout) -> None:
 
     """
     Writes an edge file in OWLNETS format.
@@ -111,10 +119,10 @@ def write_edges_file(ulog: ubkgLogging, df: pd.DataFrame, parents: dict, dforgan
     :param sab_jkg_dir: output directory
     :param parents: dict of parent nodes
     :param dforgan: DataFrame of organ level node information
-    :param sab: sab for annotation
+    :param jout: JKGEN output file object
     """
 
-    edgelist_path: str = os.path.join(sab_jkg_dir, 'jkg_edge.tsv')
+    edgelist_path: str = os.path.join(sab_jkg_dir, jout.jkg_edge)
     ulog.print_and_logger_info('Building: ' + os.path.abspath(edgelist_path))
 
     with open(edgelist_path, 'w') as out:
@@ -165,7 +173,13 @@ def write_edges_file(ulog: ubkgLogging, df: pd.DataFrame, parents: dict, dforgan
                 predicate_uri = 'located_in'
                 out.write(subject + '\t' + predicate_uri + '\t' + str(objcode) + '\n')
 
-def write_nodes_file(ulog: ubkgLogging, df: pd.DataFrame, sab_jkg_dir: str, parents: dict, dforgan: pd.DataFrame, sab:str):
+def write_nodes_file(ulog: ubkgLogging,
+                     df: pd.DataFrame,
+                     sab_jkg_dir: str,
+                     parents: dict,
+                     dforgan: pd.DataFrame,
+                     sab:str,
+                     jout: Jkgout) -> None:
 
     """
     Writes a nodes file in OWLNETS format.
@@ -175,9 +189,10 @@ def write_nodes_file(ulog: ubkgLogging, df: pd.DataFrame, sab_jkg_dir: str, pare
     :param parents: dict of parent nodes
     :param dforgan: DataFrame of organ level node information
     :param sab: sab for annotation
+    :param jout: JKGEN output file object
     """
 
-    node_metadata_path: str = os.path.join(sab_jkg_dir, 'jkg_node.tsv')
+    node_metadata_path: str = os.path.join(sab_jkg_dir, jout.jkg_node)
     ulog.print_and_logger_info('Building: ' + os.path.abspath(node_metadata_path))
 
     node_namespace = sab
@@ -193,7 +208,7 @@ def write_nodes_file(ulog: ubkgLogging, df: pd.DataFrame, sab_jkg_dir: str, pare
         node_id = parents['parent_node']['code']
         node_label = parents['parent_node']['term']
         out.write(
-            node_id + '\t' + node_namespace + '\t' + node_label + '\t' + node_definition + '\t' + node_synonyms + '\t' + node_dbxrefs + '\n')
+            node_id + '\t' + node_label + '\t' + node_definition + '\t' + node_synonyms + '\t' + node_dbxrefs + '\n')
 
         # Define organ level parent node
         node_id = parents['organ_level_parent_node']['code']
@@ -205,7 +220,7 @@ def write_nodes_file(ulog: ubkgLogging, df: pd.DataFrame, sab_jkg_dir: str, pare
         node_id = parents['cell_annotation_parent_node']['code']
         node_label = parents['cell_annotation_parent_node']['term']
         out.write(
-            node_id + '\t' + node_namespace + '\t' + node_label + '\t' + node_definition + '\t' + node_synonyms + '\t' + node_dbxrefs + '\n')
+            node_id + '\t' + node_label + '\t' + node_definition + '\t' + node_synonyms + '\t' + node_dbxrefs + '\n')
 
         # Define organ level nodes.
         # Organ level corresponds to a part of an organ. An organ level compose the entirety of the organ.
@@ -215,7 +230,7 @@ def write_nodes_file(ulog: ubkgLogging, df: pd.DataFrame, sab_jkg_dir: str, pare
             node_dbxrefs = ''
             #node_dbxrefs = row['Organ_ID']
             out.write(
-                str(node_id) + '\t' + node_namespace + '\t' + str(node_label) + '\t' + str(node_definition) + '\t' + str(node_synonyms) + '\t' + str(node_dbxrefs) + '\n')
+                str(node_id) + '\t' + str(node_label) + '\t' + str(node_definition) + '\t' + str(node_synonyms) + '\t' + str(node_dbxrefs) + '\n')
 
         # Define data nodes
         for index, row in df.iterrows():
@@ -313,9 +328,24 @@ def main():
 
     dforgan = encode_organ_level_nodes(df=df_crosswalk, parents=parents, sab=args.sab)
 
+    # Obtain JKGEN output file names.
+    jout = Jkgout(ulog=ulog)
+
     # Generate the OWLNETS files.
-    write_nodes_file(ulog=ulog, df=df_crosswalk, sab_jkg_dir=sab_jkg_dir, parents=parents, dforgan=dforgan, sab=args.sab)
-    write_edges_file(ulog=ulog, df=df_crosswalk,sab_jkg_dir=sab_jkg_dir,parents=parents, dforgan=dforgan, sab=args.sab)
+    write_nodes_file(ulog=ulog,
+                     df=df_crosswalk,
+                     sab_jkg_dir=sab_jkg_dir,
+                     parents=parents,
+                     dforgan=dforgan,
+                     sab=args.sab,
+                     jout=jout)
+
+    write_edges_file(ulog=ulog,
+                     df=df_crosswalk,
+                     sab_jkg_dir=sab_jkg_dir,
+                     parents=parents,
+                     dforgan=dforgan,
+                     jout=jout)
 
 if __name__ == "__main__":
     main()

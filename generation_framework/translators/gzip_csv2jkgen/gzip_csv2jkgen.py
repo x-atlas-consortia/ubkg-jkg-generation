@@ -34,9 +34,11 @@ from classes.ubkg_logging import ubkgLogging
 # config file
 from classes.ubkg_config import ubkgConfigParser
 
-
 # UBKG-JGKG standardization object
 from classes.ubkg_standardizer import ubkgStandardizer
+
+# JKEN output file names
+from classes.jkg_out import Jkgout
 
 def getAPIKey(ulog:ubkgLogging)->str:
 
@@ -152,7 +154,8 @@ def getargs()->argparse.Namespace:
 def write_edges_file(ulog: ubkgLogging, df:pd.DataFrame,
                      sab_jkg_dir: str, has_component_lbl: str,
                      sab:str, ustand:ubkgStandardizer,
-                     uext:ubkgExtract):
+                     uext:ubkgExtract,
+                     jout:Jkgout):
     """
 
     :param ulog: ubkgLogging object
@@ -162,6 +165,7 @@ def write_edges_file(ulog: ubkgLogging, df:pd.DataFrame,
     :param sab: SAB
     :param ustand: ubkgStandardizer object
     :param uext: ubkgExtract object
+    :param jout: JKGEN output file object
     :return:
     """
 
@@ -188,7 +192,7 @@ def write_edges_file(ulog: ubkgLogging, df:pd.DataFrame,
       ontologies such as HuBMAP, we use custom relationship strings.)
     """
 
-    edgelist_path: str = os.path.join(sab_jkg_dir, 'jkg_edge.tsv')
+    edgelist_path: str = os.path.join(sab_jkg_dir, jout.jkg_edge)
     ulog.print_and_logger_info(f'Building: {os.path.abspath(edgelist_path)}')
 
     # Standardize subject column
@@ -225,7 +229,13 @@ def write_edges_file(ulog: ubkgLogging, df:pd.DataFrame,
 
     uext.to_csv_with_progress_bar(df=dfedges, path=edgelist_path, sep='\t', index=False)
 
-def write_nodes_file(ulog: ubkgLogging, df:pd.DataFrame, sab_jkg_dir: str, sab:str, ustand:ubkgStandardizer, uext:ubkgExtract):
+def write_nodes_file(ulog: ubkgLogging,
+                     df:pd.DataFrame,
+                     sab_jkg_dir: str,
+                     sab:str,
+                     ustand:ubkgStandardizer,
+                     uext:ubkgExtract,
+                     jout:Jkgout):
 
     """
     Writes a nodes file in OWLNETS format.
@@ -235,13 +245,14 @@ def write_nodes_file(ulog: ubkgLogging, df:pd.DataFrame, sab_jkg_dir: str, sab:s
     :param sab: SAB,
     :param ustand: ubkgStandardizer object
     :param uext: ubkgExtractor object
+    :param jout: JKGEN output object
     :return:
     """
 
     # NODE METADATA
     # Write a row for each unique concept in the 'code' column.
 
-    node_metadata_path: str = os.path.join(sab_jkg_dir, 'jkg_node.tsv')
+    node_metadata_path: str = os.path.join(sab_jkg_dir, jout.jkg_node)
     ulog.print_and_logger_info(f'Building: {os.path.abspath(node_metadata_path)}')
 
     # Work on a copy
@@ -278,9 +289,6 @@ def write_nodes_file(ulog: ubkgLogging, df:pd.DataFrame, sab_jkg_dir: str, sab:s
     dfout['node_dbxrefs'] = dfout['node_dbxrefs'].replace('nan', 'None').fillna('None')
 
     # Write to file
-    #dfout[['node_id', 'node_label', 'node_definition', 'node_synonyms', 'node_dbxrefs']].to_csv(
-        #node_metadata_path, sep='\t', index=False
-    #)
     dfout= dfout[['node_id', 'node_label', 'node_definition', 'node_synonyms', 'node_dbxrefs']]
     uext.to_csv_with_progress_bar(df=dfout,path=node_metadata_path, sep='\t', index=False)
 
@@ -360,11 +368,26 @@ def main():
 
     # Build OWLNETS text files.
     ustand = ubkgStandardizer(ulog=ulog, repo_root=repo_root)
-    write_edges_file(ulog=ulog, df=dfontology,sab_jkg_dir=sab_jkg_dir,
+
+    # Obtain JKGEN output file names.
+    jout = Jkgout(ulog=ulog)
+
+    write_edges_file(ulog=ulog,
+                     df=dfontology,
+                     sab_jkg_dir=sab_jkg_dir,
                      has_component_lbl=has_component_lbl,
-                     sab=args.sab, ustand=ustand, uext=uext)
-    write_nodes_file(ulog=ulog, df=dfontology,sab_jkg_dir=sab_jkg_dir,
-                     sab=args.sab, ustand=ustand, uext=uext)
+                     sab=args.sab,
+                     ustand=ustand,
+                     uext=uext,
+                     jout=jout)
+
+    write_nodes_file(ulog=ulog,
+                     df=dfontology,
+                     sab_jkg_dir=sab_jkg_dir,
+                     sab=args.sab,
+                     ustand=ustand,
+                     uext=uext,
+                     jout=jout)
 
 
 if __name__ == "__main__":

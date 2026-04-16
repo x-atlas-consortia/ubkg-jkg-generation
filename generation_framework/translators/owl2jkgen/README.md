@@ -20,7 +20,9 @@ The **owl2jkgen** application translates OWL files in the following serializatio
 OWL files in other serializations (e.g., OWL/RDF, NTriples) will require conversion to RDF/XML.
 
 ## Script dependencies
-**owl2jkgen** downloads **owltools**, a JAR file in the _pkt_kg_ directory.
+1. **owl2jkgen** downloads **owltools**, a JAR file in the _pkt_kg_ directory.
+2. The script uses classes and functions from the _/utilities_ path.
+
 
 # Archive
 The _archive_ directory contains earlier versions of scripts.

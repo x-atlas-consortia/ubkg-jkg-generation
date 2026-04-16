@@ -10,10 +10,8 @@ The files map CEDAR template nodes to HuBMAP and SenNet provenance entities.
 - **cedar_entity2jkgen.ini**: Configuration file for script
 
 ### Script File Dependencies
-1. Files in the **utilities** folder:
-   - ubkg_logging.py
-   - ubkg_config.py
-2. An application configuration file named **cedar_entity2jkgen.ini.** 
+1. The script uses classes and functions from the _/utilities_ path.
+2. The script uses an application configuration file named **cedar_entity2jkgen.ini.** 
 3. The following SABs should have been ingested into the ontology CSVs prior to the execution of this script:
    - HUBMAP
    - SENNET

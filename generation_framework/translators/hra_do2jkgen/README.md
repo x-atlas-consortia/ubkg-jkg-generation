@@ -11,18 +11,14 @@ to generate a set of files in JKG Edge/Node (JKGEN) format as described [here](h
    - Generates files in OWLNETS format based on the spreadsheet.
 - **hra_do2jkgen.ini** - INI file with URL links to the HRA cell annotation crosswalk CSVs
 
-
 # Arguments
 1. The SAB for the ontology--e.g., AZ, PAZ
 
 # Dependencies
-1. Files in the **ubkg_utilities** folder:
-   - ubkg_extract.py
-   - ubkg_logging.py
-   - ubkg_config.py
-   - ubkg_parsetools.py
+The script uses:
+1. Classes and functions from the _/utilities_ path. 
 2. An application configuration file named **hra_do2jkgen.ini.**
-3. A cell annotation CSV.
+3. A cell annotation CSV, indicated by the configuration file.
 
 # To run
 1. Modify **hra_do2jkgen.ini**.

@@ -16,9 +16,10 @@ comply with the JKG Edge/Node format, as described [here](https://github.com/cal
 2. The name for the ontology.
 
 # Dependencies
-1. A file named apikey.txt that contains a valid api key for calls to the NCBO BioPortal API. 
-2. An application configuration file named **gzip_csv2jkgen.ini.** Create this file by copying **gzip_csv.ini.example**.
-
+The script uses:
+1. The script uses classes and functions from the _/utilities_ path.
+2. A file named apikey.txt that contains a valid api key for calls to the NCBO BioPortal API. 
+3. An application configuration file named **gzip_csv2jkgen.ini.** Create this file by copying **gzip_csv.ini.example**.
 
 # API key
 To obtain relationship information specific to an ontology, the script 

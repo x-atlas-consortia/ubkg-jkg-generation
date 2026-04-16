@@ -16,16 +16,13 @@ to generate a set of text files that comply with the OWLNETS format, as describe
 1. The SAB for the ontology--i.e., FTU2D
 
 # Dependencies
-1. Files in the **utilities** folder:
-   - ubkg_extract.py
-   - ubkg_logging.py
-   - ubkg_config.py
-   - ubkg_parsetools.py
+The script uses:
+1. Classes and functions from the _/utilities_ path.
 2. An application configuration file named **ftu2d2jkgen.ini.**
 3. The HRA FTU2D CSV.
 
 # To run
-1. Modify **ftu2d2jkg3n.ini**.
+1. Modify **ftu2d2jkgen.ini**.
 2. Configure the **sources.json** file at the generation_framework root to call ftu2d2jkgen.py with the appropriate SAB.
 
 

@@ -30,6 +30,10 @@ from classes.ubkg_config import ubkgConfigParser
 
 # Extraction module
 from classes.ubkg_extract import ubkgExtract
+
+# JKEN output file names
+from classes.jkg_out import Jkgout
+
 # -----------------------------
 
 def download_source_files(cfg: ubkgConfigParser, uext:ubkgExtract, sab_source_dir: str, sab_jkg_dir: str) -> list[str]:
@@ -399,14 +403,21 @@ def get_ensembl_version(ensembl: str) -> str:
     # Obtains the version number from an ENSEMBL ID.
     return ensembl.split('.')[1]
 
-def write_edges_file(ulog: ubkgLogging, uext: ubkgExtract, df: pd.DataFrame, path: str, vs_path: str):
+def write_edges_file(ulog: ubkgLogging,
+                     uext: ubkgExtract,
+                     df: pd.DataFrame,
+                     path: str,
+                     vs_path: str,
+                     jout:Jkgout):
 
     """
     Translates the content of a GTF annotation file to OWLNETS format.
     :param ulog: ubkgLogging object
+    :param uext: ubkgExtract object
     :param df: DataFrame of annotated GTF information.
     :param path: export path of OWLNETS files
     :param vs_path: path to the directory containing OWLNETS files related to the ingestion of the GENCODE_VS ontology
+    :param jout: JKGEN output file manager
     :return:
     """
 
@@ -426,9 +437,12 @@ def write_edges_file(ulog: ubkgLogging, uext: ubkgExtract, df: pd.DataFrame, pat
     # Pandas sets the type of a column for which the first row is null to float.
 
     # Read the node information from GENCODE_VS.
-    df_gencode_vs = get_gencode_vs(ulog=ulog, uext=uext, path=vs_path)
+    df_gencode_vs = get_gencode_vs(ulog=ulog,
+                                   uext=uext,
+                                   path=vs_path,
+                                   jout=jout)
 
-    edgelist_path: str = os.path.join(path, 'OWLNETS_edgelist.txt')
+    edgelist_path: str = os.path.join(path, jout.jkg_edge)
     ulog.print_and_logger_info('Building: ' + os.path.abspath(edgelist_path))
 
     with open(edgelist_path, 'w') as out:
@@ -562,13 +576,17 @@ def write_edges_file(ulog: ubkgLogging, uext: ubkgExtract, df: pd.DataFrame, pat
 
     return
 
-def write_nodes_file(ulog: ubkgLogging, df: pd.DataFrame, path: str):
+def write_nodes_file(ulog: ubkgLogging,
+                     df: pd.DataFrame,
+                     path: str,
+                     jout:Jkgout):
 
     """
     Writes a nodes file in OWLNETS format.
     :param ulog: ubkgLogging object
     :param df: DataFrame of source information
     :param path: output directory
+    :param jout: JKGEN output file manager
     :return:
     """
 
@@ -579,7 +597,7 @@ def write_nodes_file(ulog: ubkgLogging, df: pd.DataFrame, path: str):
     # The Entrez IDs for genes are associated with the gene's transcripts. The Entrez ID is the same for all
     # of a gene's transcripts.
 
-    node_metadata_path: str = os.path.join(path, 'OWLNETS_node_metadata.txt')
+    node_metadata_path: str = os.path.join(path, jout.jkg_node)
     ulog.print_and_logger_info('Building: ' + os.path.abspath(node_metadata_path))
 
     # Get subsets of annotations by feature type.
@@ -769,12 +787,16 @@ def write_relations_file(ulog:ubkgLogging, path: str):
         out.write(relation9_id + '\t' + 'GENCODE' + '\t' + relation9_label + '\t' + '' + '\n')
     return
 
-def get_gencode_vs(ulog: ubkgLogging, uext: ubkgExtract, path: str) -> pd.DataFrame:
+def get_gencode_vs(ulog: ubkgLogging,
+                   uext: ubkgExtract,
+                   path: str,
+                   jout:Jkgout) -> pd.DataFrame:
     """
 
     :param ulog: ubkgLogging
     :param uext: UbkgExtract
     :param path: path to the GENCODE_VS directory in the repository
+    :param jout: JKGEN output file manager
     :return:
     """
 
@@ -782,7 +804,7 @@ def get_gencode_vs(ulog: ubkgLogging, uext: ubkgExtract, path: str) -> pd.DataFr
     # set of assertions.
     # Load the nodes file related to the prior ingestion.
 
-    nodefile = os.path.join(path, 'OWLNETS_node_metadata.txt')
+    nodefile = os.path.join(path, jout.jkg_node)
 
     try:
         return uext.read_csv_with_progress_bar(nodefile, sep='\t')
@@ -839,8 +861,20 @@ def main():
 
     df_annotation = df_annotation.replace(np.nan, '')
 
-    write_edges_file(ulog=ulog, uext=uext, df=df_annotation, path=sab_jkg_dir, vs_path=gencode_vs_dir)
-    write_nodes_file(ulog=ulog, df=df_annotation, path=sab_jkg_dir)
+    # Get the JKGEN output file names.
+    jout = Jkgout(ulog=ulog)
+
+    write_edges_file(ulog=ulog,
+                     uext=uext,
+                     df=df_annotation,
+                     path=sab_jkg_dir,
+                     vs_path=gencode_vs_dir,
+                     jout=jout)
+
+    write_nodes_file(ulog=ulog,
+                     df=df_annotation,
+                     path=sab_jkg_dir,
+                     jout=jout)
     #write_relations_file(ulog=ulog, path=sab_jkg_dir)
 
 if __name__ == "__main__":

@@ -18,11 +18,8 @@ The SimpleKnowledge spreadsheets that **simpleknowledge2jkgen.py** uses are loca
 1. The SAB for the ontology--e.g., HUBMAP, SENNET, AZ
 
 # Dependencies
-1. Files in the **utilities** folder:
-   - ubkg_extract.py
-   - ubkg_logging.py
-   - ubkg_config.py
-   - ubkg_standardizer.py
+The script uses:
+1. Classes and functions from the _/utilities_ path.
 2. An application configuration file named **simpleknowledge2jkjgen.ini.**
 3. Spreadsheet in SimpleKnowledge format stored either as Google Sheets documents or in the SimpleKnowledge repo.
 

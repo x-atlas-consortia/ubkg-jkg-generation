@@ -5,7 +5,6 @@
 The scripts in this folder convert a set of files in UBKG edges/node (UBKGEN) format
 to the JKG Edge/node (JKEN) format
 
-
 # Content
 - **ubkden2jkgen.py** - Does the following:
    - Reads a configuration file.
@@ -16,11 +15,9 @@ to the JKG Edge/node (JKEN) format
 - **ubkgen2jkgen.ini.example** - Annotated example of an ini file.
 
 # Dependencies
-1. Files in the **ubkg_utilities** folder:
-   - ubkg_config.py
-   - ubkg_logging.py
+The script uses:
+1. Classes and functions from the _/utilities_ path.
 2. An application configuration file named **ubkgen2jkgen.ini.**
-3. The directory specified in the ini file should contain either a set of files in edges/node format or a single OWL file.
 
 # To run
 1. Copy and modify **ubkgen2jkgen.ini.example** to a file named **edges_nodes.ini** in the current directory.

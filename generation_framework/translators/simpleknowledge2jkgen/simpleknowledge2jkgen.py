@@ -44,7 +44,9 @@ sys.path.append(fpath)
 # argparser
 from classes.ubkg_args import RawTextArgumentDefaultsHelpFormatter
 
+# code and relationship standardizer
 from classes.ubkg_standardizer import ubkgStandardizer
+
 # Extraction module
 from classes.ubkg_extract import ubkgExtract
 
@@ -54,6 +56,9 @@ from classes.ubkg_logging import ubkgLogging
 
 # config file
 from classes.ubkg_config import ubkgConfigParser
+
+# JKEN output file names
+from classes.jkg_out import Jkgout
 
 def download_source_file(cfg: ubkgConfigParser, ulog: ubkgLogging, uext: ubkgExtract, sab: str, sab_source_dir: str, sab_jkg_dir: str) -> str:
 
@@ -88,7 +93,12 @@ def download_source_file(cfg: ubkgConfigParser, ulog: ubkgLogging, uext: ubkgExt
 
     return filepath
 
-def write_edges_file(dfsk: pd.DataFrame, out_dir: str, ulog: ubkgLogging, ustand: ubkgStandardizer, sab:str):
+def write_edges_file(dfsk: pd.DataFrame,
+                     out_dir: str,
+                     ulog: ubkgLogging,
+                     ustand: ubkgStandardizer,
+                     sab:str,
+                     jout:Jkgout):
 
     """
     Writes an edges file in OWLNETS format.
@@ -97,10 +107,11 @@ def write_edges_file(dfsk: pd.DataFrame, out_dir: str, ulog: ubkgLogging, ustand
     :param ulog: logging object
     :param ustand: UbkgStandardizer object
     :param sab: SAB
+    :param jout: JKGEN output file manager
     :return:
     """
 
-    edgelist_path: str = os.path.join(out_dir, 'OWLNETS_edgelist.txt')
+    edgelist_path: str = os.path.join(out_dir, jout.jkg_edge)
     ulog.print_and_logger_info('Building: ' + os.path.abspath(edgelist_path))
 
     # List of edge rows.
@@ -162,12 +173,16 @@ def write_edges_file(dfsk: pd.DataFrame, out_dir: str, ulog: ubkgLogging, ustand
     # Write to file
     dfedges.to_csv(edgelist_path, sep='\t', index=False, header=False)
 
-def write_nodes_file(dfsk: pd.DataFrame, out_dir: str, ulog: ubkgLogging):
+def write_nodes_file(dfsk: pd.DataFrame,
+                     out_dir: str,
+                     ulog: ubkgLogging,
+                     jout: Jkgout):
 
     """
     Writes a nodes file in OWLNETS format.
     :param dfsk: DataFrame from a SimpleKnowledge spreadsheet
     :param out_dir: output directory
+    :param jout: JKGEN output file manager
     :param ulog: logging object
     :return:
     """
@@ -175,7 +190,7 @@ def write_nodes_file(dfsk: pd.DataFrame, out_dir: str, ulog: ubkgLogging):
     # NODE METADATA
     # Write a row for each unique concept in the 'code' column.
 
-    node_metadata_path: str = os.path.join(out_dir, 'OWLNETS_node_metadata.txt')
+    node_metadata_path: str = os.path.join(out_dir, jout.jkg_node)
     ulog.print_and_logger_info('Building: ' + os.path.abspath(node_metadata_path))
 
     # Work on a copy to avoid modifying the original
@@ -257,9 +272,21 @@ def main():
     # Load SimpleKnowledge spreadsheet into a DataFrame.
     df_simpleknowledge = pd.read_excel(sk_file)
 
+    # Get JKGEN output file names.
+    jout = Jkgout(ulog=ulog)
+
     # Generate the OWLNETS files.
-    write_edges_file(dfsk=df_simpleknowledge,out_dir=sab_jkg_dir, ulog=ulog, ustand=ustand, sab=args.sab)
-    write_nodes_file(dfsk=df_simpleknowledge,out_dir=sab_jkg_dir, ulog=ulog)
+    write_edges_file(dfsk=df_simpleknowledge,
+                     out_dir=sab_jkg_dir,
+                     ulog=ulog,
+                     ustand=ustand,
+                     sab=args.sab,
+                     jout=jout)
+
+    write_nodes_file(dfsk=df_simpleknowledge,
+                     out_dir=sab_jkg_dir,
+                     ulog=ulog,
+                     jout=jout)
 
 if __name__ == "__main__":
     main()
