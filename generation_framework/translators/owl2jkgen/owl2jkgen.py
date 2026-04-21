@@ -942,8 +942,8 @@ def write_nodes_file(sab: str,
     # Vectorized code standardization
     dfmeta['node_id'] = ustand.standardize_code(x=dfmeta['node_id'], sab=sab)
 
-    header = ['node_id', 'node_label', 'node_definition', 'node_synonyms', 'node_dbxrefs']
     dfmeta = dfmeta[['node_id', 'label', 'definitions', 'synonyms', 'dbxrefs']]
+    dfmeta.columns = ['node_id', 'node_label', 'node_definition', 'node_synonyms', 'node_dbxrefs']
     uextractor.to_csv_with_progress_bar(df=dfmeta, path=node_metadata_filename, sep='\t', index=False)
 
 def do_file_housekeeping(ulog: ubkgLogging, args: argparse.Namespace):
