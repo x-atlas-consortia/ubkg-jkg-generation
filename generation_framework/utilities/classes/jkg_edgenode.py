@@ -55,6 +55,7 @@ class Jkgedgenode:
         self.edges = self._load_file(filetype='edge')
         self.nodes = self._load_file(filetype='node')
 
+
     def get_filename(self, filetype: str) -> str:
         """
         Source files can be named in various ways. For example, the node file can be named:
@@ -69,11 +70,11 @@ class Jkgedgenode:
         :return: the name of the edge or node file
         """
         if filetype == 'node':
-            key = 'nodefilenames'
+            key = 'jkg_node'
         else:
-            key = 'edgefilenames'
+            key = 'jkg_edge'
 
-        file_names = self.cfg.get_list(section='edgenodefiles', key=key)
+        file_names = self.cfg.get_list(section='jkg_out', key=key)
 
         for f in file_names:
             if os.path.exists(os.path.join(self.jkg_path, f)):
@@ -89,10 +90,11 @@ class Jkgedgenode:
         :param filetype: the type of file (edge or node)
         """
 
-        edgefilename = self.get_filename(filetype=filetype)
-        edgefilepath = os.path.join(self.jkg_path, edgefilename)
-        self.log.print_and_logger_info(f'Loading file: {edgefilepath}')
-        return self.uextract.read_csv_with_progress_bar(path=edgefilepath, sep='\t')
+        filename = self.get_filename(filetype=filetype)
+        filepath = os.path.join(self.jkg_path, filename)
+        self.log.print_and_logger_info(f'Loading JKG EN {filetype} file: {filepath}')
+        df= self.uextract.read_csv_with_progress_bar(path=filepath, sep='\t')
+        return df
 
         # If using Polars instead of Pandas
         #return self.uextract.polars_scan_csv_with_timer(filename=nodefilepath, separator='\t')

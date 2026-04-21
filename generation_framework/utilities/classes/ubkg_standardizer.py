@@ -129,7 +129,7 @@ class ubkgStandardizer:
         In addition, the hash and backslash figure are delimiters in URIs--e.g., ...#/SAB_CODE
         """
 
-        utime = UbkgTimer(f'Standardizing codes for {x.name}')
+        #utime = UbkgTimer(f'Standardizing codes for {x.name}')
 
         # Start by reformatting as SAB<space>CODE. The exclusive delimiter (colon) will be added at the end of this
         # script.
@@ -160,8 +160,8 @@ class ubkgStandardizer:
         ret = ret.str.replace('.*SNOMED.*\s', 'SNOMEDCT_US:', regex=True)
 
         # FMA
-        ret = ret.str.replace('^fma', 'FMA:', regex=True)
-
+        ret = ret.str.replace(r'^fma ', 'FMA:', regex=True)  # fma 59772 → FMA:59772
+        ret = ret.str.replace(r'^fma(?! )', 'FMA:', regex=True)  # fma59772 → FMA:59772
         # HGNC
         # Note that non-UMLS sets of assertions may also refer to HGNC codes differently.
         # See below.
@@ -337,7 +337,7 @@ class ubkgStandardizer:
             else:
                 ret[idx] = x
 
-        utime.stop()
+        #utime.stop()
         return ret
 
     def standardize_relationships(self, predicate: pd.Series) -> pd.Series:

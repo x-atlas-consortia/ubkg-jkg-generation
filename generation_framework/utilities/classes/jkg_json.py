@@ -6,6 +6,7 @@ Class that manages the JKG JSON.
 import os
 import ijson
 import polars as pl
+import pandas as pd
 from tqdm import tqdm
 
 # Centralized logging object
@@ -89,13 +90,17 @@ class Jkgjson:
     def _load_jkg_json(self, max_nodes: int = None, max_rels: int = None):
 
         """
-        Loads the JKG JSON file into two Polars dataframes.
+        Loads the JKG JSON file into two Pandas dataframes.
         :param max_nodes: maximum number of nodes to load. None loads all nodes.
         :param max_rels: maximum number of rels to load. None loads all rels.
         Sets both:
         - self.jkg_nodes: one row per node, with 'labels' as a list column and properties flattened as columns
         - self.jkg_rels: one row per relationship, with start/end/properties flattened as columns
         """
+
+        # Treat 0 or None as "load all"
+        max_nodes = None if not max_nodes else max_nodes
+        max_rels = None if not max_rels else max_rels
 
         if max_nodes is not None and max_rels is not None:
             self.log.print_and_logger_info(f'Loading only {max_nodes} nodes and {max_rels} rels from {self.jkg_json_filename}.')
@@ -184,15 +189,18 @@ class Jkgjson:
 
                             builder = None
 
-            utimer = UbkgTimer(display_msg="Loading nodes DataFrame")
-            self.jkg_nodes = pl.DataFrame(node_rows, infer_schema_length=len(node_rows))
+            utimer = UbkgTimer(display_msg="Loading JKG JSON nodes")
+            #self.jkg_nodes = pl.DataFrame(node_rows, infer_schema_length=len(node_rows))
+            self.jkg_nodes = pd.DataFrame(node_rows)
             utimer.stop()
 
-            utimer = UbkgTimer(display_msg="Loading rels DataFrame")
-            self.jkg_rels = pl.DataFrame(rel_rows, infer_schema_length=len(rel_rows))
+            utimer = UbkgTimer(display_msg="Loading JKG JSON rels")
+            #self.jkg_rels = pl.DataFrame(rel_rows, infer_schema_length=len(rel_rows))
+            self.jkg_rels=pd.DataFrame(rel_rows)
             utimer.stop()
 
-    def __init__(self, log: ubkgLogging, cfg: ubkgConfigParser):
+    def __init__(self, log: ubkgLogging, cfg: ubkgConfigParser,
+                 max_nodes: int=0, max_rels: int=0) -> None:
         self.log = log
         self.cfg = cfg
 
@@ -201,8 +209,8 @@ class Jkgjson:
         self.jkg_json_filename = cfg.get_value(section='jkg_json',key='jkg_json_filename')
         self.jkg_schema_filename = cfg.get_value(section='jkg_json',key='jkg_schema_filename')
 
-        # Load the nodes array from the JKG JSON into a Polars dataframe.
-        self._load_jkg_json(max_nodes=1000, max_rels=1000)
+        # Load the nodes array from the JKG JSON into Polars dataframes.
+        self._load_jkg_json(max_nodes=max_nodes, max_rels=max_rels)
 
 
 
