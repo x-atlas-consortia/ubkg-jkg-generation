@@ -46,6 +46,37 @@ class Sabjkgimport:
         # Load the nodes and rels arrays from the JKG JSON.
         self.jkgjson = Jkgjson(log=ulog, cfg=cfg)
 
+        # Get "coderel" rel objects from the flattened rels array of the JKG JSON.
+        if self.jkgjson.rels.empty:
+            self.jkg_json_coderels = pd.DataFrame()
+        else:
+            self.jkg_json_coderels = self.jkgjson.rels[self.jkgjson.rels['label'] == 'CODE']
+
+        """
+        Get source node objects from the flattened nodes array of the JKG JSON.
+        This requires some Pandas trickery.
+        Source nodes have a 'labels' column that is a string list--e.g.,
+        "labels: ["Source"]
+        So:
+        1. Cast as string (required for some mystery reason)
+        2. Apply ast's literal_eval to convert to a list of strings
+        3. Check the first value. 
+        """
+        if self.jkgjson.nodes.empty:
+            self.jkg_json_sources = pd.DataFrame()
+            self.jkg_json_not_sources = pd.DataFrame()
+        else:
+            utimer = UbkgTimer(display_msg="Separating Source node objects")
+            self.jkg_json_sources = self.jkgjson.nodes[self.jkgjson.nodes['labels']
+                                                       .astype(str)
+                                                       .apply(ast.literal_eval)
+                                                       .str[0] == "Source"]
+            self.jkg_json_not_sources = self.jkgjson.nodes[self.jkgjson.nodes['labels']
+                                                       .astype(str)
+                                                       .apply(ast.literal_eval)
+                                                       .str[0] != "Source"]
+            utimer.stop()
+
         # Load the JKGEN edge and node files.
         self.jkgen_dir = os.path.join(repo_root, cfg.get_value(section="directories", key="sab_jkg_dir"), sab)
         self.jkgjson_dir = os.path.join(repo_root, cfg.get_value(section="jkg_json", key="jkg_json_dir"))
@@ -73,8 +104,6 @@ class Sabjkgimport:
         self.new_jkg_json_coderels = []
         self.new_jkg_json_rels = []
 
-        # Get "coderel" objects from the flattened rels array of the JKG JSON.
-        self.jkg_json_coderels = self.jkgjson.jkg_rels[self.jkgjson.jkg_rels['label'] == 'CODE']
 
         # Build lists of components for the new JKG JSON nodes array,
         # separated by type.
@@ -112,7 +141,7 @@ class Sabjkgimport:
 
         return dictsource
 
-    def _new_node_concept(self, cui:str, row:pd.Series) -> dict:
+    def build_new_concept_node(self, cui:str, row:pd.Series) -> dict:
         """
         Builds an object for the JKG JSON nodes array from a JKGEN node.
         :param cui: CUI for the new JKGEN node's concept
@@ -120,6 +149,8 @@ class Sabjkgimport:
         :return: dict for the Concept label
         """
 
+        # The only label for a new Concept node from a JKGEN node
+        # is "Concept".
         return {
             "labels": ["Concept"],
             "properties_id": cui,
@@ -127,7 +158,7 @@ class Sabjkgimport:
             "properties_sab": self.sab.upper()
         }
 
-    def _new_node_terms(self, row:pd.Series) -> list[dict]:
+    def build_new_term_nodes(self, row:pd.Series) -> list[dict]:
         """
         Builds Term objects for the JKG JSON nodes array from a JKGEN node.
         :param row: row of node information
@@ -137,10 +168,12 @@ class Sabjkgimport:
         """
         listret = []
 
+        # Keys with the "properties_" index will eventually
+        # be "unflattened" and moved to a nested dict.
         # Term label node for new node
         new_node_term_pref = {
             "labels": ["Term"],
-            "properties_id": row["label"]
+            "properties_id": row["node_label"]
         }
         listret.append(new_node_term_pref)
 
@@ -155,7 +188,7 @@ class Sabjkgimport:
 
         return listret
 
-    def _new_node_coderels(self, cui:str, row:pd.Series)-> list[dict]:
+    def build_new_coderels(self, cui:str, row:pd.Series)-> list[dict]:
         """
             Builds a list of objects for the JKG JSON rels array from a JKGEN node.
 
@@ -164,9 +197,18 @@ class Sabjkgimport:
             :return: list of rel objects (dicts) for:
                  - the node
                  - the node's synonyms
+
+            Development note:
+            This is called in an external routine that loops over the
+            rows in a DataFrame. This routine cannot be vectorized because
+            the external routine uses conditional logic (the "business
+            rule") to identify the value of the cui parameter.
         """
 
-        list_new_node_coderels = []
+        # Keys with prefixes "properties_", "start_", and "end_" will
+        # eventually be "unflattened" into nested dicts.
+
+        list_new_coderels = []
 
         # coderel for node label
         start_id = cui
@@ -180,11 +222,26 @@ class Sabjkgimport:
         # node_dbxrefs column whose values correspond to node properties.
         # Add these with a "properties_" prefix to indicate that they will
         # be in the eventual nested properties object.
-        base_cols = {'node_id', 'node_label', 'node_definition', 'node_synonyms', 'node_dbxref', 'cui'}
+        base_cols = {'node_id',
+                     'node_label',
+                     'node_definition',
+                     'node_synonyms',
+                     'node_dbxrefs',
+                     'cui',
+                     # Exclude coderel merge artifacts:
+                     'start_id',
+                     'end_id',
+                     'label',
+                     'properties_sab',
+                     'properties_def',
+                     'properties_tty',
+                     'properties_codeid',
+                     }
         optional_properties = {f"properties_{col}": row[col]
                                for col in row.index if col not in base_cols}
 
-        new_node_coderel_pref = {
+        # Build using the packing operator for optional properties.
+        new_coderel_pref = {
             "labels": ["CODE"],
             "start_id": start_id,
             "end_id": end_id,
@@ -194,7 +251,7 @@ class Sabjkgimport:
             "properties_tty": properties_tty,
             **optional_properties
         }
-        list_new_node_coderels.append(new_node_coderel_pref)
+        list_new_coderels.append(new_coderel_pref)
 
         # Add coderels for new node's synonyms.
         # Synonyms do not have definitions or node properties.
@@ -203,7 +260,7 @@ class Sabjkgimport:
             properties_tty = 'SY'
             # Do not copy the definition to synonym coderels
             properties_def = ""
-            new_node_coderel_pref = {
+            new_coderel_syn = {
                 "labels": ["CODE"],
                 "start_id": start_id,
                 "end_id": end_id,
@@ -212,9 +269,9 @@ class Sabjkgimport:
                 "properties_codeid": properties_codeid,
                 "properties_tty": properties_tty,
             }
-            list_new_node_coderels.append(new_node_coderel_pref)
+            list_new_coderels.append(new_coderel_syn)
 
-        return list_new_node_coderels
+        return list_new_coderels
 
     def _parse_cui_list(self, val):
         """Parse a cui value that may be a list string, empty list string, or NaN."""
@@ -516,16 +573,20 @@ class Sabjkgimport:
            b. Group by node_id and collect CUIs into lists.
         """
         # 4a.
-        df_other = (df_exploded.merge(self.jkg_json_coderels,
-                                          how='left',
+        if self.jkg_json_coderels.empty:
+            df_other = df_exploded
+            other_map = {}
+        else:
+            df_other = (df_exploded.merge(self.jkg_json_coderels,
+                                              how='left',
                                           left_on='node_dbxrefs',
                                           right_on='properties_codeid').
                     rename(columns={'node_label_x': 'node_label'}))
         # 4b.
-        other_map = (
-            df_other.groupby('node_id')['start_id']
-            .apply(lambda x: x.dropna().unique().tolist())
-        )
+            other_map = (
+                df_other.groupby('node_id')['start_id']
+                .apply(lambda x: x.dropna().unique().tolist())
+            )
 
         """
         5. Select CUI per node_id. Select the first CUI from lists 
@@ -564,7 +625,11 @@ class Sabjkgimport:
         1. Merge against the coderels frame.
         2. Restore the "label" column.
         """
-        dfjkgen_new_nodes = ((dfjkgen_nodes.merge(self.jkg_json_coderels,
+
+        if self.jkg_json_coderels.empty:
+            dfjkgen_new_nodes = dfjkgen_nodes.copy()
+        else:
+            dfjkgen_new_nodes = ((dfjkgen_nodes.merge(self.jkg_json_coderels,
                                                   how='left',
                                                   left_on='node_id',
                                                   right_on='properties_codeid',
@@ -573,12 +638,12 @@ class Sabjkgimport:
                              .drop(columns=['_merge', 'properties_codeid'])
                              .rename(columns={'node_label_x': 'node_label'}))
 
-
         # Filter out nodes that only have node_id in the node file.
-        dfjkgen_new_nodes = dfjkgen_new_nodes[
+
+        dfjkgen_new_nodes = (dfjkgen_new_nodes[
             dfjkgen_new_nodes['node_label'].notna() &
             (dfjkgen_new_nodes['node_label'].str.strip() != '')
-            ]
+            ].drop_duplicates(subset=['node_label','node_id']))
 
         """
         For each new node, 
@@ -617,10 +682,9 @@ class Sabjkgimport:
         # Term nodes
         list_new_node_terms = []
         # coderel rels
-        list_new_node_coderels = []
+        list_new_coderels = []
 
-
-        for index, row in tqdm(dfjkgen_new_nodes.iterrows(), total=dfjkgen_new_nodes.shape[0]):
+        for index, row in tqdm(dfjkgen_new_nodes.iterrows(), total=dfjkgen_new_nodes.shape[0], desc="Building node objects"):
 
             # Get the CUI for new node's Concept, based on dbxref.
             new_node_cui = row['cui']
@@ -634,20 +698,21 @@ class Sabjkgimport:
 
             # If the CUI is new, create a new Concept label node.
             if new_node_cui == self._mint_new_cui(code=row['node_id']):
-                list_new_node_concepts.append(self._new_node_concept(cui=new_node_cui, row=row))
+                list_new_node_concepts.append(self.build_new_concept_node(cui=new_node_cui, row=row))
 
             # Term label nodes for the new node and its synonyms
-            list_new_node_terms = list_new_node_terms + self._new_node_terms(row=row)
+            list_new_node_terms = list_new_node_terms + self.build_new_term_nodes(row=row)
+
 
             # List of coderels for the node and its synonyms.
-            list_new_node_coderels = list_new_node_coderels + self._new_node_coderels(cui=new_node_cui, row=row)
+            list_new_coderels = list_new_coderels + self.build_new_coderels(cui=new_node_cui, row=row)
 
         # Collect nodes and rels.
         # Convert the source node to a list for later list addition.
         self.new_jkg_json_node_sources = [new_node_source]
         self.new_jkg_json_node_concepts = list_new_node_concepts
         self.new_jkg_json_node_terms = list_new_node_terms
-        self.new_jkg_json_coderels = list_new_node_coderels
+        self.new_jkg_json_coderels = list_new_coderels
 
     def _build_jkgjson_for_jkgen_edges(self):
         """
@@ -671,12 +736,15 @@ class Sabjkgimport:
 
         # 1
         dfsubject = self.jkgen.edges.copy()
-        dfsubject = (dfsubject.merge(self.jkg_json_coderels,
+        if not self.jkg_json_coderels.empty:
+            dfsubject = (dfsubject.merge(self.jkg_json_coderels,
                                     how='left',
                                     left_on='subject',
                                     right_on='properties_codeid')
                      .rename(columns = {'node_label_x': 'node_label',
                                         'start_id': 'original_cui',}))
+        else:
+            dfsubject['original_cui'] = pd.NA  # ensure column exists for fillna below
 
         # 2
         dfsubject = (dfsubject.merge(dfnewcoderels,
@@ -699,12 +767,16 @@ class Sabjkgimport:
         """
         # 1
         dfobject = self.jkgen.edges.copy()
-        dfobject = (dfobject.merge(self.jkg_json_coderels,
+        if not self.jkg_json_coderels.empty:
+            dfobject = (dfobject.merge(self.jkg_json_coderels,
                                      how='left',
                                      left_on='object',
                                      right_on='properties_codeid')
                      .rename(columns={'node_label_x': 'node_label',
                                       'start_id': 'original_cui',}))
+        else:
+            dfobject['original_cui'] = pd.NA  # ensure column exists for fillna below
+
         # 2
         dfobject = (dfobject.merge(dfnewcoderels,
                                      how='left',
@@ -724,37 +796,23 @@ class Sabjkgimport:
         # The edge file has a variable number of columns that
         # represent edge properties. Include these as flattened
         # members of a "properties" object.
-        base_cols = {'subject', 'predicate', 'object'}
+
+        # Exclude columns that either will be translated or that
+        # are artifacts of analysis.
+        base_cols = {'subject', 'predicate', 'object', 'subject_cui', 'object_cui'}
+
         extra_cols = [c for c in df_edges.columns if c not in base_cols]
 
-        # Vectorized build.
-        self.jkg_json_rels = df_edges.apply(lambda row: {
-            "labels": row['predicate'],
+        # Vectorized build, using packing operator.
+        # Note that the key is "label", not "labels".
+        self.new_jkg_json_rels = df_edges.apply(lambda row: {
+            "label": row['predicate'],
             "start_id": row['subject_cui'],
             "end_id": row['object_cui'],
             "properties_sab": self.sab,
             **{f"properties_{c}": row[c] for c in extra_cols}
         }, axis=1).tolist()
 
-    def _write_new_jkgjson_arrays(self):
-
-        # Write out nodes and rels arrays for the new JKGEN nodes.
-
-        self.ulog.print_and_logger_info('Writing new JKG JSON nodes array')
-        f = os.path.join(self.jkgen_dir, 'nodes.json')
-        with open(file=f, mode='w', encoding='utf-8') as f:
-            json.dump(self.new_jkg_json_nodes, f)
-
-        self.ulog.print_and_logger_info('Writing new JKG JSON rels array')
-        f = os.path.join(self.jkgen_dir, 'rels.json')
-        with open(file=f, mode='w', encoding='utf-8') as f:
-            json.dump(self.new_jkg_json_rels, f)
-
-        self.ulog.print_and_logger_info('Writing new JKG JSON coderels array')
-        f = os.path.join(self.jkgen_dir, 'coderels.json')
-        listallrels = self.new_jkg_json_coderels
-        with open(file=f, mode='w', encoding='utf-8') as f:
-            json.dump(listallrels, f)
 
     def _unflatten_objects(self, list_flat_objects: list) -> list:
         """
@@ -765,76 +823,140 @@ class Sabjkgimport:
 
         """
 
-        list_nested_objects = []
+        list_unflat_objects = []
         for flat_object in list_flat_objects:
-            # Move all key/value pairs for which the key starts with "properties_" to a
-            # dict.
-            nested = {k.removeprefix('properties_'): v
-                      for k, v in flat_object.items() if k.startswith('properties_')}
-            rel = {k: v for k, v in flat_object.items() if not k.startswith('properties_')}
-            rel['properties'] = nested
-            list_nested_objects.append(rel)
 
-        return list_nested_objects
+
+            # Move all key/value pairs for which the key starts with "properties_",
+            # "start_", or "end_to nested dicts.
+            properties = {k.removeprefix('properties_'): v
+                      for k, v in flat_object.items() if k.startswith('properties_')}
+            start = {k.removeprefix('start_'): v
+                          for k, v in flat_object.items() if k.startswith('start_')}
+            end = {k.removeprefix('end_'): v
+                     for k, v in flat_object.items() if k.startswith('end_')}
+            unflat_object = {k: v for k, v in flat_object.items()
+                             if not k.startswith(('properties_', 'start_', 'end_'))}
+            if properties != {}:
+                unflat_object['properties'] = properties
+            if start != {}:
+                unflat_object['start'] = {"properties": start}
+            if end != {}:
+                unflat_object['end'] = {"properties": end}
+
+            list_unflat_objects.append(unflat_object)
+
+        return list_unflat_objects
 
     def _build_new_jkgjson(self):
         """
         Adds nodes, coderels, and rels lists to the existing JKG JSON.
 
         """
-        self.ulog.print_and_logger_info('Building new JKG JSON')
+        self.ulog.print_and_logger_info('Building new JKG JSON file.')
 
         # BUILD rels ARRAY
-
-        # Convert the DataFrame of flattened JKG JSON rels into a list of dicts.
-        list_flat_jkg_json_rels = self.jkgjson.jkg_rels.to_dict(orient='records')
+        self.ulog.print_and_logger_info('Building rels array.')
+        # Convert the DataFrame of flattened original JKG JSON rels into a list of dicts.
+        list_flat_jkg_json_rels = self.jkgjson.rels.to_dict(orient='records')
         if len(list_flat_jkg_json_rels) == 0:
             list_flat_jkg_json_rels = []
 
-        # Combine the list of JKG JSON rels with the lists of new JGKEN rels.
+        # Combine the list of flattened original JKG JSON rels with the lists of
+        # flattened new JGKEN rels and coderels.
         list_flat_rels = list_flat_jkg_json_rels + self.new_jkg_json_rels + self.new_jkg_json_coderels
 
-        # Convert the flattened list to a list of nested JSONs.
+        # "Unflatten" the elements of the combined flattend list--i.e.,
+        # convert flattened objects to nested, or "unflattened" dicts.
         list_nested_jkg_json_rels = self._unflatten_objects(list_flat_objects=list_flat_rels)
 
         # BUILD nodes ARRAY
+        # The new sources node for the SAB is already nested.
+        # It is necessary to insert the new sources node separately.
 
-        # Convert the DataFrame of flattened JKG JSON nodes into a list of dicts.
-        list_flat_jkg_json_nodes = self.jkgjson.jkg_nodes.to_dict(orient='records')
-        if len(list_flat_jkg_json_nodes) == 0:
-            list_flat_jkg_json_nodes = []
+        self.ulog.print_and_logger_info('Building nodes array')
+        # Convert the DataFrame of flattened original JKG JSON source nodes into a list of dicts.
+        list_flat_jkg_json_sources = self.jkg_json_sources.to_dict(orient='records')
+        if len(list_flat_jkg_json_sources) == 0:
+            list_flat_jkg_json_sources = []
 
-        # Convert the flattened list to a list of nested JSONs.
-        list_nested_jkg_json_nodes = self._unflatten_objects(list_flat_objects=list_flat_jkg_json_nodes)
+        # Convert the DataFrame of flattened original JKG JSON "not source" nodes into a list of dicts.
+        list_flat_jkg_json_not_sources = self.jkg_json_not_sources.to_dict(orient='records')
+        if len(list_flat_jkg_json_not_sources) == 0:
+            list_flat_jkg_json_not_sources = []
 
-        # Add the source node to the list of nested JSONs.
-        list_nested_jkg_json_nodes = list_nested_jkg_json_nodes + self.new_jkg_json_node_sources
 
-        # Unflatten the lists of new JKGGEN concept and term nodes.
-        list_nested_jkg_json_concept_nodes = self._unflatten_objects(list_flat_objects=self.new_jkg_json_node_concepts)
-        list_nested_jkg_json_term_nodes = self._unflatten_objects(list_flat_objects=self.new_jkg_json_node_terms)
+        # Unflatten the flattened list of original JKG JSON source nodes.
+        list_nested_jkg_json_source_nodes = self._unflatten_objects(list_flat_objects=list_flat_jkg_json_sources)
+        # Unflatten the flattened list of original JKG JSON nodes other than source.
+        list_nested_jkg_json_not_source_nodes = self._unflatten_objects(list_flat_objects=list_flat_jkg_json_not_sources)
 
-        # Combine all nested nodes.
-        list_nested_jkg_json_nodes = (list_nested_jkg_json_nodes +
-                                      list_nested_jkg_json_concept_nodes +
-                                      list_nested_jkg_json_term_nodes)
+        # Unflatten the flattened lists of new JKGGEN concept and term nodes.
+        list_nested_new_jkg_json_concept_nodes = self._unflatten_objects(list_flat_objects=self.new_jkg_json_node_concepts)
+        list_nested_new_jkg_json_term_nodes = self._unflatten_objects(list_flat_objects=self.new_jkg_json_node_terms)
 
-        # Write nodes and rels arrays to new JKG JSON.
+        """
+        Combine all unflattened nodes in order:
+        1. Original JKG JSON source nodes
+        2. New JKG JSON source node
+        3. Original JKG JSON non-source nodes:
+           a. Node_label
+           b. Rel_label
+           c. Concept
+           d. Term
+        4. New JKG JSON Concept nodes
+        5. New JKG JSON Term nodes
+        """
+        list_nested_jkg_json_nodes = (list_nested_jkg_json_source_nodes +
+                                      self.new_jkg_json_node_sources +
+                                      list_nested_jkg_json_not_source_nodes +
+                                      list_nested_new_jkg_json_concept_nodes +
+                                      list_nested_new_jkg_json_term_nodes)
+
+        # WRITE nodes AND rels ARRAYS TO A NEW JKG JSON.
 
         outpath = os.path.join(self.jkgjson_dir, 'new_jkg.json')
 
-        # Use a JSON writer object to build the new version of JKGJSON.
+        # Use a JsonWriter object to build the new version of JKGJSON.
         jw = JsonWriter(outpath=outpath)
+        # Start the JSON.
         jw.start_json()
+
+        # Write the nodes array.
         jw.start_list(keyname='nodes')
         jw.write_list(list_name='nodes', list_content=list_nested_jkg_json_nodes)
         jw.end_list()
+
+        # Add delimiters.
         jw.write_comma()
         jw.write_line_feed()
+
+        # Write the rels array.
         jw.start_list(keyname='rels')
         jw.write_list(list_name='rels', list_content=list_nested_jkg_json_rels)
         jw.end_list()
+
+        # End the JSON.
         jw.end_json()
 
+    def _write_new_jkgjson_arrays(self):
 
+            # Write out nodes and rels arrays for the new JKGEN nodes.
+            # Used for debugging.
+
+            self.ulog.print_and_logger_info('Writing new JKG JSON nodes array')
+            f = os.path.join(self.jkgen_dir, 'nodes.json')
+            with open(file=f, mode='w', encoding='utf-8') as f:
+                json.dump(self.new_jkg_json_nodes, f)
+
+            self.ulog.print_and_logger_info('Writing new JKG JSON rels array')
+            f = os.path.join(self.jkgen_dir, 'rels.json')
+            with open(file=f, mode='w', encoding='utf-8') as f:
+                json.dump(self.new_jkg_json_rels, f)
+
+            self.ulog.print_and_logger_info('Writing new JKG JSON coderels array')
+            f = os.path.join(self.jkgen_dir, 'coderels.json')
+            listallrels = self.new_jkg_json_coderels
+            with open(file=f, mode='w', encoding='utf-8') as f:
+                json.dump(listallrels, f)
 

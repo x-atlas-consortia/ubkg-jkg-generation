@@ -181,13 +181,11 @@ class Jkgjson:
                             builder = None
 
             utimer = UbkgTimer(display_msg="Loading JKG JSON nodes")
-            #self.jkg_nodes = pl.DataFrame(node_rows, infer_schema_length=len(node_rows))
-            self.jkg_nodes = pd.DataFrame(node_rows)
+            self.nodes = pd.DataFrame(node_rows)
             utimer.stop()
 
             utimer = UbkgTimer(display_msg="Loading JKG JSON rels")
-            #self.jkg_rels = pl.DataFrame(rel_rows, infer_schema_length=len(rel_rows))
-            self.jkg_rels=pd.DataFrame(rel_rows)
+            self.rels=pd.DataFrame(rel_rows)
             utimer.stop()
 
     def __init__(self, log: ubkgLogging, cfg: ubkgConfigParser,
