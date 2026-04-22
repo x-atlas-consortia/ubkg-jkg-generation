@@ -27,22 +27,10 @@ from utilities.classes.ubkg_args import RawTextArgumentDefaultsHelpFormatter
 from utilities.classes.ubkg_logging import ubkgLogging
 # Config file
 from utilities.classes.ubkg_config import ubkgConfigParser
-# sources.json handling
-from utilities.classes.ubkg_sources import ubkgSources
-# JKG JSON handling
-from utilities.classes.jkg_json import Jkgjson
-# JKG edge and node file handling
-from utilities.classes.jkg_edgenode import Jkgedgenode
-
 # Manager of import of a SAB's JKGEN data to the JKGJSON
 from utilities.classes.sab_jkg_import import Sabjkgimport
-
-# Writing to JKG JSON
-#from utilities.classes.json_writer import JsonWriter
-
 # Subprocess handling
 from utilities.functions.find_repo_root import find_repo_root
-
 from utilities.classes.ubkg_sources import ubkgSources
 
 def getargs() -> argparse.Namespace:
@@ -61,34 +49,9 @@ def getargs() -> argparse.Namespace:
 
     return args
 
-def get_sab_source_node(sab:str, ulog:ubkgLogging, cfg:ubkgConfigParser, repo_root:str)->dict:
-    """
-    Builds a JKG JSON Source node for a non-UMLS SAB.
-    :param sab: SAB
-    :param ulog: logging object
-    :param cfg: configuration object
-    :param repo_root: repository root
-    """
-    usource = ubkgSources(ulog=ulog, cfg=cfg, repo_root=repo_root)
-    source_type = usource.get(sab=sab, key='source_type')
-    source_name = usource.get(sab=sab, key='name')
-    source_description = usource.get(sab=sab, key='description')
-    source_version = usource.get(sab=sab, key='version')
-    dictsource = {
-        "labels": ["Source"],
-        "properties":
-            {"id": f"{sab.upper()}:{sab.upper()}",
-             "name": source_name,
-             "description": source_description,
-             "sab": f"{sab.upper()}",
-             "source_version": source_version}
-    }
-    if source_type == "owl":
-        dictsource["properties"]["source"] = usource.get(sab=sab, key='owl_url')
-
-    return dictsource
-
 def main():
+
+    start_time = time.time()
 
     # Locate the root directory of the repository for absolute
     # file paths.
@@ -110,23 +73,21 @@ def main():
     usource = ubkgSources(ulog=ulog, cfg=cfg, repo_root=repo_root)
     sab_names = [s.upper() for s in args.sabs]
 
-
     # For each SAB,
     for sab_name in sab_names:
 
-        # Initialize the JKG Import manager for the SAB.
-        # The import manager will build nodes and rels arrays to
-        # add to the JKG JSON.
+        """
+        Initialize the JKG Import manager for the SAB.
+        The import manager will :
+        1. Build lists of nodes and rels from the SAB's JKGEN files.
+        2. Add nodes and rels to the JKG JSON file.
+        3. Write a new JKG JSON file.
+        """
+
         jkg_import = Sabjkgimport(sab=sab_name, ulog=ulog, cfg=cfg,  repo_root=repo_root)
 
-        # Build the source node for the SAB.
-        list_source_nodes = [get_sab_source_node(sab=sab_name,
-                                                 ulog=ulog, cfg=cfg,
-                                                 repo_root=repo_root)]
-
-        # Add the source node to the new nodes array.
-        jkg_import.new_jkg_json_nodes = (jkg_import.new_jkg_json_nodes
-                                         + list_source_nodes)
+    elapsed_time = time.time() - start_time
+    ulog.print_and_logger_info(f'Completed. Total Elapsed time {"{:0>8}".format(str(timedelta(seconds=elapsed_time)))}')
 
 
 if __name__ == "__main__":

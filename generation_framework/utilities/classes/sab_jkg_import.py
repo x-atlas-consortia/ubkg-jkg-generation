@@ -15,15 +15,18 @@ from tqdm import tqdm
 from .ubkg_logging import ubkgLogging
 # configuration
 from .ubkg_config import ubkgConfigParser
-
 # JKG JSON handling
 from .jkg_json import Jkgjson
 # JKG edge and node file handling
 from .jkg_edgenode import Jkgedgenode
-
+# JKG JSON writer
+from .json_writer import JsonWriter
+# UBKG code and relationship standardizer
 from .ubkg_standardizer import ubkgStandardizer
+# spinner timer
 from .ubkg_timer import UbkgTimer
-
+# sources.json handling
+from .ubkg_sources import ubkgSources
 
 class Sabjkgimport:
 
@@ -37,26 +40,77 @@ class Sabjkgimport:
         self.repo_root = repo_root
         # UBKG code and relationship standardizer object
         self.ustand = ubkgStandardizer(ulog=ulog, repo_root=repo_root)
+        # UBKG-JKG sources manager
+        self.usource = ubkgSources(ulog=ulog, cfg=cfg, repo_root=repo_root)
 
         # Load the nodes and rels arrays from the JKG JSON.
         self.jkgjson = Jkgjson(log=ulog, cfg=cfg)
 
         # Load the JKGEN edge and node files.
         self.jkgen_dir = os.path.join(repo_root, cfg.get_value(section="directories", key="sab_jkg_dir"), sab)
+        self.jkgjson_dir = os.path.join(repo_root, cfg.get_value(section="jkg_json", key="jkg_json_dir"))
         self.jkgen = Jkgedgenode(log=ulog, cfg=cfg, sab=sab, filedir=self.jkgen_dir)
 
-        self.new_jkg_json_nodes = []
+        """
+        Initialize lists of objects for new JKG JSON nodes and rels
+        arrays, by type:
+        1. for nodes:
+           a. sources
+           b. concepts
+           c. terms
+        2. for rels: 
+           a. coderels
+           b. rels
+        The objects in each list will be added below the corresponding
+        part of the list in the JKG JSON--e.g., the new sources will be
+        added after the original sources in the nodes array.
+        (The ingested SAB will add no new node_label or rel_label types
+        of node objects.)
+        """
+        self.new_jkg_json_node_sources = []
+        self.new_jkg_json_node_concepts = []
+        self.new_jkg_json_node_terms = []
         self.new_jkg_json_coderels = []
         self.new_jkg_json_rels = []
 
-        # "Coderel" objects from the flattened rels array of the JKG JSON
+        # Get "coderel" objects from the flattened rels array of the JKG JSON.
         self.jkg_json_coderels = self.jkgjson.jkg_rels[self.jkgjson.jkg_rels['label'] == 'CODE']
 
+        # Build lists of components for the new JKG JSON nodes array,
+        # separated by type.
         self._build_jkgjson_for_jkgen_nodes()
 
+        # Build a list of components for the new JKG JSON rels array.
         self._build_jkgjson_for_jkgen_edges()
 
-        self._write_new_jkgjson_arrays()
+        # Add new nodes and rels objects to the JKG JSON and write to output.
+        self._build_new_jkgjson()
+
+        #self._write_new_jkgjson_arrays()
+
+    def _build_sab_source_node(self) -> dict:
+        """
+        Builds a JKG JSON Source node for a non-UMLS SAB.
+        """
+        usource = ubkgSources(ulog=self.ulog, cfg=self.cfg, repo_root=self.repo_root)
+
+        source_type = usource.get(sab=self.sab, key='source_type')
+        source_name = usource.get(sab=self.sab, key='name')
+        source_description = self.usource.get(sab=self.sab, key='description')
+        source_version = self.usource.get(sab=self.sab, key='version')
+        dictsource = {
+            "labels": ["Source"],
+            "properties":
+                {"id": f"{self.sab.upper()}:{self.sab.upper()}",
+                 "name": source_name,
+                 "description": source_description,
+                 "sab": f"{self.sab.upper()}",
+                 "source_version": source_version}
+        }
+        if source_type == "owl":
+            dictsource["properties"]["source"] = usource.get(sab=self.sab, key='owl_url')
+
+        return dictsource
 
     def _new_node_concept(self, cui:str, row:pd.Series) -> dict:
         """
@@ -69,7 +123,7 @@ class Sabjkgimport:
         return {
             "labels": ["Concept"],
             "properties_id": cui,
-            "properties_pref_term": row['label'],
+            "properties_pref_term": row['node_label'],
             "properties_sab": self.sab.upper()
         }
 
@@ -91,7 +145,7 @@ class Sabjkgimport:
         listret.append(new_node_term_pref)
 
         # Term labels for node's synonyms
-        synonyms = row['synonyms'].split('|') if pd.notna(row['synonyms']) else []
+        synonyms = row['node_synonyms'].split('|') if pd.notna(row['node_synonyms']) else []
         for synonym in synonyms:
             new_node_term_syn = {
                 "labels": ["Term"],
@@ -116,11 +170,20 @@ class Sabjkgimport:
 
         # coderel for node label
         start_id = cui
-        end_id = row['label']
+        end_id = row['node_label']
         properties_sab = self.sab.upper()
-        properties_def = row['definitions'].split('|')[0] if pd.notna(row['definitions']) else []
+        properties_def = row['node_definition']
         properties_codeid = row['node_id']
         properties_tty = 'PT'
+
+        # The nodes file can have a variable number of columns after the
+        # node_dbxrefs column whose values correspond to node properties.
+        # Add these with a "properties_" prefix to indicate that they will
+        # be in the eventual nested properties object.
+        base_cols = {'node_id', 'node_label', 'node_definition', 'node_synonyms', 'node_dbxref', 'cui'}
+        optional_properties = {f"properties_{col}": row[col]
+                               for col in row.index if col not in base_cols}
+
         new_node_coderel_pref = {
             "labels": ["CODE"],
             "start_id": start_id,
@@ -129,13 +192,17 @@ class Sabjkgimport:
             "properties_def": properties_def,
             "properties_codeid": properties_codeid,
             "properties_tty": properties_tty,
+            **optional_properties
         }
         list_new_node_coderels.append(new_node_coderel_pref)
 
-        # coderels for new node's synonyms
-        synonyms = row['synonyms'].split('|') if pd.notna(row['synonyms']) else []
+        # Add coderels for new node's synonyms.
+        # Synonyms do not have definitions or node properties.
+        synonyms = row['node_synonyms'].split('|') if pd.notna(row['node_synonyms']) else []
         for synonym in synonyms:
             properties_tty = 'SY'
+            # Do not copy the definition to synonym coderels
+            properties_def = ""
             new_node_coderel_pref = {
                 "labels": ["CODE"],
                 "start_id": start_id,
@@ -161,7 +228,7 @@ class Sabjkgimport:
         except (ValueError, SyntaxError):
             return []
 
-    def _get_CUI_for_node(self, row: pd.Series)-> str:
+    def _get_cui_for_node(self, row: pd.Series)-> str:
 
         """
         Identifies the CUI for the concept with which to associate
@@ -227,43 +294,43 @@ class Sabjkgimport:
         e.g., node1 / SAB1:Code1|SAB2:Code2 => node1/ [SAB1:Code1, SAB2:Code2]
         """
 
-        row['dbxrefs'] = row['dbxrefs'].split('|') if pd.notna(row['dbxrefs']) else []
+        row['node_dbxrefs'] = row['node_dbxrefs'].split('|') if pd.notna(row['node_dbxrefs']) else []
 
         # If there are no dbxrefs, mint a CUI.
-        if not row['dbxrefs']:
-            return self._mint_new_CUI(code=row['node_id'])
+        if not row['node_dbxrefs']:
+            return self._mint_new_cui(code=row['node_id'])
 
         """
         Explode the row to a DataFrame in which each row maps the code to a single cross-reference
         from the list.
         e.g.,
         from
-            nodeID / dbxrefs
+            nodeID / node_dbxrefs
             node1/ [SAB1:Code1, SAB2:Code2]
         to
-            nodeID / dbxrefs
+            nodeID / node_dbxrefs
             node1 / SAB1:Code1
             node1 / SAB2:Code2
         """
-        df_by_dbxref = pd.Series(row).to_frame().T.explode('dbxrefs').reset_index(drop=True)
+        df_by_dbxref = pd.Series(row).to_frame().T.explode('node_dbxrefs').reset_index(drop=True)
 
 
         # Drop any empty strings from the split (e.g. trailing pipes)
-        df_by_dbxref = df_by_dbxref[df_by_dbxref['dbxrefs'].str.strip() != '']
+        df_by_dbxref = df_by_dbxref[df_by_dbxref['node_dbxrefs'].str.strip() != '']
 
         # Standardize the codes for the dbxrefs, using the SAB for the dbxref.
         # The standardize_code function expects a Pandas series.
-        df_by_dbxref['sab'] = df_by_dbxref['dbxrefs'].str.split(':').str[0]
-        df_by_dbxref['dbxrefs'] = df_by_dbxref.apply(
-            lambda r: self.ustand.standardize_code(x=pd.Series([r['dbxrefs']]), sab=r['sab'])[0],
+        df_by_dbxref['sab'] = df_by_dbxref['node_dbxrefs'].str.split(':').str[0]
+        df_by_dbxref['node_dbxrefs'] = df_by_dbxref.apply(
+            lambda r: self.ustand.standardize_code(x=pd.Series([r['node_dbxrefs']]), sab=r['sab'])[0],
             axis=1
         )
 
         # Pivot column: identify direct UMLS CUI dbxrefs.
         # Do not sort by dbxref.
         df_direct_umls = (
-            df_by_dbxref[df_by_dbxref['dbxrefs'].str.lower().str.startswith('umls:')]
-            .groupby('node_id', sort=False)['dbxrefs']
+            df_by_dbxref[df_by_dbxref['node_dbxrefs'].str.lower().str.startswith('umls:')]
+            .groupby('node_id', sort=False)['node_dbxrefs']
             .apply(list)
             .reset_index(name='direct_cuis')
         )
@@ -277,19 +344,19 @@ class Sabjkgimport:
 
         df_transitive_umls = (df_by_dbxref.merge(self.jkg_json_coderels,
                                                 how='left',
-                                                left_on='dbxrefs',
+                                                left_on='node_dbxrefs',
                                                 right_on='properties_codeid')
-                              .rename(columns={'label_x': 'label'}))
+                              .rename(columns={'node_label_x': 'node_label'}))
         # Build a list of CUIs, grouped by the dbxref code.
         transitive_map = (
-            df_transitive_umls.groupby('dbxrefs')['start_id']
+            df_transitive_umls.groupby('node_dbxrefs')['start_id']
             .apply(lambda x: x.dropna().unique().tolist())
         )
         # Pivot column: list of transitive CUIs.
-        df_by_dbxref['transitive_cuis'] = df_by_dbxref['dbxrefs'].map(transitive_map)
+        df_by_dbxref['transitive_cuis'] = df_by_dbxref['node_dbxrefs'].map(transitive_map)
 
         # Pivot column: identify a CUI for the code.
-        df_by_dbxref['self_cui'] = self._mint_new_CUI(code=df_by_dbxref['node_id'])
+        df_by_dbxref['self_cui'] = self._mint_new_cui(code=df_by_dbxref['node_id'])
 
         # Get CUI lists by type.
         direct_cui = self._parse_cui_list(df_by_dbxref['direct_cuis'].iloc[0])
@@ -305,7 +372,7 @@ class Sabjkgimport:
 
         return cui
 
-    def _mint_new_CUI(self, code:Any) -> str:
+    def _mint_new_cui(self, code:Any) -> str:
         """
         Mints a new CUI based on a code.
         :param code:
@@ -317,9 +384,9 @@ class Sabjkgimport:
         else:
             raise TypeError("unknown type for new CUI")
 
-    def _get_CUIs_for_nodes(self, df_nodes: pd.DataFrame) -> pd.Series:
+    def _get_cuis_for_node(self, df_nodes: pd.DataFrame) -> pd.Series:
         """
-        Vectorized version of _get_CUI_for_node.
+        Vectorized version of _get_cui_for_node.
         Processes all nodes at once instead of row by row.
 
         Identifies the CUIs for the concepts to which to link
@@ -330,7 +397,7 @@ class Sabjkgimport:
         The dbxref column of the row is a pipe-delimited list of cross-references.
 
         Example:
-        node_id           dbxrefs
+        node_id           node_dbxrefs
         UBERON:0001748    emapa:35663|fma:55566|umls:c0927176|ma:0002676|ncit:c33265
         UBERON:0005030    fma:59772
         MP:0011739        cl:0002084
@@ -387,26 +454,26 @@ class Sabjkgimport:
         
                 from:
                 
-                node_id dbxrefs
+                node_id node_dbxrefs
                 node1   SAB1:Code1|SAB2:Code2
                 
                 to:
-                node_id dbxrefs
+                node_id node_dbxrefs
                 node1   [SAB1:Code1, SAB2:Code2]
                 
                 to:
-                node_id dbxrefs
+                node_id node_dbxrefs
                 node1   SAB1:Code1
                 node1   SAB2:Code2
         """
 
         df_nodes = df_nodes.copy()
         # 1.a, 1.b
-        df_nodes['dbxrefs'] = (df_nodes['dbxrefs'].fillna('').str.split('|'))
+        df_nodes['node_dbxrefs'] = (df_nodes['node_dbxrefs'].fillna('').str.split('|'))
         # 1.c
-        df_exploded = df_nodes[['node_id', 'dbxrefs']].explode('dbxrefs').reset_index(drop=True)
+        df_exploded = df_nodes[['node_id', 'node_dbxrefs']].explode('node_dbxrefs').reset_index(drop=True)
         # 1.d
-        df_exploded = df_exploded[df_exploded['dbxrefs'].str.strip() != '']
+        df_exploded = df_exploded[df_exploded['node_dbxrefs'].str.strip() != '']
 
         """
         2. Standardize dbxref codes, grouping by SAB. 
@@ -417,15 +484,18 @@ class Sabjkgimport:
            d. Collect standardized codes into lists.
         """
         # 2a.
-        df_exploded['sab'] = df_exploded['dbxrefs'].str.split(':').str[0]
+        df_exploded['sab'] = df_exploded['node_dbxrefs'].str.split(':').str[0]
         # 2b-d.
-        df_exploded['dbxrefs'] = pd.concat([
-            pd.Series(
-                self.ustand.standardize_code(x=group['dbxrefs'], sab=sab_val).tolist(),
-                index=group.index
-            )
-            for sab_val, group in df_exploded.groupby('sab')
-        ])
+        if df_exploded.empty:
+            df_exploded['node_dbxrefs'] = pd.Series(dtype=str)
+        else:
+            df_exploded['node_dbxrefs'] = pd.concat([
+                pd.Series(
+                    self.ustand.standardize_code(x=group['node_dbxrefs'], sab=sab_val).tolist(),
+                    index=group.index
+                )
+                for sab_val, group in df_exploded.groupby('sab')
+            ])
 
         """
         3. Identify UMLS CUIs--dbxrefs that start with 'umls:'.
@@ -433,10 +503,10 @@ class Sabjkgimport:
            b. Group by node_id and collect UMLS CUIs into lists.
         """
         # 3a.
-        df_umls = df_exploded[df_exploded['dbxrefs'].str.lower().str.startswith('umls:')]
+        df_umls = df_exploded[df_exploded['node_dbxrefs'].str.lower().str.startswith('umls:')]
         # 3b.
         umls_map = (
-            df_umls.groupby('node_id', sort=False)['dbxrefs']
+            df_umls.groupby('node_id', sort=False)['node_dbxrefs']
             .apply(list)
         )
 
@@ -448,9 +518,9 @@ class Sabjkgimport:
         # 4a.
         df_other = (df_exploded.merge(self.jkg_json_coderels,
                                           how='left',
-                                          left_on='dbxrefs',
+                                          left_on='node_dbxrefs',
                                           right_on='properties_codeid').
-                    rename(columns={'label_x': 'label'}))
+                    rename(columns={'node_label_x': 'node_label'}))
         # 4b.
         other_map = (
             df_other.groupby('node_id')['start_id']
@@ -473,7 +543,7 @@ class Sabjkgimport:
             elif other:
                 return other[0].upper()
             else:
-                return self._mint_new_CUI(node_id)
+                return self._mint_new_cui(node_id)
 
         utimer.stop()
         return df_nodes['node_id'].map(pick_cui)
@@ -484,6 +554,7 @@ class Sabjkgimport:
         related to the JKGEN nodes file.
 
         """
+
         # Nodes from the JGKGEN node file
         dfjkgen_nodes = self.jkgen.nodes
 
@@ -500,13 +571,13 @@ class Sabjkgimport:
                                                   indicator=True)
                               .query('_merge == "left_only"'))
                              .drop(columns=['_merge', 'properties_codeid'])
-                             .rename(columns={'label_x': 'label'}))
+                             .rename(columns={'node_label_x': 'node_label'}))
 
 
         # Filter out nodes that only have node_id in the node file.
         dfjkgen_new_nodes = dfjkgen_new_nodes[
-            dfjkgen_new_nodes['label'].notna() &
-            (dfjkgen_new_nodes['label'].str.strip() != '')
+            dfjkgen_new_nodes['node_label'].notna() &
+            (dfjkgen_new_nodes['node_label'].str.strip() != '')
             ]
 
         """
@@ -528,9 +599,8 @@ class Sabjkgimport:
 
         self.ulog.print_and_logger_info('Building JKG JSON arrays for new nodes in JGKEN nodes file.')
 
-        list_new_node_concepts = []
-        list_new_node_terms = []
-        list_new_node_coderels = []
+        # Get the source node for the SAB.
+        new_node_source = self._build_sab_source_node()
 
         # Keep track of the concept CUI for nodes.
         # For the case of multiple nodes from a SAB
@@ -539,38 +609,45 @@ class Sabjkgimport:
         cui = 'start'
 
         # Identify CUIs to which to assign new nodes.
-        dfjkgen_new_nodes['cui'] = self._get_CUIs_for_nodes(df_nodes=dfjkgen_new_nodes)
+        dfjkgen_new_nodes['cui'] = self._get_cuis_for_node(df_nodes=dfjkgen_new_nodes)
+
+        # Initialize lists of objects by type:
+        # Concept nodes
+        list_new_node_concepts = []
+        # Term nodes
+        list_new_node_terms = []
+        # coderel rels
+        list_new_node_coderels = []
+
 
         for index, row in tqdm(dfjkgen_new_nodes.iterrows(), total=dfjkgen_new_nodes.shape[0]):
 
-            # CUI for new node's Concept, based on dbxref.
+            # Get the CUI for new node's Concept, based on dbxref.
             new_node_cui = row['cui']
             if new_node_cui == cui:
                 # This is a subsequent node from the SAB that shares a CUI.
                 # Mint a new CUI.
-                new_node_cui = self._mint_new_CUI(code=row['node_id'])
+                new_node_cui = self._mint_new_cui(code=row['node_id'])
             else:
                 # This is the first node from the SAB that shares a CUI.
                 cui = new_node_cui
 
             # If the CUI is new, create a new Concept label node.
-            if new_node_cui == self._mint_new_CUI(code=row['node_id']):
+            if new_node_cui == self._mint_new_cui(code=row['node_id']):
                 list_new_node_concepts.append(self._new_node_concept(cui=new_node_cui, row=row))
 
             # Term label nodes for the new node and its synonyms
-            list_new_node_terms = self._new_node_terms(row=row)
+            list_new_node_terms = list_new_node_terms + self._new_node_terms(row=row)
 
-            # List of coderels for the node.
-            list_new_node_coderels = self._new_node_coderels(cui=new_node_cui, row=row)
+            # List of coderels for the node and its synonyms.
+            list_new_node_coderels = list_new_node_coderels + self._new_node_coderels(cui=new_node_cui, row=row)
 
-            # Collect nodes and rels.
-            self.new_jkg_json_nodes = (self.new_jkg_json_nodes
-                                       + list_new_node_concepts
-                                       + list_new_node_terms)
-
-            self.new_jkg_json_coderels = (self.new_jkg_json_coderels
-                                          + list_new_node_coderels)
-
+        # Collect nodes and rels.
+        # Convert the source node to a list for later list addition.
+        self.new_jkg_json_node_sources = [new_node_source]
+        self.new_jkg_json_node_concepts = list_new_node_concepts
+        self.new_jkg_json_node_terms = list_new_node_terms
+        self.new_jkg_json_coderels = list_new_node_coderels
 
     def _build_jkgjson_for_jkgen_edges(self):
         """
@@ -586,59 +663,78 @@ class Sabjkgimport:
         Identify the subject node CUI.
         1. Merge JKGEN subject node codes against JKGJSON coderel codes
            to obtain existing CUIs for JKGEN subject nodes.
-        2. Merge against new node codes to obtain new CUIs for JKGEN subject
+        2. Merge against new node coderels to obtain new CUIs for JKGEN subject
            nodes.
         """
+        # Convert list of new coderels to a DataFrame for merging.
+        dfnewcoderels = pd.DataFrame(self.new_jkg_json_coderels)
+
         # 1
         dfsubject = self.jkgen.edges.copy()
         dfsubject = (dfsubject.merge(self.jkg_json_coderels,
                                     how='left',
                                     left_on='subject',
                                     right_on='properties_codeid')
-                     .rename(columns={'label_x': 'label'}))
+                     .rename(columns = {'node_label_x': 'node_label',
+                                        'start_id': 'original_cui',}))
+
         # 2
-        dfsubject = (dfsubject.merge(self.new_jkg_json_coderels,
+        dfsubject = (dfsubject.merge(dfnewcoderels,
                                     how='left',
-                                    left_on='subject_cui',
+                                    left_on='subject',
                                     right_on='properties_codeid')
-                     .rename(columns={'label_x': 'label'}))
+                     .rename(columns={'node_label_x': 'node_label',
+                                      'start_id': 'new_cui'}))
+        dfsubject = dfsubject.drop_duplicates(subset=['subject','predicate','object'])
+
+        dfsubject['cui'] = dfsubject['original_cui'].fillna(dfsubject['new_cui'])
+
+
         """
         Identify the object node CUI.
         1. Merge JKGEN object node codes against JKGJSON coderel codes
            to obtain existing CUIs for JKGEN object nodes.
-        2. Merge against new node codes to obtain new CUIs for JKGEN object
+        2. Merge against new node coderels to obtain new CUIs for JKGEN object
            nodes.
         """
-        # 3
+        # 1
         dfobject = self.jkgen.edges.copy()
         dfobject = (dfobject.merge(self.jkg_json_coderels,
                                      how='left',
                                      left_on='object',
                                      right_on='properties_codeid')
-                     .rename(columns={'label_x': 'label'}))
+                     .rename(columns={'node_label_x': 'node_label',
+                                      'start_id': 'original_cui',}))
         # 2
-        dfobject = (dfobject.merge(self.new_jkg_json_coderels,
+        dfobject = (dfobject.merge(dfnewcoderels,
                                      how='left',
                                      left_on='object',
                                      right_on='properties_codeid')
-                     .rename(columns={'label_x': 'label'}))
+                     .rename(columns={'node_label_x': 'node_label',
+                                      'start_id': 'new_cui'}))
+        dfobject = dfobject.drop_duplicates(subset=['subject','predicate','object'])
+        dfobject['cui'] = dfobject['original_cui'].fillna(dfobject['new_cui'])
 
-        # Standardize the predicate's relationship label.
-        predicate = self.jkgen.edges['predicate']
-        self.jkgen.edges['predicate_standardized'] = self.ustand.standardize_relationships(predicate=predicate)
+        # Build the rel objects.
+        df_edges = self.jkgen.edges.copy()
+        # Map the subject and object CUIs.
+        df_edges['subject_cui'] = dfsubject['cui'].values
+        df_edges['object_cui'] = dfobject['cui'].values
 
-        listrels = []
+        # The edge file has a variable number of columns that
+        # represent edge properties. Include these as flattened
+        # members of a "properties" object.
+        base_cols = {'subject', 'predicate', 'object'}
+        extra_cols = [c for c in df_edges.columns if c not in base_cols]
 
-        for index, row in tqdm(self.jkgen.edgess.iterrows(), total=self.jkgen.edges.shape[0]):
-            rel= {
-                "labels": row['predicate_standardized'],
-                "start_id": row['subject_cui'],
-                "end_id": row['object_cui'],
-                "properties_sab": self.sab
-            }
-            listrels.append(rel)
-
-        self.jkg_json_rels = listrels
+        # Vectorized build.
+        self.jkg_json_rels = df_edges.apply(lambda row: {
+            "labels": row['predicate'],
+            "start_id": row['subject_cui'],
+            "end_id": row['object_cui'],
+            "properties_sab": self.sab,
+            **{f"properties_{c}": row[c] for c in extra_cols}
+        }, axis=1).tolist()
 
     def _write_new_jkgjson_arrays(self):
 
@@ -659,3 +755,86 @@ class Sabjkgimport:
         listallrels = self.new_jkg_json_coderels
         with open(file=f, mode='w', encoding='utf-8') as f:
             json.dump(listallrels, f)
+
+    def _unflatten_objects(self, list_flat_objects: list) -> list:
+        """
+        Converts a list of flattened JKG JSON objects into a
+        JKG JSON array.
+        :param list_flat_objects: list of flattened JKG JSON objects
+        :return: JKG JSON array
+
+        """
+
+        list_nested_objects = []
+        for flat_object in list_flat_objects:
+            # Move all key/value pairs for which the key starts with "properties_" to a
+            # dict.
+            nested = {k.removeprefix('properties_'): v
+                      for k, v in flat_object.items() if k.startswith('properties_')}
+            rel = {k: v for k, v in flat_object.items() if not k.startswith('properties_')}
+            rel['properties'] = nested
+            list_nested_objects.append(rel)
+
+        return list_nested_objects
+
+    def _build_new_jkgjson(self):
+        """
+        Adds nodes, coderels, and rels lists to the existing JKG JSON.
+
+        """
+        self.ulog.print_and_logger_info('Building new JKG JSON')
+
+        # BUILD rels ARRAY
+
+        # Convert the DataFrame of flattened JKG JSON rels into a list of dicts.
+        list_flat_jkg_json_rels = self.jkgjson.jkg_rels.to_dict(orient='records')
+        if len(list_flat_jkg_json_rels) == 0:
+            list_flat_jkg_json_rels = []
+
+        # Combine the list of JKG JSON rels with the lists of new JGKEN rels.
+        list_flat_rels = list_flat_jkg_json_rels + self.new_jkg_json_rels + self.new_jkg_json_coderels
+
+        # Convert the flattened list to a list of nested JSONs.
+        list_nested_jkg_json_rels = self._unflatten_objects(list_flat_objects=list_flat_rels)
+
+        # BUILD nodes ARRAY
+
+        # Convert the DataFrame of flattened JKG JSON nodes into a list of dicts.
+        list_flat_jkg_json_nodes = self.jkgjson.jkg_nodes.to_dict(orient='records')
+        if len(list_flat_jkg_json_nodes) == 0:
+            list_flat_jkg_json_nodes = []
+
+        # Convert the flattened list to a list of nested JSONs.
+        list_nested_jkg_json_nodes = self._unflatten_objects(list_flat_objects=list_flat_jkg_json_nodes)
+
+        # Add the source node to the list of nested JSONs.
+        list_nested_jkg_json_nodes = list_nested_jkg_json_nodes + self.new_jkg_json_node_sources
+
+        # Unflatten the lists of new JKGGEN concept and term nodes.
+        list_nested_jkg_json_concept_nodes = self._unflatten_objects(list_flat_objects=self.new_jkg_json_node_concepts)
+        list_nested_jkg_json_term_nodes = self._unflatten_objects(list_flat_objects=self.new_jkg_json_node_terms)
+
+        # Combine all nested nodes.
+        list_nested_jkg_json_nodes = (list_nested_jkg_json_nodes +
+                                      list_nested_jkg_json_concept_nodes +
+                                      list_nested_jkg_json_term_nodes)
+
+        # Write nodes and rels arrays to new JKG JSON.
+
+        outpath = os.path.join(self.jkgjson_dir, 'new_jkg.json')
+
+        # Use a JSON writer object to build the new version of JKGJSON.
+        jw = JsonWriter(outpath=outpath)
+        jw.start_json()
+        jw.start_list(keyname='nodes')
+        jw.write_list(list_name='nodes', list_content=list_nested_jkg_json_nodes)
+        jw.end_list()
+        jw.write_comma()
+        jw.write_line_feed()
+        jw.start_list(keyname='rels')
+        jw.write_list(list_name='rels', list_content=list_nested_jkg_json_rels)
+        jw.end_list()
+        jw.end_json()
+
+
+

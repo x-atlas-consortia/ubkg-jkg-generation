@@ -158,33 +158,24 @@ class Jkgjson:
                         if event == "end_map" and prefix in ("nodes.item", "rels.item"):
                             item = builder.value
                             if prefix == "nodes.item":
+                                properties = item.get("properties", {})
+                                # Flatten the properties object using the unpacking operator.
+                                properties = item.get("properties", {})
                                 row = {
                                     "labels": item.get("labels", []),
-                                    "properties_id": item.get("properties", {}).get("id"),
-                                    "properties_name": item.get("properties", {}).get("name"),
-                                    "properties_description": item.get("properties", {}).get("description"),
-                                    "properties_sab": item.get("properties", {}).get("sab"),
-                                    "properties_source": item.get("properties", {}).get("source"),
-                                    "properties_source_version": item.get("properties", {}).get("source_version"),
-                                    "properties_node_label": item.get("properties", {}).get("node_label"),
-                                    "properties_rel_label": item.get("properties", {}).get("rel_label"),
-                                    "properties_def": item.get("properties", {}).get("def"),
-                                    "properties_pref_term": item.get("properties", {}).get("pref_term"),
+                                    **{f"properties_{k}": v for k, v in properties.items()}
                                 }
-
                                 node_rows.append(row)
 
                             elif prefix == "rels.item":
+                                properties = item.get("properties", {})
+                                # Flatten the properties object using the unpacking operator.
                                 row = {
                                     "label": item.get("label"),
                                     "start_id": item.get("start", {}).get("properties", {}).get("id"),
                                     "end_id": item.get("end", {}).get("properties", {}).get("id"),
-                                    "properties_sab": item.get("properties", {}).get("sab"),
-                                    "properties_def": item.get("properties", {}).get("def"),
-                                    "properties_tty": item.get("properties", {}).get("tty"),
-                                    "properties_codeid": item.get("properties", {}).get("codeid"),
+                                    **{f"properties_{k}": v for k, v in properties.items()}
                                 }
-                                row.update(item.get("properties", {}))
                                 rel_rows.append(row)
 
                             builder = None
