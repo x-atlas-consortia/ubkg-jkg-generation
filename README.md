@@ -17,7 +17,7 @@ Differences between JKGEN and OWL-NETS include:
    * **SAB** is the designated _Source ABbreviation_ for the data source. The SAB is usually an acronym.
    * **code** is the code for an entity in the SAB.
    For example, the JKGEN representation of Uberon's "cranial fossa" is **UBERON:0088789**.
-3. JKGEN standardizes codes both to match UMLS conventions and for use as node labels in noeo4j.
+3. JKGEN standardizes codes both to match UMLS conventions and for use as node labels in neo4j.
 
 ## Relationship (edge) representation
 1. OWL-NETS represents the predicates of assertions with full IRIs. 
