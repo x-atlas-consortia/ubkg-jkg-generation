@@ -321,9 +321,10 @@ class Sabjkgimport:
 
         The available CUIs for a code from a vocabulary (SAB)
         are ranked in order of preference:
-        1. the first UMLS CUI 
-        2. the first other CUI
-        3. a CUI minted from the code
+        1. the first direct UMLS CUI 
+        2. the first UMLS CUI for a transitive code 
+        3. the first other CUI for a transitive code
+        4. a CUI minted from the code
         
         Assigning a CUI to a code based on this order has the intent of
         linking a code to the CUI that has the highest number
@@ -475,9 +476,10 @@ class Sabjkgimport:
 
         The available CUIs for a code from a vocabulary (SAB)
         are ranked in order of preference:
-        1. the first UMLS CUI
-        2. the first other CUI
-        3. a CUI minted from the code
+        1. the first direct UMLS CUI
+        2. the first UMLS CUI for a transitive code
+        3. the first other CUI for a transitive code
+        4. a CUI minted from the code
 
         Assigning a CUI to a code based on this order has the intent of
         linking a code to the CUI that has the highest number
@@ -555,15 +557,15 @@ class Sabjkgimport:
             ])
 
         """
-        3. Identify UMLS CUIs--dbxrefs that start with 'umls:'.
+        3. Identify direct UMLS CUIs--dbxrefs that start with 'umls:'.
            a. Filter to only those dbxrefs that start with UMLS.
            b. Group by node_id and collect UMLS CUIs into lists.
         """
         # 3a.
-        df_umls = df_exploded[df_exploded['node_dbxrefs'].str.lower().str.startswith('umls:')]
+        df_direct_umls = df_exploded[df_exploded['node_dbxrefs'].str.lower().str.startswith('umls:')]
         # 3b.
-        umls_map = (
-            df_umls.groupby('node_id', sort=False)['node_dbxrefs']
+        direct_umls_map = (
+            df_direct_umls.groupby('node_id', sort=False)['node_dbxrefs']
             .apply(list)
         )
 
@@ -571,38 +573,57 @@ class Sabjkgimport:
         4. Identify "other CUIs"--dbxrefs with codes that have CUIs in coderels.
            a. Merge against coderels.
            b. Group by node_id and collect CUIs into lists.
+           c. Distinguish CUIs by whether they are from the UMLS or a non-UMLS SAB.
         """
-        # 4a.
         if self.jkg_json_coderels.empty:
             df_other = df_exploded
-            other_map = {}
+            other_umls_map = {}
+            other_non_umls_map = {}
         else:
             df_other = (df_exploded.merge(self.jkg_json_coderels,
-                                              how='left',
+                                          how='left',
                                           left_on='node_dbxrefs',
-                                          right_on='properties_codeid').
-                    rename(columns={'node_label_x': 'node_label'}))
-        # 4b.
-            other_map = (
-                df_other.groupby('node_id')['start_id']
+                                          right_on='properties_codeid')
+                        .rename(columns={'node_label_x': 'node_label'}))
+
+            # 4b. Split into UMLS and non-UMLS
+            # Note the filter on dbxrefs not including UMLS
+            df_other_umls = df_other[
+                df_other['start_id'].str.startswith('UMLS', na=False) &
+                ~df_other['node_dbxrefs'].str.upper().str.startswith('UMLS', na=False)
+                ]
+            df_other_non_umls = df_other[~df_other['start_id'].str.startswith('UMLS', na=False)]
+
+            other_umls_map = (
+                df_other_umls.groupby('node_id')['start_id']
                 .apply(lambda x: x.dropna().unique().tolist())
+                .to_dict()
+            )
+            other_non_umls_map = (
+                df_other_non_umls.groupby('node_id')['start_id']
+                .apply(lambda x: x.dropna().unique().tolist())
+                .to_dict()
             )
 
         """
         5. Select CUI per node_id. Select the first CUI from lists 
            in order of:
-           1. UMLS CUIs
-           2. other CUIs
+           1. direct UMLS CUIs
+           2. other UMLS CUIs
+           3. other non-UMLS CUIs
            If no CUI identified, mint a new CUI.
         """
 
         def pick_cui(node_id):
-            direct = umls_map.get(node_id, [])
-            other = other_map.get(node_id, [])
-            if direct:
-                return direct[0].upper()
-            elif other:
-                return other[0].upper()
+            direct_umls = direct_umls_map.get(node_id, [])
+            other_umls = other_umls_map.get(node_id, [])
+            other_non_umls = other_non_umls_map.get(node_id, [])
+            if direct_umls:
+                return direct_umls[0].upper()
+            elif other_umls:
+                return other_umls[0].upper()
+            elif other_non_umls:
+                return other_non_umls[0].upper()
             else:
                 return self._mint_new_cui(node_id)
 
@@ -675,6 +696,7 @@ class Sabjkgimport:
 
         # Identify CUIs to which to assign new nodes.
         dfjkgen_new_nodes['cui'] = self._get_cuis_for_node(df_nodes=dfjkgen_new_nodes)
+
 
         # Initialize lists of objects by type:
         # Concept nodes
