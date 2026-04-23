@@ -645,6 +645,8 @@ class Sabjkgimport:
             (dfjkgen_new_nodes['node_label'].str.strip() != '')
             ].drop_duplicates(subset=['node_label','node_id']))
 
+        dfjkgen_new_nodes = dfjkgen_new_nodes.fillna('')
+
         """
         For each new node, 
         1. Identify the CUI to link to the node's code.

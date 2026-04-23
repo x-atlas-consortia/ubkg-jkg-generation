@@ -45,8 +45,12 @@ class Jkgjson:
 
         if nodetype == "node":
 
-            # --- NODES ---
-            # Each node: { "labels": [...], "properties": { "id": ..., "sab": ..., ... } }
+            """
+            --- NODES ---
+            Each node: { "labels": [...], "properties": { "id": ..., "sab": ..., ... } }
+
+            """
+
             node_rows = []
             with open(jkg_json_full, "rb") as f:
                 with tqdm(desc=f"Reading nodes from {self.jkg_json_filename}",
@@ -64,10 +68,13 @@ class Jkgjson:
 
         else:
 
-            # --- RELS ---
-            # Each rel: { "label": ..., "start": { "properties": { "id": ... } },
-            #             "end":   { "properties": { "id": ... } },
-            #             "properties": { "sab": ..., ... } }
+            """
+            --- RELS ---
+            Each rel: { "label": ..., "start": { "properties": { "id": ... } },
+                         "end":   { "properties": { "id": ... } },
+                         "properties": { "sab": ..., ... } }
+            """
+
             rel_rows = []
             with open(jkg_json_full, "rb") as f:
                 with tqdm(desc=f"Reading rels from {self.jkg_json_filename}",
@@ -90,15 +97,22 @@ class Jkgjson:
     def _load_jkg_json(self, max_nodes: int = None, max_rels: int = None):
 
         """
-        Loads the JKG JSON file into two Pandas dataframes.
+        Loads the JKG JSON file into two Pandas dataframes, in a single
+        pass.
+
         :param max_nodes: maximum number of nodes to load. None loads all nodes.
         :param max_rels: maximum number of rels to load. None loads all rels.
+
+        Note that because the nodes array is before the rels array in the JKG JSON,
+        the entire nodes array will be read, even if max_nodes is set.
+        This is primarily for debugging purposes to limit the read time.
+
         Sets both:
         - self.jkg_nodes: one row per node, with 'labels' as a list column and properties flattened as columns
         - self.jkg_rels: one row per relationship, with start/end/properties flattened as columns
         """
 
-        # Treat 0 or None as "load all"
+        # Treat 0 or None as "load all".
         max_nodes = None if not max_nodes else max_nodes
         max_rels = None if not max_rels else max_rels
 
@@ -119,7 +133,7 @@ class Jkgjson:
                       total=file_size,
                       unit="B", unit_scale=True, unit_divisor=1024) as pbar:
 
-                # Wrap the ijson read with a progress bar.
+                # Wrap the ijson streaming read with a progress bar.
                 pf = ProgressFile(f, pbar)
 
                 # Iterate parse events and use ijson.ObjectBuilder to reconstruct each item.
@@ -159,6 +173,7 @@ class Jkgjson:
                             item = builder.value
                             if prefix == "nodes.item":
                                 properties = item.get("properties", {})
+
                                 # Flatten the properties object using the unpacking operator.
                                 properties = item.get("properties", {})
                                 row = {
@@ -169,6 +184,7 @@ class Jkgjson:
 
                             elif prefix == "rels.item":
                                 properties = item.get("properties", {})
+
                                 # Flatten the properties object using the unpacking operator.
                                 row = {
                                     "label": item.get("label"),
@@ -181,11 +197,12 @@ class Jkgjson:
                             builder = None
 
             utimer = UbkgTimer(display_msg="Loading JKG JSON nodes")
-            self.nodes = pd.DataFrame(node_rows)
+            self.nodes = pd.DataFrame(node_rows).fillna('')
+
             utimer.stop()
 
             utimer = UbkgTimer(display_msg="Loading JKG JSON rels")
-            self.rels=pd.DataFrame(rel_rows)
+            self.rels=pd.DataFrame(rel_rows).fillna('')
             utimer.stop()
 
     def __init__(self, log: ubkgLogging, cfg: ubkgConfigParser,
