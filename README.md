@@ -48,7 +48,7 @@ The JGKEN generation framework comprises:
 * **source translator applications** that 
   * obtain data from sources
   * convert data to JKGEN format
-* an **JKG import** application that adds data from files in JGKEN format to a JKG JSON built from a UMLS release
+* an **JKG import** application (**jkgen2jkg**) that adds data from files in JGKEN format to a JKG JSON built from a UMLS release
 
 ## Component patterns
 1. The controller and JKG import applications comprise:
@@ -59,7 +59,7 @@ The JGKEN generation framework comprises:
      * executes a Python script
 2. The Bash shell script and the Python script components of an application share a file name, but use different file extensions.
 
-## sab2jkgen
+# sab2jkgen
 The **sab2jkgen** controller application:
 1. Obtains ETL configuration from **sources.json**
 2. Passes information to a source translator application
@@ -116,7 +116,7 @@ The **sources.json** file provides information on non-UMLS sources.
     "version": "2023-AUG-24"
   }
 ```
-## source translator applications
+# Source translator applications
 Each source translator application resides in its own
 directory in the _/generation_framework/translators_ path of the repository.
 
@@ -128,8 +128,14 @@ Source translations are independent.
    * an INI file that is excluded by .gitignore
    * an associated _ini.example_ file
    * a README.md documentation file
-2. Files share a file name in format _source type_ 2 _jkgen_
+2. Files share a file name in format _source type_ 2 _jkgen_.
 
-## ubkgjkg.ini
+# jkgen2jkg
+The **jkgen2jkg** application adds information from the JKGEN files
+of a SAB created by the **sab2jkgen** application to a file in JKG JSON format.
+
+The **jkgen2jkg** application implements the _UBKG-JKG equivalence class algorithm_.
+
+# ubkgjkg.ini
 **sab2jkgen** and **jkgen2jkg** are configured by means of the **ubkg.ini** file.
 
