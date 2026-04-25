@@ -290,7 +290,9 @@ class Sabjkgimport:
         # Add coderels for new node's synonyms.
         # Synonyms will not have definitions or node properties.
         synonyms = row['node_synonyms'].split('|') if pd.notna(row['node_synonyms']) else []
+
         for synonym in synonyms:
+            end_id = synonym
             properties_tty = 'SY'
             # Do not copy the definition to synonym coderels
             properties_def = ""
@@ -693,6 +695,8 @@ class Sabjkgimport:
         # coderel rels
         list_new_coderels = []
 
+        debug = os.path.join(self.repo_root,'debug.csv')
+        dfjkgen_new_nodes.to_csv(debug, index=False)
         for index, row in tqdm(dfjkgen_new_nodes.iterrows(), total=dfjkgen_new_nodes.shape[0], desc="Building node objects"):
 
             # Get the CUI for new node's Concept, based on dbxref.
