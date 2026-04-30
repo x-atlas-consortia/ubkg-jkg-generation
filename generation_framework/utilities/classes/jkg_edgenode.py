@@ -55,7 +55,6 @@ class Jkgedgenode:
         self.edges = self._load_file(filetype='edge')
         self.nodes = self._load_file(filetype='node')
 
-
     def get_filename(self, filetype: str) -> str:
         """
         Source files can be named in various ways. For example, the node file can be named:
