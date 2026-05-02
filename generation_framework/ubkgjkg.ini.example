@@ -20,10 +20,14 @@ fix_owlnets_tsv_script_py=generation_framework/translators/owlnets_script/fix_ts
 
 [jkg_json]
 # Keys related to working with JKG JSON files
-# Path to JKG JSON
-jkg_json_path=/Users/jas971/Documents/ubkg-jkg-neo4j/json/jkg.json
+# Path to directory containing JKG JSON files
+jkg_json_dir=/Users/jas971/Documents/ubkg-jkg-neo4j/json/batch
+# name of JKG JSON file
+jkg_json_filename=jkg.json
+# name of JKG Schema file
+jkg_schema_filename=JKG_Schema.json
 
-[edgenodefiles]
-# Permutations of file names
-nodefilenames=OWLNETS_node_metadata.txt,nodes.txt,nodes.tsv,OWLNETS_node_metadata.tsv
-edgefilenames=OWLNETS_edgelist.txt,edges.txt,edges.tsv,OWLNETS_edgelist.tsv
+[jkg_en]
+# Keys for common output file names of the JKG Edge/Node (JKEN) format
+jkg_edge=jkg_edge.tsv
+jkg_node=jkg_node.tsv

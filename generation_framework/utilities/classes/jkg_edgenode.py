@@ -73,7 +73,7 @@ class Jkgedgenode:
         else:
             key = 'jkg_edge'
 
-        file_names = self.cfg.get_list(section='jkg_out', key=key)
+        file_names = self.cfg.get_list(section='jkg_en', key=key)
 
         for f in file_names:
             if os.path.exists(os.path.join(self.jkg_path, f)):
@@ -93,6 +93,7 @@ class Jkgedgenode:
         filepath = os.path.join(self.jkg_path, filename)
         self.log.print_and_logger_info(f'Loading JKG EN {filetype} file: {filepath}')
         df= self.uextract.read_csv_with_progress_bar(path=filepath, sep='\t')
+        df = df.fillna('')
         return df
 
         # If using Polars instead of Pandas
