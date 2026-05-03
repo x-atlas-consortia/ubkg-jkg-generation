@@ -132,6 +132,9 @@ class Sabjkgimport:
         # to the new JKG JSON rels array.
         self._build_jkgjson_for_jkgen_edges()
 
+        # Update existing rels involving nodes for which cuis were updated.
+        #self._update_node_cuis_in_rels()
+
         # Add new nodes and rels objects to the JKG JSON and write to output.
         self._build_new_jkgjson()
 
@@ -368,9 +371,10 @@ class Sabjkgimport:
 
     def _update_node_cuis_in_rels(self):
         """
-        Updates CUIs in existing coderels that involve nodes.
+        Updates existing rels (prior to current ingestion)
+        that involve nodes for which CUI-code links were updated.
 
-        A code from a vocabulary can be ingested as a node
+        A code from a vocabulary can be specified as a node
         into JKG more than once.
 
         It is often the case that one SAB's node file will refer to
@@ -378,7 +382,7 @@ class Sabjkgimport:
         The equivalence class algorithm will create a new concept
         for this code with a default CUI in format "<code> CUI".
         This CUI is used to build rels objects for concept-concept
-        relationships as defined in the edge file.
+        relationships involving the code as defined in the edge file.
 
         If the code's SAB is subsequently ingested, the node file
         for the SAB may specify cross-references for the code that
@@ -399,8 +403,8 @@ class Sabjkgimport:
              CUI1 and CUI2.
 
            The rel involving CUI "SAB2:code2 CUI" must be
-           replaced with rels in which "SAB2:code2 CUI" is replaced
-           with one of the new cross-referenced CUIs.
+           replaced with two rels in which "SAB2:code2 CUI" is replaced
+           with one of the two new cross-referenced CUIs.
 
         """
 
@@ -417,7 +421,7 @@ class Sabjkgimport:
                        .rename(columns={'start_id': 'cui'}))
 
         # Filter to those CUIs that include "CUI".
-        df_old_cuis = df_old_cuis[df_old_cuis['cui'].str.contains('CUI')]
+        df_old_cuis = df_old_cuis[df_old_cuis['cui'].str()==df_old_cuis['node_id'] + ' CUI']
         print(df_old_cuis[['node_id','cui']].head())
         exit(1)
 
@@ -787,8 +791,6 @@ class Sabjkgimport:
         # Build coderels for the nodes and their synonyms.
         self.new_jkg_json_coderels = self._build_new_coderels()
 
-        # Replace cuis in rels for nodes for which cuis were updated.
-        #self._update_node_cuis_in_rels()
 
     def _map_restored_custom_col_names(self, dfrels: pd.DataFrame,custom_prop_cols:set):
 
@@ -842,11 +844,9 @@ class Sabjkgimport:
             'start_cui',
             'end_cui',
             'predicate',
-            # Artifacts of merges
             'subject',
             'object',
-            'labels',
-            'end_id',
+            # merge artifacts
             'properties_sab',
             'properties_def',
             'properties_codeid',
@@ -861,7 +861,7 @@ class Sabjkgimport:
         Merge edges against new node coderels to obtain
         CUIs for JKGEN edge subjects.
         """
-        dfrels = (dfrels.merge(
+        dfrels = ((dfrels.merge(
             dfnewcoderels,
             how ='left',
             left_on ='subject',
@@ -870,6 +870,13 @@ class Sabjkgimport:
             'start_id': 'start_cui'
             }
             ))
+        .drop(columns=[
+            'labels',
+            'properties_sab',
+            'properties_def',
+            'properties_codeid',
+            'properties_tty',
+            'end_id']))
 
         # Fix any custom property columns that got a _x suffix due to naming collisions.
         rename_map = self._map_restored_custom_col_names(dfrels=dfrels, custom_prop_cols=custom_prop_cols)
@@ -879,7 +886,7 @@ class Sabjkgimport:
         # IDENTIFY OBJECT CUIS.
         # Merge edges against new node coderels to obtain
         # CUIs for JKGEN edge objects.
-        dfrels = (dfrels.merge(
+        dfrels = ((dfrels.merge(
             dfnewcoderels,
             how='left',
             left_on='object',
@@ -887,7 +894,13 @@ class Sabjkgimport:
         .rename(columns={
             'start_id': 'end_cui'
         }
-        ))
+        )).drop(columns=[
+            'labels',
+            'end_id',
+            'properties_sab',
+            'properties_def',
+            'properties_codeid',
+            'properties_tty']))
 
         # Fix any custom property columns that got a _x suffix due to naming collisions.
         rename_map = self._map_restored_custom_col_names(dfrels=dfrels, custom_prop_cols=custom_prop_cols)
@@ -901,10 +914,8 @@ class Sabjkgimport:
             "start_id": row['start_cui'],
             "end_id": row['end_cui'],
             "properties_sab": self.sab,
-            **{f"properties_{c}": row[c] for c in custom_prop_cols},
-            "properties_id": f'{self.sab}:{row['predicate']}'
+            **{f"properties_{c}": row[c] for c in custom_prop_cols}
         }, axis=1).tolist()
-
 
     def _unflatten_objects(self, list_flat_objects: list) -> list:
         """
@@ -936,7 +947,6 @@ class Sabjkgimport:
                 unflat_object['start'] = {"properties": start}
             if end != {}:
                 unflat_object['end'] = {"properties": end}
-
 
             list_unflat_objects.append(unflat_object)
 
