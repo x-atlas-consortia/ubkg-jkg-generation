@@ -16,6 +16,8 @@ from .ubkg_config import ubkgConfigParser
 # Progress bar wrapper for reads of large JSON files
 from .progressfile import ProgressFile
 from .ubkg_timer import UbkgTimer
+from ..functions.find_repo_root import find_repo_root
+
 
 class Jkgjson:
 
@@ -217,6 +219,7 @@ class Jkgjson:
 
         # Load the nodes array from the JKG JSON into Polars dataframes.
         self._load_jkg_json(max_nodes=max_nodes, max_rels=max_rels)
+
 
 
 

@@ -642,15 +642,15 @@ class Sabjkgimport:
                 .to_dict()
             )
 
-
             """
             Obtain any CUIs already linked to the node_id.
             """
-            df_node_cui = (df_exploded.merge(self.jkg_json_coderels,
+            df_node_cui = (df_nodes.merge(self.jkg_json_coderels,
                                           how='left',
                                           left_on='node_id',
                                           right_on='properties_codeid')
                         .rename(columns={'node_label_x': 'node_label'}))
+
             node_cui_map = (
                 df_node_cui.groupby('node_id')['start_id']
                 .apply(lambda x: x.dropna().unique().tolist())
@@ -824,9 +824,15 @@ class Sabjkgimport:
         # Convert list of new coderels to a DataFrame to take
         # advantage of Pandas DataFrame merging.
         dfnewcoderels = pd.DataFrame(self.new_jkg_json_coderels)
-        # Filter to PT coderels to prevent duplicates from merging.
-        dfnewcoderels = dfnewcoderels[dfnewcoderels['properties_tty']=='PT']
 
+        # Drop duplicates from merging.
+        # (Coderels map cuis to term types.)
+        #dfnewcoderels = dfnewcoderels[dfnewcoderels['properties_tty']=='PT']
+        dfnewcoderels = dfnewcoderels.drop_duplicates(subset=['start_id','properties_codeid'])[['start_id','properties_codeid']]
+
+        debug=os.path.join(self.repo_root,'debug.csv')
+        dfnewcoderels.to_csv(debug, index=False)
+        exit(1)
         # Get JKGEN edge information.
         dfrels = self.jkgen.edges.copy()
 
