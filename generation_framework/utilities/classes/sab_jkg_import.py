@@ -734,12 +734,15 @@ class Sabjkgimport:
         if node_cuis:
             all_cuis = all_cuis + node_cuis
 
-        # Default: mint a new CUI for the node.
+        # Default: either use the UMLS CUI or mint a new CUI for the node.
         if not (direct_umls_cuis
                 or other_umls_cuis
                 or other_non_umls_cuis
                 or node_cuis):
-            all_cuis =  [self._mint_new_cui(node_id)]
+            if 'UMLS:' in node_id:
+                all_cuis = [node_id.split('UMLS:')[1]]
+            else:
+                all_cuis =  [self._mint_new_cui(node_id)]
 
         # Get unique list of CUIs in original order, by rank.
         return list(dict.fromkeys(all_cuis))
@@ -860,8 +863,11 @@ class Sabjkgimport:
         
         Merge edges against new node coderels to obtain
         CUIs for JKGEN edge subjects.
+        Drop rels for which the subject node has no CUI.
+        (This corresponds to the case in which a subject node
+        is not defined in the node file.)
         """
-        dfrels = ((dfrels.merge(
+        dfrels = (((dfrels.merge(
             dfnewcoderels,
             how ='left',
             left_on ='subject',
@@ -877,16 +883,24 @@ class Sabjkgimport:
             'properties_codeid',
             'properties_tty',
             'end_id']))
+        .dropna(subset=['start_cui']))
 
         # Fix any custom property columns that got a _x suffix due to naming collisions.
         rename_map = self._map_restored_custom_col_names(dfrels=dfrels, custom_prop_cols=custom_prop_cols)
         if rename_map:
             dfrels = dfrels.rename(columns=rename_map)
 
-        # IDENTIFY OBJECT CUIS.
-        # Merge edges against new node coderels to obtain
-        # CUIs for JKGEN edge objects.
-        dfrels = ((dfrels.merge(
+        """
+        IDENTIFY OBJECT CUIS
+        
+        Merge edges against new node coderels to obtain
+        CUIs for JKGEN edge objects.
+        Drop rels for which the object node has no CUI.
+        (This corresponds to the case in which an object node
+        is not defined in the node file.)
+        """
+
+        dfrels = (((dfrels.merge(
             dfnewcoderels,
             how='left',
             left_on='object',
@@ -901,6 +915,7 @@ class Sabjkgimport:
             'properties_def',
             'properties_codeid',
             'properties_tty']))
+                  .dropna(subset=['end_cui']))
 
         # Fix any custom property columns that got a _x suffix due to naming collisions.
         rename_map = self._map_restored_custom_col_names(dfrels=dfrels, custom_prop_cols=custom_prop_cols)
@@ -916,6 +931,7 @@ class Sabjkgimport:
             "properties_sab": self.sab,
             **{f"properties_{c}": row[c] for c in custom_prop_cols}
         }, axis=1).tolist()
+
 
     def _unflatten_objects(self, list_flat_objects: list) -> list:
         """
@@ -958,6 +974,7 @@ class Sabjkgimport:
         Adds nodes, coderels, and rels lists to the existing JKG JSON.
 
         """
+
         self.ulog.print_and_logger_info('Building new JKG JSON file.')
 
         # BUILD rels ARRAY

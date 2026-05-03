@@ -55,6 +55,24 @@ class Jkgedgenode:
         self.edges = self._load_file(filetype='edge')
         self.nodes = self._load_file(filetype='node')
 
+        # Add to self.nodes any nodes in edge file that are not
+        # already defined in node file.
+        df_missing_subject_nodes = self.edges[
+            ~self.edges['subject'].isin(self.nodes['node_id'])]
+
+        if not df_missing_subject_nodes.empty:
+            df_missing_subject_nodes = df_missing_subject_nodes[['subject']].rename(columns={'subject': 'node_id'})
+
+        df_missing_object_nodes = self.edges[
+            ~self.edges['object'].isin(self.nodes['node_id'])]
+
+        if not df_missing_object_nodes.empty:
+            df_missing_object_nodes = df_missing_object_nodes[['object']].rename(columns={'object': 'node_id'})
+
+        df_missing_nodes = pd.concat([df_missing_subject_nodes, df_missing_object_nodes]).drop_duplicates()
+        df_missing_nodes = df_missing_nodes[['node_id']]
+        self.nodes = pd.concat([self.nodes, df_missing_nodes]).fillna('')
+
     def get_filename(self, filetype: str) -> str:
         """
         Source files can be named in various ways. For example, the node file can be named:

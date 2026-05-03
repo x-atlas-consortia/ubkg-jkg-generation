@@ -13,6 +13,6 @@ class Jkgout:
 
         # Obtain common application configuration.
         cfg = ubkgConfigParser(path='ubkgjkg.ini', ulog=ulog)
-        self.jkg_edge = cfg.get_value(section='jkg_out', key='jkg_edge')
-        self.jkg_node = cfg.get_value(section='jkg_out', key='jkg_node')
+        self.jkg_edge = cfg.get_value(section='jkg_en', key='jkg_edge')
+        self.jkg_node = cfg.get_value(section='jkg_en', key='jkg_node')
 
