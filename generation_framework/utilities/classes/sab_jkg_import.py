@@ -48,47 +48,14 @@ class Sabjkgimport:
         # UBKG-JKG sources manager
         self.usource = ubkgSources(ulog=ulog, cfg=cfg, repo_root=repo_root)
 
-        # Load the nodes and rels arrays from the JKG JSON.
-        # The read flattens the arrays into DataFrames.
+        """
+        Load the nodes and rels arrays from the JKG JSON.
+        The read flattens the arrays into three DataFrames:
+        1. source nodes
+        2. non-source nodes
+        3. rel nodes
+        """
         self.jkgjson = Jkgjson(log=ulog, cfg=cfg)
-
-        # Get a subset of "coderel" rel objects from the flattened rels array of the JKG JSON.
-        if self.jkgjson.rels.empty:
-            self.jkg_json_coderels = pd.DataFrame()
-        else:
-            self.jkg_json_coderels = self.jkgjson.rels[self.jkgjson.rels['label'] == 'CODE']
-
-        """
-        Get source node objects from the flattened nodes array of the JKG JSON.
-        This requires some Pandas finagling.
-        Source nodes have a 'labels' column that is a string list--e.g.,
-        "labels: ["Source"]
-        So:
-        1. Cast as string (required for some mysterious reason)
-        2. Apply ast's literal_eval to convert to a list of strings.
-        3. Check the first value. 
-        """
-        if self.jkgjson.nodes.empty:
-
-            """
-            Defensive, as it is unlikely that the full JKG JSON will
-            have no nodes. It is possible if the JKG JSON file is 
-            one of the "batched" JKG JSON files that contains just rels.
-            """
-            self.jkg_json_sources = pd.DataFrame()
-            self.jkg_json_not_sources = pd.DataFrame()
-
-        else:
-
-            utimer = UbkgTimer(display_msg="Separating Source node objects")
-
-            # Parse labels once and cache the result.
-            parsed_labels = self.jkgjson.nodes['labels'].astype(str).apply(ast.literal_eval).str[0]
-
-            self.jkg_json_sources = self.jkgjson.nodes[parsed_labels == "Source"]
-            self.jkg_json_not_sources = self.jkgjson.nodes[parsed_labels != "Source"]
-
-            utimer.stop()
 
         # Load the JKGEN edge and node files.
         self.jkgen_dir = os.path.join(repo_root, cfg.get_value(section="directories", key="sab_jkg_dir"), sab)
@@ -182,7 +149,7 @@ class Sabjkgimport:
         )
 
         # 2. Compute existing CUIs once as a set — O(1) lookups
-        existing_cuis = set(self.jkg_json_coderels['properties_codeid'])
+        existing_cuis = set(self.jkgjson.coderels['properties_codeid'])
 
         # 3. Filter to only new CUIs in a single pass
         df_new = df_exploded[~df_exploded['cui'].isin(existing_cuis)]
@@ -281,7 +248,7 @@ class Sabjkgimport:
 
     def _build_new_coderels(self)-> list[dict]:
         """
-        Builds a list of coderel objects for the JKG JSON rels array from a JKGEN node.
+        Builds a list of new coderel objects for the JKG JSON rels array from a JKGEN node.
 
         :return: list of coderel objects (dicts) for:
              - the node
@@ -297,6 +264,9 @@ class Sabjkgimport:
             .rename(columns={'cuis': 'cui'})
             .reset_index(drop=True)
         )
+
+        # Add coderels that dd not already exist in the JKG JSON.
+
 
 
         """
@@ -409,12 +379,12 @@ class Sabjkgimport:
         """
 
         """
-        Get existing rels (from prior ingestions) 
-        that involve CUIs linked to nodes from this ingestion.
-        CUIs can be either the start or end of a rel.
+        Obtain CUIs identified in prior ingestions in JKG JSON
+        that are also in nodes in the current ingestion (via JKGEN).
+        
         """
 
-        df_old_cuis = (self.jkgen.nodes.merge(self.jkg_json_coderels,
+        df_old_cuis = (self.jkgen.nodes.merge(self.jkgjson.coderels,
                                               how='inner',
                                               left_on='node_id',
                                               right_on='properties_codeid')
@@ -593,7 +563,7 @@ class Sabjkgimport:
            c. Distinguish CUIs by whether they are from the UMLS or a non-UMLS SAB.
            
         """
-        if self.jkg_json_coderels.empty:
+        if self.jkgjson.coderels.empty:
             """
             Defensive, as it is unlikely that the JKG JSON will have 
             no concept-code links. 
@@ -606,7 +576,7 @@ class Sabjkgimport:
         else:
             # Get the other CUIs for each dbxref from coderels.
             # The merge renames the node label, so restore the header.
-            df_other = (df_exploded.merge(self.jkg_json_coderels,
+            df_other = (df_exploded.merge(self.jkgjson.coderels,
                                           how='left',
                                           left_on='node_dbxrefs',
                                           right_on='properties_codeid')
@@ -645,7 +615,7 @@ class Sabjkgimport:
             """
             Obtain any CUIs already linked to the node_id.
             """
-            df_node_cui = (df_nodes.merge(self.jkg_json_coderels,
+            df_node_cui = (df_nodes.merge(self.jkgjson.coderels,
                                           how='left',
                                           left_on='node_id',
                                           right_on='properties_codeid')
@@ -795,7 +765,7 @@ class Sabjkgimport:
         self.new_jkg_json_coderels = self._build_new_coderels()
 
 
-    def _map_restored_custom_col_names(self, dfrels: pd.DataFrame,custom_prop_cols:set):
+    def _map_restored_custom_col_names(self, dfrels: pd.DataFrame,custom_prop_cols:list):
 
         """
         Used to restore custom property column names for which a _x suffix was attacjed
@@ -825,14 +795,10 @@ class Sabjkgimport:
         # advantage of Pandas DataFrame merging.
         dfnewcoderels = pd.DataFrame(self.new_jkg_json_coderels)
 
-        # Drop duplicates from merging.
-        # (Coderels map cuis to term types.)
-        #dfnewcoderels = dfnewcoderels[dfnewcoderels['properties_tty']=='PT']
+        # Drop duplicates from merging.(Coderels map cuis to term types.)
+        # Remove columns that are irrelevant to CUI identification.
         dfnewcoderels = dfnewcoderels.drop_duplicates(subset=['start_id','properties_codeid'])[['start_id','properties_codeid']]
 
-        debug=os.path.join(self.repo_root,'debug.csv')
-        dfnewcoderels.to_csv(debug, index=False)
-        exit(1)
         # Get JKGEN edge information.
         dfrels = self.jkgen.edges.copy()
 
@@ -882,16 +848,9 @@ class Sabjkgimport:
             'start_id': 'start_cui'
             }
             ))
-        .drop(columns=[
-            'labels',
-            'properties_sab',
-            'properties_def',
-            'properties_codeid',
-            'properties_tty',
-            'end_id']))
-        .dropna(subset=['start_cui']))
+        .dropna(subset=['start_cui'])))
 
-        # Fix any custom property columns that got a _x suffix due to naming collisions.
+        # Restore names of custom property columns that got a _x suffix due to naming collisions.
         rename_map = self._map_restored_custom_col_names(dfrels=dfrels, custom_prop_cols=custom_prop_cols)
         if rename_map:
             dfrels = dfrels.rename(columns=rename_map)
@@ -914,14 +873,7 @@ class Sabjkgimport:
         .rename(columns={
             'start_id': 'end_cui'
         }
-        )).drop(columns=[
-            'labels',
-            'end_id',
-            'properties_sab',
-            'properties_def',
-            'properties_codeid',
-            'properties_tty']))
-                  .dropna(subset=['end_cui']))
+        )).dropna(subset=['end_cui'])))
 
         # Fix any custom property columns that got a _x suffix due to naming collisions.
         rename_map = self._map_restored_custom_col_names(dfrels=dfrels, custom_prop_cols=custom_prop_cols)
@@ -937,7 +889,6 @@ class Sabjkgimport:
             "properties_sab": self.sab,
             **{f"properties_{c}": row[c] for c in custom_prop_cols}
         }, axis=1).tolist()
-
 
     def _unflatten_objects(self, list_flat_objects: list) -> list:
         """
@@ -987,13 +938,20 @@ class Sabjkgimport:
         self.ulog.print_and_logger_info("Building rels array.")
 
         # Convert the DataFrame of flattened original JKG JSON rels into a list of dicts.
+        list_flat_jkg_json_coderels = self.jkgjson.coderels.to_dict(orient='records')
+        if len(list_flat_jkg_json_coderels) == 0:
+            list_flat_jkg_json_coderels = []
+
         list_flat_jkg_json_rels = self.jkgjson.rels.to_dict(orient='records')
         if len(list_flat_jkg_json_rels) == 0:
             list_flat_jkg_json_rels = []
 
-        # Combine the list of flattened original JKG JSON rels with the lists of
+        # Combine the lists of flattened original JKG JSON rels and coderels with the lists of
         # flattened new JGKEN rels and coderels.
-        list_flat_rels = list_flat_jkg_json_rels + self.new_jkg_json_rels + self.new_jkg_json_coderels
+        list_flat_rels = (list_flat_jkg_json_rels +
+                          self.new_jkg_json_rels +
+                          list_flat_jkg_json_coderels +
+                          self.new_jkg_json_coderels)
 
         # "Unflatten" the elements of the combined flattend list--i.e.,
         # convert flattened objects to nested, or "unflattened" dicts.
@@ -1012,12 +970,14 @@ class Sabjkgimport:
 
         utimer = UbkgTimer(display_msg="Building nodes array.")
         # Convert the DataFrame of flattened original JKG JSON source nodes into a list of dicts.
-        list_flat_jkg_json_sources = self.jkg_json_sources.to_dict(orient='records')
+        #list_flat_jkg_json_sources = self.jkg_json_sources.to_dict(orient='records')
+        list_flat_jkg_json_sources = self.jkgjson.source_nodes.to_dict(orient='records')
         if len(list_flat_jkg_json_sources) == 0:
             list_flat_jkg_json_sources = []
 
         # Convert the DataFrame of flattened original JKG JSON "not source" nodes into a list of dicts.
-        list_flat_jkg_json_not_sources = self.jkg_json_not_sources.to_dict(orient='records')
+        #list_flat_jkg_json_not_sources = self.jkg_json_not_sources.to_dict(orient='records')
+        list_flat_jkg_json_not_sources = self.jkgjson.nodes.to_dict(orient='records')
         if len(list_flat_jkg_json_not_sources) == 0:
             list_flat_jkg_json_not_sources = []
 

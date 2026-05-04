@@ -99,15 +99,20 @@ class Jkgjson:
     def _load_jkg_json(self, max_nodes: int = None, max_rels: int = None):
 
         """
-        Loads the JKG JSON file into two Pandas dataframes, in a single
-        pass.
+        Loads the JKG JSON file into four Pandas dataframes, in a single
+        pass:
+        1. for source nodes
+        2. for other nodes
+        3. for "coderels" or concept-term (code) relationships
+        4. for other rels
 
         :param max_nodes: maximum number of nodes to load. None loads all nodes.
         :param max_rels: maximum number of rels to load. None loads all rels.
 
         Note that because the nodes array is before the rels array in the JKG JSON,
         the entire nodes array will be read, even if max_nodes is set.
-        This is primarily for debugging purposes to limit the read time.
+        This is primarily for debugging purposes to limit the read time of large
+        JKG JSON files.
 
         Sets both:
         - self.jkg_nodes: one row per node, with 'labels' as a list column and properties flattened as columns
@@ -126,7 +131,9 @@ class Jkgjson:
         # Get the file size of JKG JSON for tqdm
         file_size = os.path.getsize(jkg_json_full)
 
+        source_node_rows = []
         node_rows = []
+        code_rel_rows = []
         rel_rows = []
 
         with open(jkg_json_full, "rb") as f:
@@ -174,7 +181,6 @@ class Jkgjson:
                         if event == "end_map" and prefix in ("nodes.item", "rels.item"):
                             item = builder.value
                             if prefix == "nodes.item":
-                                properties = item.get("properties", {})
 
                                 # Flatten the properties object using the unpacking operator.
                                 properties = item.get("properties", {})
@@ -182,7 +188,12 @@ class Jkgjson:
                                     "labels": item.get("labels", []),
                                     **{f"properties_{k}": v for k, v in properties.items()}
                                 }
-                                node_rows.append(row)
+                                # Split Source nodes from other types of node.
+                                labels = item.get("labels", [])
+                                if "Source" in labels:
+                                    source_node_rows.append(row)
+                                else:
+                                    node_rows.append(row)
 
                             elif prefix == "rels.item":
                                 properties = item.get("properties", {})
@@ -194,16 +205,23 @@ class Jkgjson:
                                     "end_id": item.get("end", {}).get("properties", {}).get("id"),
                                     **{f"properties_{k}": v for k, v in properties.items()}
                                 }
-                                rel_rows.append(row)
+                                # Split coderels from other rels.
+                                labels = item.get("label", [])
+                                if "CODE" in labels:
+                                    code_rel_rows.append(row)
+                                else:
+                                    rel_rows.append(row)
 
                             builder = None
 
             utimer = UbkgTimer(display_msg="Loading JKG JSON nodes")
+            self.source_nodes = pd.DataFrame(source_node_rows).fillna('')
             self.nodes = pd.DataFrame(node_rows).fillna('')
 
             utimer.stop()
 
             utimer = UbkgTimer(display_msg="Loading JKG JSON rels")
+            self.coderels = pd.DataFrame(code_rel_rows).fillna('')
             self.rels=pd.DataFrame(rel_rows).fillna('')
             utimer.stop()
 
