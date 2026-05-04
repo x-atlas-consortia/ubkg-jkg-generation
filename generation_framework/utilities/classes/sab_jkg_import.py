@@ -98,7 +98,7 @@ class Sabjkgimport:
         # Build a list of components to be added from JKGEN
         # to the new JKG JSON rels array.
         self._build_jkgjson_for_jkgen_edges()
-
+        exit(1)
         # Update existing rels involving nodes for which cuis were updated.
         #self._update_node_cuis_in_rels()
 
@@ -265,9 +265,18 @@ class Sabjkgimport:
             .reset_index(drop=True)
         )
 
-        # Add coderels that dd not already exist in the JKG JSON.
-
-
+        # Identify coderels that do not already exist in the JKG JSON.
+        df_new_coderels = (
+            df_exploded_on_cuis.merge(
+                self.jkgjson.coderels[['properties_codeid', 'start_id']],
+                how='left',
+                left_on=['node_id', 'cui'],
+                right_on=['properties_codeid', 'start_id'],
+                indicator=True
+            )
+            .query('_merge == "left_only"')
+            .drop(columns=['properties_codeid', 'start_id', '_merge'])
+        )
 
         """
             Add any values from optional columns with a "properties_" prefix to indicate that they will
@@ -279,7 +288,7 @@ class Sabjkgimport:
 
         # Compute the set of optional columns once (outside the loop for efficiency)
         excluded_cols = self._get_node_base_cols()
-        optional_cols = [col for col in df_exploded_on_cuis.columns if col not in excluded_cols]
+        optional_cols = [col for col in df_new_coderels.columns if col not in excluded_cols]
 
         # Build the coderels that correspond to the PT term type.
         # Use the packing operator to add the custom properties.
@@ -296,7 +305,7 @@ class Sabjkgimport:
                     # ** unpacks a dict built per-row from the optional columns
                     **{f"properties_{col}": getattr(row, col) for col in optional_cols}
                 }
-                for row in tqdm(df_exploded_on_cuis.itertuples(),
+                for row in tqdm(df_new_coderels.itertuples(),
                                 total=len(df_exploded_on_cuis),
                                 desc="Building Coderel objects for nodes (PT)")
 
@@ -307,7 +316,7 @@ class Sabjkgimport:
 
         # Explode on synonyms list.
         df_exploded_on_cuis_synonyms = (
-            df_exploded_on_cuis
+            df_new_coderels
             .explode('node_synonyms')
             .rename(columns={'node_synonyms': 'node_synonym'})
             .reset_index(drop=True)
