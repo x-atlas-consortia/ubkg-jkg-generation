@@ -92,11 +92,11 @@ class JsonWriter:
                 else:
                     if self.write_pretty:
                         # Pretty-print the node.
-                        node_json = json.dumps(node, ensure_ascii=False, indent=self.indent_spaces)
+                        node_json = json.dumps(node, ensure_ascii=False, indent=self.indent_spaces, default=str)
                         node_indented = textwrap.indent(node_json, self.node_indent)
                     else:
                         # Use minimal separator spacing, with a small indent.
-                        node_json = json.dumps(node, ensure_ascii=False, separators=(',', ':'))
+                        node_json = json.dumps(node, ensure_ascii=False, separators=(',', ':'), default=str)
                         node_indented = self.node_indent + node_json
 
                 # Write comma+newline before each node except the first

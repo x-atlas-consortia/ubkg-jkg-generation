@@ -892,7 +892,7 @@ class Sabjkgimport:
 
         """
 
-        self.ulog.print_and_logger_info('Building JKG JSON arrays for edges in JKGEN edge file.')
+        utimer = UbkgTimer(display_msg='Building JKG JSON arrays for edges in JKGEN edge file.')
 
         # Convert list of new coderels to a DataFrame to take
         # advantage of Pandas DataFrame merging.
@@ -993,40 +993,7 @@ class Sabjkgimport:
             **{f"properties_{c}": row[c] for c in custom_prop_cols}
         }, axis=1).tolist()
 
-    def _unflatten_objects_old(self, list_flat_objects: list) -> list:
-        """
-        Converts a list of flattened JKG JSON objects into a
-        "unflattened", or nested, JKG JSON array.
-
-        :param list_flat_objects: list of flattened JKG JSON objects
-        :return: JKG JSON array
-
-        """
-
-        list_unflat_objects = []
-        for flat_object in tqdm(list_flat_objects):
-
-            # Move all key/value pairs for which the key starts with "properties_",
-            # "start_", or "end_to nested dicts.
-            properties = {k.removeprefix('properties_'): v
-                      for k, v in flat_object.items() if k.startswith('properties_')}
-            start = {k.removeprefix('start_'): v
-                          for k, v in flat_object.items() if k.startswith('start_')}
-            end = {k.removeprefix('end_'): v
-                     for k, v in flat_object.items() if k.startswith('end_')}
-            unflat_object = {k: v for k, v in flat_object.items()
-                             if not k.startswith(('properties_', 'start_', 'end_'))}
-            # Add nested dicts.
-            if properties != {}:
-                unflat_object['properties'] = properties
-            if start != {}:
-                unflat_object['start'] = {"properties": start}
-            if end != {}:
-                unflat_object['end'] = {"properties": end}
-
-            list_unflat_objects.append(unflat_object)
-
-        return list_unflat_objects
+        utimer.stop()
 
     def _unflatten_objects(self, list_flat_objects: list) -> list:
 
@@ -1036,22 +1003,45 @@ class Sabjkgimport:
 
         :param list_flat_objects: list of flattened JKG JSON objects
         :return: JKG JSON array
+
+        list_flat_objects can contain a variety of elements.
+        Each element is a dict. If the dict key contains a prefix,
+        it should go into a nested object--e.g.,
+        properties_tty = > {"properties": {"tty":...}}
+
+        Because list_flat_objects may be very large, but must
+        be handled in memory, this function contains some
+        adjustments to address CPU.
         """
 
         out = []
 
-        for flat in tqdm(list_flat_objects):
+
+        # Reduce tqdm update frequency to address "stuttering" in terminal output.
+        for flat in tqdm(list_flat_objects, mininterval=0.5, miniters=100):
             unflat = {}
-            properties = {}
-            start_props = {}
-            end_props = {}
+
+            properties = None
+            start_props = None
+            end_props = None
 
             for k, v in flat.items():
+                # Lazily create nested objects, which should
+                # (maybe?) reduce garbage collection.
+
                 if k.startswith("properties_"):
+                    if properties is None:
+                        properties = {}
                     properties[k[11:]] = v  # len("properties_") == 11
+
                 elif k.startswith("start_"):
+                    if start_props is None:
+                        start_props = {}
                     start_props[k[6:]] = v  # len("start_") == 6
+
                 elif k.startswith("end_"):
+                    if end_props is None:
+                        end_props = {}
                     end_props[k[4:]] = v  # len("end_") == 4
                 else:
                     unflat[k] = v
@@ -1097,11 +1087,8 @@ class Sabjkgimport:
 
         # "Unflatten" the elements of the combined flattend list--i.e.,
         # convert flattened objects to nested, or "unflattened" dicts.
-        #utimer = UbkgTimer(display_msg="Unflattening rels array.")
         self.ulog.print_and_logger_info('Unflattening rels array.')
         list_nested_jkg_json_rels = self._unflatten_objects(list_flat_objects=list_flat_rels)
-
-        #utimer.stop()
 
         """
         BUILD nodes ARRAY
