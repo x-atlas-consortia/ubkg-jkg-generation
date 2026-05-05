@@ -98,9 +98,9 @@ class Sabjkgimport:
         # Build a list of components to be added from JKGEN
         # to the new JKG JSON rels array.
         self._build_jkgjson_for_jkgen_edges()
-        exit(1)
+
         # Update existing rels involving nodes for which cuis were updated.
-        #self._update_node_cuis_in_rels()
+        self._update_node_cuis_in_rels()
 
         # Add new nodes and rels objects to the JKG JSON and write to output.
         self._build_new_jkgjson()
@@ -295,7 +295,7 @@ class Sabjkgimport:
         list_new_coderels.extend(
             [
                 {
-                    "labels": ["CODE"],
+                    "label": "CODE",
                     "start_id": row.cui,
                     "end_id": row.node_label,
                     "properties_sab": self.sab,
@@ -329,7 +329,7 @@ class Sabjkgimport:
         list_new_coderels.extend(
             [
                 {
-                    "labels": ["CODE"],
+                    "label": "CODE",
                     "start_id": row.cui,
                     "end_id": row.node_synonym,
                     "properties_sab": self.sab,
@@ -387,29 +387,120 @@ class Sabjkgimport:
 
         """
 
+        debug = os.path.join(self.repo_root, 'rels_before_update.csv')
+        self.jkgjson.rels.to_csv(debug, index=False)
+
+        # Set of rel field names that are not for properties.
+        base_cols = {
+            'start_id',
+            'end_id',
+            'label',
+            'old_cui',
+            'new_cui',
+            'properties_codeid'
+        }
+
+        # Convert lists of new coderels to a dataframe for merging.
+        df_new_coderels = pd.DataFrame(self.new_jkg_json_coderels)
+
         """
+        GET CHANGES TO CUIS IN OLD CODERELS
+        
         Obtain CUIs identified in prior ingestions in JKG JSON
         that are also in nodes in the current ingestion (via JKGEN).
-        
+        """
+        df_changed_cuis = ((df_new_coderels.merge(self.jkgjson.coderels,
+                                              how='inner',
+                                              on='properties_codeid')
+                           .rename(columns={'start_id_x': 'new_cui',
+                                            'start_id_y': 'old_cui'}))
+                           .drop_duplicates(subset=['old_cui','new_cui','properties_codeid']))
+        df_changed_cuis = df_changed_cuis[['old_cui','new_cui','properties_codeid']]
+
+        # Filter to those CUIs were minted from the node id.
+        df_changed_cuis = df_changed_cuis[df_changed_cuis['old_cui']==df_changed_cuis['properties_codeid'] + ' CUI']
+
+        debug = os.path.join(self.repo_root, 'changed_cuis.csv')
+        df_changed_cuis.to_csv(debug, index=False)
+
+        """
+            REPLACE RELS WITH CHANGED END CUIS. 
         """
 
-        df_old_cuis = (self.jkgen.nodes.merge(self.jkgjson.coderels,
-                                              how='inner',
-                                              left_on='node_id',
-                                              right_on='properties_codeid')
-                       .rename(columns={'start_id': 'cui'}))
+        # Get rels from the JKG JSON for which the end CUI changed.
+        df_rels_changed_cuis_end = (self.jkgjson.rels.merge(df_changed_cuis,
+                                                             how='inner',
+                                                             left_on='end_id',
+                                                             right_on='old_cui'))
 
-        # Filter to those CUIs that include "CUI".
-        df_old_cuis = df_old_cuis[df_old_cuis['cui'].str()==df_old_cuis['node_id'] + ' CUI']
-        print(df_old_cuis[['node_id','cui']].head())
-        exit(1)
+        debug = os.path.join(self.repo_root, 'rels_changed_cuis_end.csv')
+        df_rels_changed_cuis_end.to_csv(debug, index=False)
 
-        #df_old_rels = self.jkgen.nodes.merge(df_old_rels.merge,
-                                             #how='left',
-                                             #left_on='node_id',
-                                             #right_on='property_start_id')
+        custom_prop_cols = [c for c in df_rels_changed_cuis_end.columns if c not in base_cols]
 
+        # For each rel for which the end CUI changed,
+        # add new rels for each new end CUI.
 
+        list_new_rels_end = []
+        list_new_rels_end.extend(
+            [
+                {
+                    "label": row.label,
+                    "start_id": row.start_id,
+                    "end_id": row.new_cui, # new CUI
+                    **{c: getattr(row, c) for c in custom_prop_cols}
+                }
+                for row in tqdm(df_rels_changed_cuis_end.itertuples(), total=len(df_rels_changed_cuis_end),
+                                desc="Updating rels with changed end CUIs")
+            ]
+        )
+
+        df_new_rels_end = pd.DataFrame(list_new_rels_end)
+        self.jkgjson.rels = pd.concat([self.jkgjson.rels, df_new_rels_end])
+
+        # Delete the original rels with the old CUIs.
+        self.jkgjson.rels = self.jkgjson.rels[~self.jkgjson.rels['end_id'].isin(df_rels_changed_cuis_end['old_cui'])]
+
+        """
+            REPLACE RELS WITH CHANGED START CUIS. 
+        """
+
+        # Get rels from the JKG JSON for which the start CUI changed.
+        df_rels_changed_cuis_start = (self.jkgjson.rels.merge(df_changed_cuis,
+                                                            how='inner',
+                                                            left_on='start_id',
+                                                            right_on='old_cui'))
+
+        debug = os.path.join(self.repo_root, 'rels_changed_cuis_start.csv')
+        df_rels_changed_cuis_start.to_csv(debug, index=False)
+
+        custom_prop_cols = [c for c in df_rels_changed_cuis_start.columns if c not in base_cols]
+
+        # For each rel for which the start CUI changed,
+        # add new rels for each new start CUI.
+
+        list_new_rels_start = []
+        list_new_rels_start.extend(
+            [
+                {
+                    "label": row.label,
+                    "start_id": row.start_id,
+                    "end_id": row.new_cui,  # new CUI
+                    **{c: getattr(row, c) for c in custom_prop_cols}
+                }
+                for row in tqdm(df_rels_changed_cuis_start.itertuples(), total=len(df_rels_changed_cuis_end),
+                                desc="Updating rels with changed start CUIs")
+            ]
+        )
+
+        df_new_rels_start = pd.DataFrame(list_new_rels_start)
+        self.jkgjson.rels = pd.concat([self.jkgjson.rels, df_new_rels_start])
+
+        # Delete the original rels with the old CUIs.
+        self.jkgjson.rels = self.jkgjson.rels[~self.jkgjson.rels['start_id'].isin(df_rels_changed_cuis_start['old_cui'])]
+
+        debug = os.path.join(self.repo_root, 'rels_after_update.csv')
+        self.jkgjson.rels.to_csv(debug, index=False)
 
     def _parse_cui_list(self, val):
         """

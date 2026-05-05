@@ -197,7 +197,6 @@ class Jkgjson:
 
                             elif prefix == "rels.item":
                                 properties = item.get("properties", {})
-
                                 # Flatten the properties object using the unpacking operator.
                                 row = {
                                     "label": item.get("label"),
@@ -206,8 +205,8 @@ class Jkgjson:
                                     **{f"properties_{k}": v for k, v in properties.items()}
                                 }
                                 # Split coderels from other rels.
-                                labels = item.get("label", [])
-                                if "CODE" in labels:
+                                label = item.get("label","")
+                                if label=="CODE":
                                     code_rel_rows.append(row)
                                 else:
                                     rel_rows.append(row)
@@ -222,7 +221,8 @@ class Jkgjson:
 
             utimer = UbkgTimer(display_msg="Loading JKG JSON rels")
             self.coderels = pd.DataFrame(code_rel_rows).fillna('')
-            self.rels=pd.DataFrame(rel_rows).fillna('')
+            self.rels = pd.DataFrame(rel_rows).fillna('')
+
             utimer.stop()
 
     def __init__(self, log: ubkgLogging, cfg: ubkgConfigParser,
