@@ -423,6 +423,9 @@ class Sabjkgimport:
         debug = os.path.join(self.repo_root, 'changed_cuis.csv')
         df_changed_cuis.to_csv(debug, index=False)
 
+        if df_changed_cuis.empty:
+            return
+
         """
             REPLACE RELS WITH CHANGED END CUIS. 
         """
@@ -990,7 +993,7 @@ class Sabjkgimport:
             **{f"properties_{c}": row[c] for c in custom_prop_cols}
         }, axis=1).tolist()
 
-    def _unflatten_objects(self, list_flat_objects: list) -> list:
+    def _unflatten_objects_old(self, list_flat_objects: list) -> list:
         """
         Converts a list of flattened JKG JSON objects into a
         "unflattened", or nested, JKG JSON array.
@@ -1001,7 +1004,7 @@ class Sabjkgimport:
         """
 
         list_unflat_objects = []
-        for flat_object in list_flat_objects:
+        for flat_object in tqdm(list_flat_objects):
 
             # Move all key/value pairs for which the key starts with "properties_",
             # "start_", or "end_to nested dicts.
@@ -1024,6 +1027,45 @@ class Sabjkgimport:
             list_unflat_objects.append(unflat_object)
 
         return list_unflat_objects
+
+    def _unflatten_objects(self, list_flat_objects: list) -> list:
+
+        """
+        Converts a list of flattened JKG JSON objects into a
+        "unflattened", or nested, JKG JSON array.
+
+        :param list_flat_objects: list of flattened JKG JSON objects
+        :return: JKG JSON array
+        """
+
+        out = []
+
+        for flat in tqdm(list_flat_objects):
+            unflat = {}
+            properties = {}
+            start_props = {}
+            end_props = {}
+
+            for k, v in flat.items():
+                if k.startswith("properties_"):
+                    properties[k[11:]] = v  # len("properties_") == 11
+                elif k.startswith("start_"):
+                    start_props[k[6:]] = v  # len("start_") == 6
+                elif k.startswith("end_"):
+                    end_props[k[4:]] = v  # len("end_") == 4
+                else:
+                    unflat[k] = v
+
+            if properties:
+                unflat["properties"] = properties
+            if start_props:
+                unflat["start"] = {"properties": start_props}
+            if end_props:
+                unflat["end"] = {"properties": end_props}
+
+            out.append(unflat)
+
+        return out
 
     def _build_new_jkgjson(self):
 
@@ -1055,10 +1097,11 @@ class Sabjkgimport:
 
         # "Unflatten" the elements of the combined flattend list--i.e.,
         # convert flattened objects to nested, or "unflattened" dicts.
-        utimer = UbkgTimer(display_msg="Unflattening rels array.")
+        #utimer = UbkgTimer(display_msg="Unflattening rels array.")
+        self.ulog.print_and_logger_info('Unflattening rels array.')
         list_nested_jkg_json_rels = self._unflatten_objects(list_flat_objects=list_flat_rels)
 
-        utimer.stop()
+        #utimer.stop()
 
         """
         BUILD nodes ARRAY
@@ -1068,29 +1111,31 @@ class Sabjkgimport:
         the old sources node and the remaining nodes.
         """
 
-        utimer = UbkgTimer(display_msg="Building nodes array.")
+        #utimer = UbkgTimer(display_msg="Building nodes array.")
         # Convert the DataFrame of flattened original JKG JSON source nodes into a list of dicts.
-        #list_flat_jkg_json_sources = self.jkg_json_sources.to_dict(orient='records')
         list_flat_jkg_json_sources = self.jkgjson.source_nodes.to_dict(orient='records')
         if len(list_flat_jkg_json_sources) == 0:
             list_flat_jkg_json_sources = []
 
         # Convert the DataFrame of flattened original JKG JSON "not source" nodes into a list of dicts.
-        #list_flat_jkg_json_not_sources = self.jkg_json_not_sources.to_dict(orient='records')
         list_flat_jkg_json_not_sources = self.jkgjson.nodes.to_dict(orient='records')
         if len(list_flat_jkg_json_not_sources) == 0:
             list_flat_jkg_json_not_sources = []
 
         # Unflatten the flattened list of original JKG JSON source nodes.
+        self.ulog.print_and_logger_info('Unflattening original source nodes.')
         list_nested_jkg_json_source_nodes = self._unflatten_objects(list_flat_objects=list_flat_jkg_json_sources)
         # Unflatten the flattened list of original JKG JSON nodes other than source.
+        self.ulog.print_and_logger_info('Unflattening original non-source nodes.')
         list_nested_jkg_json_not_source_nodes = self._unflatten_objects(list_flat_objects=list_flat_jkg_json_not_sources)
 
         # Unflatten the flattened lists of new JKGGEN concept and term nodes.
+        self.ulog.print_and_logger_info('Unflattening new concept nodes.')
         list_nested_new_jkg_json_concept_nodes = self._unflatten_objects(list_flat_objects=self.new_jkg_json_node_concepts)
+        self.ulog.print_and_logger_info('Unflattening new term nodes.')
         list_nested_new_jkg_json_term_nodes = self._unflatten_objects(list_flat_objects=self.new_jkg_json_node_terms)
 
-        utimer.stop()
+        #utimer.stop()
 
         """
         Combine all unflattened nodes in order:
