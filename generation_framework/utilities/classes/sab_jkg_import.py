@@ -62,9 +62,6 @@ class Sabjkgimport:
         self.jkgjson_dir = os.path.join(repo_root, cfg.get_value(section="jkg_json", key="jkg_json_dir"))
         self.jkgen = Jkgedgenode(log=ulog, cfg=cfg, sab=sab, filedir=self.jkgen_dir)
 
-        # Split node synonyms on pipe delimiter.
-        self.jkgen.nodes['node_synonyms'] = (self.jkgen.nodes['node_synonyms'].fillna('').str.split('|'))
-
         self.sab_jkg_dir = os.path.join(repo_root, cfg.get_value(section="directories", key="sab_jkg_dir"), sab)
 
         """
@@ -586,22 +583,20 @@ class Sabjkgimport:
         utimer = UbkgTimer(display_msg="Getting CUIs for nodes")
 
         """
-        1. Do the following:
-           a. Fill missing dbxrefs.
-           b. Split the dbxrefs string on the pipe delimiter.
-           c. Explode to one row per dbxref.
+        1. Explode to one row per dbxref.
         
         In other words, transform the DataFrame rows  
         
-            from:
+            from original:
             node_id node_dbxrefs
             node1   SAB1:Code1|SAB2:Code2
             
             to:
             node_id node_dbxrefs
             node1   [SAB1:Code1, SAB2:Code2]
+            (done by JKGEdgeNode object)
         
-            and then to:
+            then to:
             node_id node_dbxrefs
             node1   SAB1:Code1
             node1   SAB2:Code2
@@ -610,7 +605,7 @@ class Sabjkgimport:
         df_nodes = self.jkgen.nodes.copy()
 
         # 1.a, 1.b
-        df_nodes['node_dbxrefs'] = (df_nodes['node_dbxrefs'].fillna('').str.split('|'))
+        #df_nodes['node_dbxrefs'] = (df_nodes['node_dbxrefs'].fillna('').str.split('|'))
         # 1.c
         df_exploded = df_nodes[['node_id', 'node_dbxrefs']].explode('node_dbxrefs').reset_index(drop=True)
 

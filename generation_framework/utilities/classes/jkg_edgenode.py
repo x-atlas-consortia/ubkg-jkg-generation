@@ -73,6 +73,11 @@ class Jkgedgenode:
         df_missing_nodes = df_missing_nodes[['node_id']]
         self.nodes = pd.concat([self.nodes, df_missing_nodes]).fillna('')
 
+        # Split node_synonyms on pipe delimiter.
+        self.nodes['node_synonyms'] = (self.nodes['node_synonyms'].fillna('').str.split('|'))
+        # Split node_dbxrefs on pipe delimiter.
+        self.nodes['node_dbxrefs'] = (self.nodes['node_dbxrefs'].fillna('').str.split('|'))
+
     def get_filename(self, filetype: str) -> str:
         """
         Source files can be named in various ways. For example, the node file can be named:
