@@ -81,6 +81,9 @@ class JsonWriter:
         2. This routine assumes that list_content contains JSON-compliant strings.
         """
 
+        if len(list_content) == 0:
+            return
+
         # Because start_list was called, always append.
         with open(self.outpath, "a", encoding="utf-8") as f:
 

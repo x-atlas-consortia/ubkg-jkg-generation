@@ -11,7 +11,7 @@ JKG Edde/Node (JkGEN) format.
 from typing import Any
 import os
 import ast
-import json
+import gc
 import pandas as pd
 from tqdm import tqdm
 
@@ -36,6 +36,8 @@ class Sabjkgimport:
 
     def __init__(self, sab:str, ulog:ubkgLogging, cfg: ubkgConfigParser, repo_root: str):
 
+        # Transfer properties.
+        # SAB
         self.sab = sab
         # Logging object
         self.ulog = ulog
@@ -43,27 +45,73 @@ class Sabjkgimport:
         self.cfg = cfg
         # Absolute file reference
         self.repo_root = repo_root
-        # UBKG code and relationship standardizer object
+
+
+        # Instantiate UBKG code and relationship standardizer object
         self.ustand = ubkgStandardizer(ulog=ulog, repo_root=repo_root)
-        # UBKG-JKG sources manager
+        # Instantiate UBKG-JKG sources manager object
         self.usource = ubkgSources(ulog=ulog, cfg=cfg, repo_root=repo_root)
 
-        """
-        Load the nodes and rels arrays from the JKG JSON.
-        The read flattens the arrays into three DataFrames:
-        1. source nodes
-        2. non-source nodes
-        3. rel nodes
-        """
+        # Initialize lists of output objects.
+        self._initialize_lists()
+
+        # Load the nodes and rels arrays from the original JKG JSON.
         self.jkgjson = Jkgjson(log=ulog, cfg=cfg)
 
-        # Load the JKGEN edge and node files.
-        self.jkgen_dir = os.path.join(repo_root, cfg.get_value(section="directories", key="sab_jkg_dir"), sab)
-        self.jkgjson_dir = os.path.join(repo_root, cfg.get_value(section="jkg_json", key="jkg_json_dir"))
-        self.jkgen = Jkgedgenode(log=ulog, cfg=cfg, sab=sab, filedir=self.jkgen_dir)
+        # Input/Output directory for JKG JSON.
+        self.jkgjson_dir = os.path.join(self.repo_root,
+                                        self.cfg.get_value(section="jkg_json",
+                                                           key="jkg_json_dir"))
 
-        self.sab_jkg_dir = os.path.join(repo_root, cfg.get_value(section="directories", key="sab_jkg_dir"), sab)
+        # Load the JKGEN edge and node files for the new SAB.
+        self._load_jkgen()
 
+        # Initialize the output file.
+        self._start_new_jkgjson()
+
+        # BUILD AND WRITE THE NODES ARRAY.
+
+        # Start the array.
+        self.jkgjson_writer.start_list(keyname='nodes')
+
+        # Add new node objects from JKGEN to the existing
+        # nodes array from the JKG JSON.
+        self._build_and_write_nodes_array()
+
+        # End the array.
+        self.jkgjson_writer.end_list()
+
+        # Add delimiters between the nodes and rels arrays.
+        self.jkgjson_writer.write_comma()
+        self.jkgjson_writer.write_line_feed()
+
+        # BUILD AND WRITE THE RELS ARRAY.
+
+        # Start the array.
+        self.jkgjson_writer.start_list(keyname='rels')
+
+        # Add new rel objects from JKGEN to the existing
+        # rel array from the JKG JSON.
+        #self._build_and_write_new_rels_array()
+
+        # End the array.
+        self.jkgjson_writer.end_list()
+
+        # End the JKG JSON.
+        self.jkgjson_writer.end_json()
+
+
+        # Build a list of components to be added from JKGEN
+        # to the new JKG JSON rels array.
+        #self._build_jkgjson_for_jkgen_edges()
+
+        # Update existing rels involving nodes for which cuis were updated.
+        #self._update_node_cuis_in_rels()
+
+        # Add new nodes and rels objects to the JKG JSON and write to output.
+        #self._build_new_jkgjson()
+
+    def _initialize_lists(self):
         """
         Initialize lists of objects for new JKG JSON nodes and rels
         arrays, by type:
@@ -71,7 +119,7 @@ class Sabjkgimport:
            a. sources
            b. concepts
            c. terms
-        2. for rels: 
+        2. for rels:
            a. coderels
            b. rels
         The objects in each list will be added below the corresponding
@@ -80,6 +128,7 @@ class Sabjkgimport:
         (The ingested SAB will add no new node_label or rel_label types
         of node objects.)
         """
+
         # Lists related to nodes
         self.new_jkg_json_node_sources = []
         self.new_jkg_json_node_concepts = []
@@ -88,26 +137,190 @@ class Sabjkgimport:
         self.new_jkg_json_coderels = []
         self.new_jkg_json_rels = []
 
-        # Build lists of components to be added from JKGEN
-        # to the JKG JSON nodes array, separated by type.
-        self._build_jkgjson_for_jkgen_nodes()
-
-        # Build a list of components to be added from JKGEN
-        # to the new JKG JSON rels array.
-        self._build_jkgjson_for_jkgen_edges()
-
-        # Update existing rels involving nodes for which cuis were updated.
-        self._update_node_cuis_in_rels()
-
-        # Add new nodes and rels objects to the JKG JSON and write to output.
-        self._build_new_jkgjson()
-
-    def _build_sab_source_node(self) -> dict:
+    def _free_memory(self, item_to_free:Any):
+        """
+        Explicitly unloads an object from memory.
+        :param item_to_free: object to be unloaded
 
         """
-        Builds a JKG JSON Source node for a non-UMLS SAB.
+        if type(item_to_free) is list:
+            item_to_free.clear()
+        if type(item_to_free) is pd.DataFrame:
+            del item_to_free
+
+        gc.collect()
+
+    def _load_jkgen(self):
+
+        """
+        Loads the JKG edge and node files for a SAB.
+
+        """
+        self.sab_jkg_dir = os.path.join(self.repo_root,
+                                        self.cfg.get_value(section="directories",
+                                                           key="sab_jkg_dir"),
+                                        self.sab)
+        self.jkgen = Jkgedgenode(log=self.ulog,
+                                 cfg=self.cfg,
+                                 sab=self.sab,
+                                 filedir=self.sab_jkg_dir)
+
+    def _start_new_jkgjson(self):
+
+        """
+        Initializes the new JKG JSON file by means of a
+        JsonWriter object.
+
+        """
+        self.ulog.print_and_logger_info("*** STARTING NEW JKG JSON FILE ***")
+        outpath = os.path.join(self.jkgjson_dir, 'new_jkg.json')
+
+        # Use a JsonWriter object to build the new JKGJSON.
+        self.jkgjson_writer = JsonWriter(outpath=outpath)
+        # Start the JSON.
+        self.jkgjson_writer.start_json()
+
+    def _build_and_write_nodes_array(self):
+        """
+        Does the following:
+        1. Converts information from the JKGEN nodes file
+           into lists of new node objects of types:
+           a. Source
+           b. Concept
+           c. Term
+        2. Combines the lists of new node objects with
+           corresponding lists of original node objects from
+           the JKGJSON
+        3. Writes lists in order to the nodes array of the
+           new JKGJSON file.
+
+        """
+
+        # Build and write the updated list of Source nodes.
+        self._build_and_write_source_nodes()
+
+        """
+        The new ingestion will not add any new nodes of types:
+         - Node_Labels
+         - Rel_Labels
+
+        Add the original lists of these node types from the JKG JSON.
+        """
+        # Node_Labels
+
+        write_delimiters = len(self.jkgjson.node_label_nodes) > 0
+        if write_delimiters:
+            self.jkgjson_writer.write_comma()
+            self.jkgjson_writer.write_line_feed()
+
+        self._unflatten_and_write_list(list_name='Node_Label nodes', df_flat=self.jkgjson.node_label_nodes)
+
+        # Rel_Labels
+        write_delimiters = len(self.jkgjson.rel_label_nodes) > 0
+        if write_delimiters:
+            self.jkgjson_writer.write_comma()
+            self.jkgjson_writer.write_line_feed()
+
+        self._unflatten_and_write_list(list_name='Rel_Label nodes', df_flat=self.jkgjson.rel_label_nodes)
+
+        """
+        GET CUIS FOR JKGEN NODES.
+        
+        Apply the equivalence class algorithm to
+        identify the CUIs to which to assign new nodes.
+        """
+        self.jkgen.nodes['cuis'] = self._get_cuis_for_nodes()
+
+        # Write the results of the algorithm to the JKGEN directory.
+        cuifile = os.path.join(self.sab_jkg_dir, 'node_cuis.csv')
+        self.jkgen.nodes.to_csv(cuifile, index=False)
+
+        # Concept nodes.
+        self._build_and_write_concept_nodes()
+
+        # Term nodes.
+        self._build_and_write_term_nodes()
+
+    def _unflatten_and_write_list(self, list_name: str, df_flat: pd.DataFrame):
+
+        """
+        Does the following:
+        1. Converts a DataFrame of "flattened" information in JKG JSON format to
+           a list of "unflattened" (nested) objects.
+        2. Writes the unflattened list to output.
+        3. Frees memory occupied by the unflattened list.
+
+        :param df_flat: DataFrame of "flattened" information in JKG JSON format
+        :param list_name: name used for the tqdm progress bar
+
+        """
+        list_unflat = self._convert_flat_dataframe_to_unflat_list(df_flat=df_flat)
+        self.jkgjson_writer.write_list(list_name=list_name, list_content=list_unflat)
+
+    def _convert_flat_dataframe_to_unflat_list(self, df_flat: pd.DataFrame):
+        """
+        For purposes of analysis, the nested JSON objects from
+        the JKG JSON are converted to DataFrames in which
+        nested key/value pairs are "flattened" to fields by means
+        of prefixes.
+
+        This function converts a flattened DataFrame into a list
+        of "unflattened" dicts, reconstituting to the nested
+        structure.
+
+        This function also frees memory occupied by large DataFrames
+        after they are no longer needed.
+
+        :param df_flat: DataFrame to convert
+        :return: converted list
+
+        """
+
+        # Convert DataFrame to list.
+        list_flat = df_flat.to_dict(orient='records')
+        if len(list_flat) == 0:
+            list_flat = []
+
+        # Free memory used for DataFrame.
+        self._free_memory(item_to_free=df_flat)
+
+        # Convert flattened objects to nested objects.
+        return self._unflatten_objects(list_flat_objects=list_flat)
+
+    def _build_and_write_source_nodes(self):
+        """
+        Does the following:
+        1. Builds a source node object for the JKGEN SAB.
+        2. Appends it to the list of source node objects
+           from the JKG JSON.
+        3. Writes the combined list to output.
+
+        """
+
+        # Convert the DataFrame of flattened original source nodes
+        # to a list of unflattened (nested) objects.
+        list_unflat_sources = self._convert_flat_dataframe_to_unflat_list(df_flat=self.jkgjson.source_nodes)
+
+        # Build the source node for the SAB.
+        # (Although there is only one source, treat as a
+        # list with one element for purposes of combination.)
+        new_source = self._build_sab_source_node()
+
+        # Add the new source node to the list of nested source nodes.
+        list_unflat_sources.extend(new_source)
+
+        # Write the complete nested list to output.
+        self.jkgjson_writer.write_list(list_name='Source nodes', list_content=list_unflat_sources)
+
+    def _build_sab_source_node(self) -> list[dict]:
+
+        """
+        Builds an unflattened (nested) JKG JSON Source node for a non-UMLS SAB.
         Source information for a non-UMLS SAB resides in the
         sources.json file at the root of the repository.
+
+        :return: a list with a single dict that will be combined with
+                 the JKG JSON list of source node dicts.
 
         """
         # Source manager
@@ -118,24 +331,63 @@ class Sabjkgimport:
         source_description = self.usource.get(sab=self.sab, key='description')
         source_version = self.usource.get(sab=self.sab, key='version')
 
+        # The "properties_" prefix flattens key/values that are to be
+        # nested into a "properties" object.
+
         dictsource = {
             "labels": ["Source"],
-            "properties":
-                {"id": f"{self.sab.upper()}:{self.sab.upper()}",
-                 "name": source_name,
-                 "description": source_description,
-                 "sab": f"{self.sab.upper()}",
-                 "source_version": source_version}
-        }
+            "properties": {
+                "id": f"{self.sab.upper()}:{self.sab.upper()}",
+                "name": source_name,
+                "description": source_description,
+                "sab": f"{self.sab.upper()}",
+                "source_version": source_version,
+                "ttyl": ["PT","SY"] # always only PT or SY
+                }
+            }
+
+        # Sources from SABs will have a URL.
         if source_type == "owl":
             dictsource["properties"]["source"] = usource.get(sab=self.sab, key='owl_url')
 
-        return dictsource
+        return [dictsource]
+
+    def _build_and_write_concept_nodes(self):
+        """
+        Does the following:
+        1. Builds a list of unflattened Concept nodes for new concepts linked
+           to node codes from the JKGEN.
+        2. Unflattens the list of Concept node objects from the JKG JSON.
+           from the JKG JSON.
+        3. Combines the list of new Concept nodes and original Concept nodes.
+        3. Writes the combined list to output.
+
+        """
+
+        # Build list of unflattened objects for new concept nodes.
+        list_new_unflat_concepts = self._build_new_concept_nodes()
+
+        # Convert the DataFrame of flattened original concept nodes
+        # to a list of unflattened (nested) objects.
+        list_unflat_concepts = self._convert_flat_dataframe_to_unflat_list(df_flat=self.jkgjson.concept_nodes)
+
+        # Add the list of new nested concept nodes to the list of original nested concept nodes.
+        list_unflat_concepts.extend(list_new_unflat_concepts)
+        self._free_memory(item_to_free=list_new_unflat_concepts)
+
+        write_delimiters = len(list_unflat_concepts) > 0
+        if write_delimiters:
+            self.jkgjson_writer.write_comma()
+            self.jkgjson_writer.write_line_feed()
+
+        # Write the complete nested list to output.
+        self.jkgjson_writer.write_list(list_name='Concept nodes', list_content=list_unflat_concepts)
 
     def _build_new_concept_nodes(self) -> list[dict]:
         """
-        Builds concept objects for all new CUIs to which a node's code links,
-        if not already present in coderels.
+        Builds a list of unflattened concept objects for all
+        new CUIs to which a node's code links, if not already
+        present in coderels.
         """
 
         # 1. Explode so each linked CUI gets its own row, keeping node_label aligned
@@ -146,7 +398,10 @@ class Sabjkgimport:
         )
 
         # 2. Compute existing CUIs once as a set — O(1) lookups
-        existing_cuis = set(self.jkgjson.coderels['properties_codeid'])
+        if self.jkgjson.coderels.empty:
+            existing_cuis = set()
+        else:
+            existing_cuis = set(self.jkgjson.coderels['properties_codeid'])
 
         # 3. Filter to only new CUIs in a single pass
         df_new = df_exploded[~df_exploded['cui'].isin(existing_cuis)]
@@ -156,12 +411,45 @@ class Sabjkgimport:
         return [
             {
                 "labels": ["Concept"],
-                "properties_id": row.cui,
-                "properties_pref_term": row.node_label,
-                "properties_sab": sab_upper,
+                "properties": {
+                    "id": row.cui,
+                    "pref_term": row.node_label,
+                    "sab": sab_upper
+                }
             }
             for row in tqdm(df_new.itertuples(index=False), total=len(df_new), desc="Building concept nodes")
         ]
+
+    def _build_and_write_term_nodes(self):
+        """
+        Does the following:
+        1. Builds a list of unflattened Term nodes for new terms for nodes
+           from the JKGEN.
+        2. Appends the list to the list of flattened Term node objects
+           from the JKG JSON.
+        3. Unflattens the combined list.
+        3. Writes the combined list to output.
+
+        """
+
+        # Build list of unflattened objects for new term nodes.
+        list_new_unflat_terms = self._build_new_term_nodes()
+
+        # Convert the DataFrame of flattened original term nodes
+        # to a list of unflattened (nested) objects.
+        list_unflat_terms = self._convert_flat_dataframe_to_unflat_list(df_flat=self.jkgjson.term_nodes)
+
+        # Add the list of new nested term nodes to the list of original nested term nodes.
+        list_unflat_terms.extend(list_new_unflat_terms)
+        self._free_memory(item_to_free=list_new_unflat_terms)
+
+        write_delimiters = len(list_unflat_terms) > 0
+        if write_delimiters:
+            self.jkgjson_writer.write_comma()
+            self.jkgjson_writer.write_line_feed()
+
+        # Write the complete nested list to output.
+        self.jkgjson_writer.write_list(list_name='Term nodes', list_content=list_unflat_terms)
 
     def _build_new_term_nodes(self) -> list[dict]:
         """
@@ -183,7 +471,9 @@ class Sabjkgimport:
             [
                 {
                     "labels": ["Term"],
-                    "properties_id": row.node_label
+                    "properties": {
+                        "id": row.node_label
+                    }
                 }
                 for row in tqdm(self.jkgen.nodes.itertuples(), total=len(self.jkgen.nodes), desc="Building Term objects for node labels")
             ]
@@ -201,7 +491,9 @@ class Sabjkgimport:
             [
                 {
                     "labels": ["Term"],
-                    "properties_id": row.node_synonym
+                    "properties": {
+                        "id": row.node_synonym
+                    }
                 }
                 for row in
                 tqdm(df_exploded.itertuples(), total=len(df_exploded), desc="Building Term objects for node synonyms")
@@ -582,6 +874,11 @@ class Sabjkgimport:
         # so start a spinner.
         utimer = UbkgTimer(display_msg="Getting CUIs for nodes")
 
+        direct_umls_map = {}
+        other_umls_map = {}
+        other_non_umls_map = {}
+        node_cui_map = {}
+
         """
         1. Explode to one row per dbxref.
         
@@ -815,9 +1112,10 @@ class Sabjkgimport:
         # Get unique list of CUIs in original order, by rank.
         return list(dict.fromkeys(all_cuis))
 
-    def _build_jkgjson_for_jkgen_nodes(self):
+
+    def _build_and_write_new_nodes_array_old(self):
         """
-        Builds lists of nodes and rels objects to add to the JKG JSON
+        Builds lists of nodes objects to add to the JKG JSON
         related to the JKGEN nodes file.
 
         """

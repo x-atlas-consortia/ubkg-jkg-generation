@@ -4,6 +4,7 @@ Class that manages the JKG JSON.
 """
 
 import os
+import gc
 import ijson
 import polars as pl
 import pandas as pd
@@ -99,12 +100,15 @@ class Jkgjson:
     def _load_jkg_json(self, max_nodes: int = None, max_rels: int = None):
 
         """
-        Loads the JKG JSON file into four Pandas dataframes, in a single
-        pass:
-        1. for source nodes
-        2. for other nodes
-        3. for "coderels" or concept-term (code) relationships
-        4. for other rels
+        Loads the JKG JSON file into a set of Pandas dataframes, in a single
+        pass for:
+        1. Source nodes
+        2. Node_Label nodes
+        3. Rel_Label nodes
+        4. Concept nodes
+        5. Term nodes
+        6. "coderels" or concept-term (code) relationships
+        7. other rels (concept-concept relationshiops)
 
         :param max_nodes: maximum number of nodes to load. None loads all nodes.
         :param max_rels: maximum number of rels to load. None loads all rels.
@@ -114,11 +118,13 @@ class Jkgjson:
         This is primarily for debugging purposes to limit the read time of large
         JKG JSON files.
 
-        Sets both:
-        - self.jkg_nodes: one row per node, with 'labels' as a list column and properties flattened as columns
-        - self.jkg_rels: one row per relationship, with start/end/properties flattened as columns
+        Builds two types of DataFrames:
+        - nodes: one row per node, with 'labels' as a list column and properties flattened as columns
+        - rels: one row per relationship, with start/end/properties flattened as columns
+
         """
 
+        self.log.print_and_logger_info('*** LOADING JKG JSON FILE ***')
         # Treat 0 or None as "load all".
         max_nodes = None if not max_nodes else max_nodes
         max_rels = None if not max_rels else max_rels
@@ -131,8 +137,22 @@ class Jkgjson:
         # Get the file size of JKG JSON for tqdm
         file_size = os.path.getsize(jkg_json_full)
 
+        # Node types:
+        # - Source
+        # - Node_Label
+        # - Rel_Label
+        # - Term
+        # - Concept
         source_node_rows = []
-        node_rows = []
+        node_label_node_rows = []
+        rel_label_node_rows = []
+        concept_node_rows = []
+        term_node_rows = []
+
+        # Rel types
+        # These are not specified explicitly in the JKG Schema.
+        # - coderels--concept-term (code) relationships
+        # - rels--concept-concept relationships
         code_rel_rows = []
         rel_rows = []
 
@@ -188,12 +208,20 @@ class Jkgjson:
                                     "labels": item.get("labels", []),
                                     **{f"properties_{k}": v for k, v in properties.items()}
                                 }
-                                # Split Source nodes from other types of node.
+                                # Split node objects by type.
                                 labels = item.get("labels", [])
                                 if "Source" in labels:
                                     source_node_rows.append(row)
+                                elif "Node_Label" in labels:
+                                    node_label_node_rows.append(row)
+                                elif "Rel_Label" in labels:
+                                    rel_label_node_rows.append(row)
+                                elif "Concept" in labels:
+                                    concept_node_rows.append(row)
+                                elif "Term" in labels:
+                                    term_node_rows.append(row)
                                 else:
-                                    node_rows.append(row)
+                                    raise Exception(f"Unknown node type: {labels}")
 
                             elif prefix == "rels.item":
                                 properties = item.get("properties", {})
@@ -213,17 +241,51 @@ class Jkgjson:
 
                             builder = None
 
-            utimer = UbkgTimer(display_msg="Loading JKG JSON nodes")
+            utimer = UbkgTimer(display_msg="Loading nodes")
+
             self.source_nodes = pd.DataFrame(source_node_rows).fillna('')
-            self.nodes = pd.DataFrame(node_rows).fillna('')
+            source_node_rows.clear()
+            gc.collect()
+
+            self.node_label_nodes = pd.DataFrame(node_label_node_rows).fillna('')
+            node_label_node_rows.clear()
+            gc.collect()
+
+            self.rel_label_nodes = pd.DataFrame(rel_label_node_rows).fillna('')
+            rel_label_node_rows.clear()
+            gc.collect()
+
+            self.concept_nodes = pd.DataFrame(concept_node_rows).fillna('')
+            concept_node_rows.clear()
+            gc.collect()
+
+            self.term_nodes = pd.DataFrame(term_node_rows).fillna('')
+            term_node_rows.clear()
+            gc.collect()
 
             utimer.stop()
 
-            utimer = UbkgTimer(display_msg="Loading JKG JSON rels")
-            self.coderels = pd.DataFrame(code_rel_rows).fillna('')
+            utimer = UbkgTimer(display_msg="Loading non-CODE rels")
             self.rels = pd.DataFrame(rel_rows).fillna('')
-
+            rel_rows.clear()
             utimer.stop()
+
+            utimer = UbkgTimer(display_msg="Loading CODE rels")
+            self.coderels = pd.DataFrame(code_rel_rows).fillna('')
+            code_rel_rows.clear()
+            utimer.stop()
+
+            self.log.print_and_logger_info(f'JKG JSON LOAD SUMMARY:')
+            self.log.print_and_logger_info('- NODE OBJECTS')
+            self.log.print_and_logger_info(f"-- Source nodes: {len(self.source_nodes)}")
+            self.log.print_and_logger_info(f"-- Node_Label nodes: {len(self.node_label_nodes)}")
+            self.log.print_and_logger_info(f"-- Relation_Label nodes: {len(self.rel_label_nodes)}")
+            self.log.print_and_logger_info(f"-- Concept nodes: {len(self.concept_nodes)}")
+            self.log.print_and_logger_info(f"-- Term nodes: {len(self.term_nodes)}")
+            self.log.print_and_logger_info('- REL OBJECTS')
+            self.log.print_and_logger_info(f"-- non-CODE rels: {len(self.rels)}")
+            self.log.print_and_logger_info(f"-- CODE rels: {len(self.coderels)}")
+            self.log.print_and_logger_info(f"*** JKG JSON load complete ***")
 
     def __init__(self, log: ubkgLogging, cfg: ubkgConfigParser,
                  max_nodes: int=0, max_rels: int=0) -> None:

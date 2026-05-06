@@ -44,6 +44,8 @@ class Jkgedgenode:
         self.cfg = cfg
         self.sab = sab
 
+        self.log.print_and_logger_info('*** JKG EDGE/NODE (JKGEN) LOAD ***')
+
         self.uextract = ubkgExtract(ulog=log)
 
         # Get the path to the directory that contains the edge and node files.
@@ -54,6 +56,11 @@ class Jkgedgenode:
         # Load the edge and node files.
         self.edges = self._load_file(filetype='edge')
         self.nodes = self._load_file(filetype='node')
+
+        self.log.print_and_logger_info('JKGEN LOAD SUMMARY')
+        self.log.print_and_logger_info(f'SAB: {self.sab}')
+        self.log.print_and_logger_info(f'-- nodes: {len(self.nodes)}')
+        self.log.print_and_logger_info(f'-- edges: {len(self.edges)}')
 
         # Add to self.nodes any nodes in edge file that are not
         # already defined in node file.
@@ -77,6 +84,8 @@ class Jkgedgenode:
         self.nodes['node_synonyms'] = (self.nodes['node_synonyms'].fillna('').str.split('|'))
         # Split node_dbxrefs on pipe delimiter.
         self.nodes['node_dbxrefs'] = (self.nodes['node_dbxrefs'].fillna('').str.split('|'))
+
+        self.log.print_and_logger_info('*** JKGEN LOAD complete ***')
 
     def get_filename(self, filetype: str) -> str:
         """
