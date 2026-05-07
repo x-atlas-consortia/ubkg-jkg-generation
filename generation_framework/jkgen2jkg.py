@@ -62,9 +62,9 @@ def main():
     ulog.print_and_logger_info('-' * 50)
 
     args = getargs()
-    ulog.print_and_logger_info('Command line arguments:')
+    ulog.print_and_logger_info('-- Command line arguments:')
     sab_names = [s.upper() for s in args.sabs]
-    ulog.print_and_logger_info(f' - SABs: {', '.join(sab_names)}')
+    ulog.print_and_logger_info(f'---- SABs: {', '.join(sab_names)}')
 
     # Obtain application configuration.
     cfg = ubkgConfigParser(path='ubkgjkg.ini', ulog=ulog)
@@ -87,7 +87,7 @@ def main():
         jkg_import = Sabjkgimport(sab=sab_name, ulog=ulog, cfg=cfg,  repo_root=repo_root)
 
     elapsed_time = time.time() - start_time
-    ulog.print_and_logger_info(f'Completed. Total Elapsed time {"{:0>8}".format(str(timedelta(seconds=elapsed_time)))}')
+    ulog.print_and_logger_info(f'INGESTION COMPLETED. Total Elapsed time {"{:0>8}".format(str(timedelta(seconds=elapsed_time)))}')
 
 
 if __name__ == "__main__":

@@ -56,7 +56,7 @@ class Jkgjson:
 
             node_rows = []
             with open(jkg_json_full, "rb") as f:
-                with tqdm(desc=f"Reading nodes from {self.jkg_json_filename}",
+                with tqdm(desc=f"-- Reading nodes from {self.jkg_json_filename}",
                         total=file_size,
                         unit="B", unit_scale=True, unit_divisor=1024) as pbar:
                     pf = ProgressFile(f, pbar)
@@ -65,7 +65,7 @@ class Jkgjson:
                         row.update(node.get("properties", {}))
                         node_rows.append(row)
 
-            utimer = UbkgTimer(display_msg="Loading nodes DataFrame")
+            utimer = UbkgTimer(display_msg="-- Loading nodes DataFrame")
             self.jkg_nodes = pl.DataFrame(node_rows, infer_schema_length=len(node_rows))
             utimer.stop()
 
@@ -80,7 +80,7 @@ class Jkgjson:
 
             rel_rows = []
             with open(jkg_json_full, "rb") as f:
-                with tqdm(desc=f"Reading rels from {self.jkg_json_filename}",
+                with tqdm(desc=f"-- Reading rels from {self.jkg_json_filename}",
                         total=file_size,
                         unit="B", unit_scale=True, unit_divisor=1024) as pbar:
                     pf = ProgressFile(f, pbar)
@@ -93,7 +93,7 @@ class Jkgjson:
                         row.update(rel.get("properties", {}))
                         rel_rows.append(row)
 
-            utimer = UbkgTimer(display_msg="Loading rels DataFrame")
+            utimer = UbkgTimer(display_msg="-- Loading rels DataFrame")
             self.jkg_rels = pl.DataFrame(rel_rows, infer_schema_length=len(rel_rows))
             utimer.stop()
 
@@ -158,7 +158,7 @@ class Jkgjson:
 
         with open(jkg_json_full, "rb") as f:
 
-            with tqdm(desc=f"Reading from {self.jkg_json_filename}",
+            with tqdm(desc=f"-- Reading from {self.jkg_json_filename}",
                       total=file_size,
                       unit="B", unit_scale=True, unit_divisor=1024) as pbar:
 
@@ -241,51 +241,58 @@ class Jkgjson:
 
                             builder = None
 
-            utimer = UbkgTimer(display_msg="Loading nodes")
+            utimer = UbkgTimer(display_msg="-- Loading Source nodes")
 
             self.source_nodes = pd.DataFrame(source_node_rows).fillna('')
             source_node_rows.clear()
             gc.collect()
+            utimer.stop()
 
+            utimer = UbkgTimer(display_msg="-- Loading Node_Label nodes")
             self.node_label_nodes = pd.DataFrame(node_label_node_rows).fillna('')
             node_label_node_rows.clear()
             gc.collect()
+            utimer.stop()
 
+            utimer = UbkgTimer(display_msg="-- Loading Rel_Label nodes")
             self.rel_label_nodes = pd.DataFrame(rel_label_node_rows).fillna('')
             rel_label_node_rows.clear()
             gc.collect()
+            utimer.stop()
 
+            utimer = UbkgTimer(display_msg="-- Loading Concept nodes")
             self.concept_nodes = pd.DataFrame(concept_node_rows).fillna('')
             concept_node_rows.clear()
             gc.collect()
+            utimer.stop()
 
+            utimer = UbkgTimer(display_msg="-- Loading Term nodes")
             self.term_nodes = pd.DataFrame(term_node_rows).fillna('')
             term_node_rows.clear()
             gc.collect()
-
             utimer.stop()
 
-            utimer = UbkgTimer(display_msg="Loading non-CODE rels")
+            utimer = UbkgTimer(display_msg="-- Loading non-CODE rels")
             self.rels = pd.DataFrame(rel_rows).fillna('')
             rel_rows.clear()
             utimer.stop()
 
-            utimer = UbkgTimer(display_msg="Loading CODE rels")
+            utimer = UbkgTimer(display_msg="-- Loading CODE rels")
             self.coderels = pd.DataFrame(code_rel_rows).fillna('')
             code_rel_rows.clear()
             utimer.stop()
 
-            self.log.print_and_logger_info(f'JKG JSON LOAD SUMMARY:')
-            self.log.print_and_logger_info('- NODE OBJECTS')
-            self.log.print_and_logger_info(f"-- Source nodes: {len(self.source_nodes)}")
-            self.log.print_and_logger_info(f"-- Node_Label nodes: {len(self.node_label_nodes)}")
-            self.log.print_and_logger_info(f"-- Relation_Label nodes: {len(self.rel_label_nodes)}")
-            self.log.print_and_logger_info(f"-- Concept nodes: {len(self.concept_nodes)}")
-            self.log.print_and_logger_info(f"-- Term nodes: {len(self.term_nodes)}")
-            self.log.print_and_logger_info('- REL OBJECTS')
-            self.log.print_and_logger_info(f"-- non-CODE rels: {len(self.rels)}")
-            self.log.print_and_logger_info(f"-- CODE rels: {len(self.coderels)}")
-            self.log.print_and_logger_info(f"*** JKG JSON load complete ***")
+            self.log.print_and_logger_info(f'*** JKG JSON LOAD SUMMARY:')
+            self.log.print_and_logger_info('* NODE OBJECTS')
+            self.log.print_and_logger_info(f"---- Source nodes: {len(self.source_nodes):,}")
+            self.log.print_and_logger_info(f"---- Node_Label nodes: {len(self.node_label_nodes):,}")
+            self.log.print_and_logger_info(f"---- Relation_Label nodes: {len(self.rel_label_nodes):,}")
+            self.log.print_and_logger_info(f"---- Concept nodes: {len(self.concept_nodes):,}")
+            self.log.print_and_logger_info(f"---- Term nodes: {len(self.term_nodes):,}")
+            self.log.print_and_logger_info('* REL OBJECTS')
+            self.log.print_and_logger_info(f"---- non-CODE rels: {len(self.rels):,}")
+            self.log.print_and_logger_info(f"---- CODE rels: {len(self.coderels):,}")
+            self.log.print_and_logger_info(f"*** JKG JSON LOAD COMPLETE ***")
 
     def __init__(self, log: ubkgLogging, cfg: ubkgConfigParser,
                  max_nodes: int=0, max_rels: int=0) -> None:

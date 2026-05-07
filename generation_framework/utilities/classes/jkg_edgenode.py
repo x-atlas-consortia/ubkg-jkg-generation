@@ -7,7 +7,6 @@ import os
 import sys
 #import polars as pl
 import pandas as pd
-from tqdm import tqdm
 
 from .ubkg_extract import ubkgExtract
 # Centralized logging
@@ -57,10 +56,10 @@ class Jkgedgenode:
         self.edges = self._load_file(filetype='edge')
         self.nodes = self._load_file(filetype='node')
 
-        self.log.print_and_logger_info('JKGEN LOAD SUMMARY')
-        self.log.print_and_logger_info(f'SAB: {self.sab}')
-        self.log.print_and_logger_info(f'-- nodes: {len(self.nodes)}')
-        self.log.print_and_logger_info(f'-- edges: {len(self.edges)}')
+        self.log.print_and_logger_info('* JKGEN LOAD SUMMARY')
+        self.log.print_and_logger_info(f'-- SAB: {self.sab}')
+        self.log.print_and_logger_info(f'-- nodes: {len(self.nodes):,}')
+        self.log.print_and_logger_info(f'-- edges: {len(self.edges):,}')
 
         # Add to self.nodes any nodes in edge file that are not
         # already defined in node file.
@@ -85,7 +84,7 @@ class Jkgedgenode:
         # Split node_dbxrefs on pipe delimiter.
         self.nodes['node_dbxrefs'] = (self.nodes['node_dbxrefs'].fillna('').str.split('|'))
 
-        self.log.print_and_logger_info('*** JKGEN LOAD complete ***')
+        self.log.print_and_logger_info('*** JKGEN LOAD COMPLETE ***')
 
     def get_filename(self, filetype: str) -> str:
         """
@@ -123,7 +122,7 @@ class Jkgedgenode:
 
         filename = self.get_filename(filetype=filetype)
         filepath = os.path.join(self.jkg_path, filename)
-        self.log.print_and_logger_info(f'Loading JKG EN {filetype} file: {filepath}')
+        self.log.print_and_logger_info(f'-- Loading JKG EN {filetype} file: {filepath}')
         df= self.uextract.read_csv_with_progress_bar(path=filepath, sep='\t')
         df = df.fillna('')
         return df

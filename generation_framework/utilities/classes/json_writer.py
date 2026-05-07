@@ -87,7 +87,7 @@ class JsonWriter:
         # Because start_list was called, always append.
         with open(self.outpath, "a", encoding="utf-8") as f:
 
-            for i, node in enumerate(tqdm(list_content, desc=f"Writing {list_name}...", total=len(list_content))):
+            for i, node in enumerate(tqdm(list_content, desc=f"-- Writing {list_name}...", total=len(list_content))):
 
                 # Produce node JSON either as pretty (multi-line) or minimal (one-line, with minimal indentation)
                 if isinstance(node, str):
