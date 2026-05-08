@@ -4,13 +4,10 @@
 # 1. Sets up Python virtual environment
 # 2. Installs dependencies
 # 3. Runs a specified Python script with arguments
-# 4. Optionally runs the script with memory profiling.
 
+# Usage:
+# ./run_python_venv.sh <command> [args...]
 # Example: ./run_python_venv.sh ./sab2edge2node.py A,B,C
-
-# MEMORY UTILIZATION REPORT
-# The script uses the  memory-profiler package
-# to create a plot of the script's memory utilization.
 
 # Set strict mode for Bash so that failures in subtasks such as python or pip install
 # fail loudly.
@@ -53,6 +50,19 @@ fi
 
 echo "Executing Python script: $PYTHON_SCRIPT with arguments " "${@:2}"
 
-python3 "$PYTHON_SCRIPT" "${@:2}"
-#mprof run "$PYTHON_SCRIPT" "${@:2}"
-#mprof plot
+# WRAP SCRIPT WITH MEMORY PROFILING.
+
+# Create output dir (relative to the application directory)
+OUTDIR="memory_profiling"
+mkdir -p "$OUTDIR"
+
+# Generate a file stamp for the memory profile output file that
+# includes the name of the profiled script and the generation time.
+STAMP="${PYTHON_SCRIPT%.py}_$(date +%Y%m%d_%H%M%S)"
+DATFILE="$OUTDIR/mprofile_${STAMP}.dat"
+PLOTFILE="$OUTDIR/mprofile_${STAMP}.png"
+
+# Wrap the execution of the script with memory profile,
+# with profiling outputs in OUTDIR
+mprof run -o "$DATFILE" -- python3 "$PYTHON_SCRIPT" "${@:2}"
+mprof plot -o "$PLOTFILE" "$DATFILE"
