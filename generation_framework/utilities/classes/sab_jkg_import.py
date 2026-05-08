@@ -57,6 +57,7 @@ class Sabjkgimport:
         # Load the nodes and rels arrays from the original JKG JSON.
         self.jkgjson = Jkgjson(log=ulog, cfg=cfg)
 
+
         # Input/Output directory for JKG JSON.
         self.jkgjson_dir = os.path.join(self.repo_root,
                                         self.cfg.get_value(section="jkg_json",
@@ -69,6 +70,8 @@ class Sabjkgimport:
         self.node_counts = []
 
         # Initialize the output file.
+        # The output file has the same name as the input JKG JSON,
+        # so this will overwrite the input file.
         self._start_new_jkgjson()
 
         # BUILD AND WRITE THE NODES ARRAY.
@@ -125,6 +128,8 @@ class Sabjkgimport:
         to match the workflow--e.g.,
         [('Source', 'before', 107), ('Source', 'after', 108)...]
         """
+
+        print('')
 
         self.ulog.print_and_logger_info("*** COMPARISONS OF NODE COUNTS ***")
         # Group the list of tuples into a dict.
@@ -214,8 +219,8 @@ class Sabjkgimport:
         JsonWriter object.
 
         """
-        self.ulog.print_and_logger_info("*** STARTING NEW JKG JSON FILE ***")
-        outpath = os.path.join(self.jkgjson_dir, 'new_jkg.json')
+        self.ulog.print_and_logger_info("*** REBUILDING JKG JSON FILE ***")
+        outpath = os.path.join(self.jkgjson.jkg_json_dir, self.jkgjson.jkg_json_filename)
 
         # Use a JsonWriter object to build the new JKGJSON.
         self.jkgjson_writer = JsonWriter(outpath=outpath)
