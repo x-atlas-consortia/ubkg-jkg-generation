@@ -243,8 +243,8 @@ class Sabjkgimport:
 
         """
         self.ulog.print_and_logger_info("*** REBUILDING JKG JSON FILE ***")
-        #outpath = os.path.join(self.jkgjson.jkg_json_dir, self.jkgjson.jkg_json_filename)
-        outpath = os.path.join(self.jkgjson.jkg_json_dir, 'new_jkg.json')
+        outpath = os.path.join(self.jkgjson.jkg_json_dir, self.jkgjson.jkg_json_filename)
+        #outpath = os.path.join(self.jkgjson.jkg_json_dir, 'new_jkg.json')
 
         # Use a JsonWriter object to build the new JKGJSON.
         self.jkgjson_writer = JsonWriter(outpath=outpath)
@@ -341,8 +341,9 @@ class Sabjkgimport:
 
         """
         list_unflat = self._convert_flat_dataframe_to_unflat_list(df_flat=df_flat,
-                                                                  progress_display=progress_display,
-                                                                  unload_frame=unload_frame)
+                                                                  progress_display=progress_display)
+        self._unload_item(item_to_unload=df_flat)
+
         self.jkgjson_writer.write_list(list_name=progress_display, list_content=list_unflat)
 
     def _convert_flat_dataframe_to_unflat_list(self, df_flat: pd.DataFrame, progress_display: str="", unload_frame:bool=False):
@@ -1570,32 +1571,53 @@ class Sabjkgimport:
 
         # Reduce tqdm update frequency to address "stuttering" in terminal output.
         for flat in tqdm(list_flat_objects, mininterval=0.5, miniters=100, desc=f"-- Unflattening {progress_display}"):
-            unflat = {}
 
-            properties = None
-            start_props = None
-            end_props = None
+            out.append(self._unflatten_object(flat_object=flat))
 
-            for k, v in flat.items():
-                # Lazily create nested objects, which should
-                # (maybe?) reduce garbage collection.
+        return out
 
-                if k.startswith("properties_"):
-                    if properties is None:
-                        properties = {}
-                    properties[k[11:]] = v  # len("properties_") == 11
 
-                elif k.startswith("start_"):
-                    if start_props is None:
-                        start_props = {}
-                    start_props[k[6:]] = v  # len("start_") == 6
+    def _unflatten_object(self, flat_object: dict={}) -> dict:
 
-                elif k.startswith("end_"):
-                    if end_props is None:
-                        end_props = {}
-                    end_props[k[4:]] = v  # len("end_") == 4
-                else:
-                    unflat[k] = v
+        """
+        Converts a single JKG JSON object into a
+        "unflattened", or nested item suitable for writing to the JKG JSON.
+
+        :param flat_objects: flattened JKG JSON object
+        :return: JKG JSON nested object
+
+        flat_object can contain a variety of elements.
+        If the dict key contains a prefix,
+        it should go into a nested object--e.g.,
+        properties_tty = > {"properties": {"tty":...}}
+        """
+
+        unflat = {}
+
+        properties = None
+        start_props = None
+        end_props = None
+
+        for k, v in flat_object.items():
+            # Lazily create nested objects, which should
+            # (maybe?) reduce garbage collection.
+
+            if k.startswith("properties_"):
+                if properties is None:
+                    properties = {}
+                properties[k[11:]] = v  # len("properties_") == 11
+
+            elif k.startswith("start_"):
+                if start_props is None:
+                    start_props = {}
+                start_props[k[6:]] = v  # len("start_") == 6
+
+            elif k.startswith("end_"):
+                if end_props is None:
+                    end_props = {}
+                end_props[k[4:]] = v  # len("end_") == 4
+            else:
+                unflat[k] = v
 
             if properties:
                 unflat["properties"] = properties
@@ -1604,9 +1626,5 @@ class Sabjkgimport:
             if end_props:
                 unflat["end"] = {"properties": end_props}
 
-            out.append(unflat)
-
-        return out
-
-
+        return unflat
 
