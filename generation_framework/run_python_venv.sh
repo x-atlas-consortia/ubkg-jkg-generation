@@ -4,6 +4,10 @@
 # 1. Sets up Python virtual environment
 # 2. Installs dependencies
 # 3. Runs a specified Python script with arguments
+# 4. Profiles memory utilization of the script, with
+#    a. outputs in the repo subdirectory named "memory_profiling"
+#    g. outputs for each run stamped with the name of the specified
+#       script and execution time.
 
 # Usage:
 # ./run_python_venv.sh <command> [args...]
@@ -62,7 +66,7 @@ STAMP="${PYTHON_SCRIPT%.py}_$(date +%Y%m%d_%H%M%S)"
 DATFILE="$OUTDIR/mprofile_${STAMP}.dat"
 PLOTFILE="$OUTDIR/mprofile_${STAMP}.png"
 
-# Wrap the execution of the script with memory profile,
+# Wrap the execution of the script with memory profiling,
 # with profiling outputs in OUTDIR
-mprof run -o "$DATFILE" -- python3 "$PYTHON_SCRIPT" "${@:2}"
+mprof run -o "$DATFILE" python3 "$PYTHON_SCRIPT" "${@:2}"
 mprof plot -o "$PLOTFILE" "$DATFILE"

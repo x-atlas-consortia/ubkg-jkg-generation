@@ -216,7 +216,7 @@ class Sabjkgimport:
         if type(item_to_unload) is list:
             item_to_unload.clear()
         if type(item_to_unload) is pd.DataFrame:
-            del item_to_unload
+            item_to_unload = None
 
         gc.collect()
 
@@ -714,7 +714,7 @@ class Sabjkgimport:
         self._unflatten_objects(list_flat_objects=self.list_new_coderels, progress_display=progress_display)
         self.jkgjson_writer.write_list(list_name=progress_display, list_content=self.list_new_coderels)
 
-        # Unload list of new rels.
+        # Unload list of new coderels.
         self._unload_item(item_to_unload=self.list_new_coderels)
 
     def _build_new_coderels(self)-> list[dict]:
@@ -1200,10 +1200,7 @@ class Sabjkgimport:
 
         df_nodes = self.jkgen.nodes.copy()
 
-        # 1.a, 1.b
-        #df_nodes['node_dbxrefs'] = (df_nodes['node_dbxrefs'].fillna('').str.split('|'))
-        # 1.c
-        df_exploded = df_nodes[['node_id', 'node_dbxrefs']].explode('node_dbxrefs').reset_index(drop=True)
+        df_exploded = self.jkgen.nodes[['node_id', 'node_dbxrefs']].explode('node_dbxrefs').reset_index(drop=True)
 
         """
         2. Standardize dbxref codes, grouping by SAB. 
@@ -1306,6 +1303,13 @@ class Sabjkgimport:
                 .to_dict()
             )
 
+            # Unload analysis DataFrames that are no longer needed.
+            self._unload_item(item_to_unload=df_exploded)
+            self._unload_item(item_to_unload=df_direct_umls)
+            self._unload_item(item_to_unload=df_other)
+            self._unload_item(item_to_unload=df_other_umls)
+            self._unload_item(item_to_unload=df_other_non_umls)
+
             """
             Obtain any CUIs already linked to the node_id.
             """
@@ -1320,6 +1324,8 @@ class Sabjkgimport:
                 .apply(lambda x: x.dropna().unique().tolist())
                 .to_dict()
             )
+
+            self._unload_item(item_to_unload=df_node_cui)
 
             """
             Identify CUIs for the node_id. Select the first CUI from lists 
