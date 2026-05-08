@@ -4,8 +4,13 @@
 # 1. Sets up Python virtual environment
 # 2. Installs dependencies
 # 3. Runs a specified Python script with arguments
-# Usage: ./run_python_venv.sh <path_to_python_script> <list of arguments>
+# 4. Optionally runs the script with memory profiling.
+
 # Example: ./run_python_venv.sh ./sab2edge2node.py A,B,C
+
+# MEMORY UTILIZATION REPORT
+# The script uses the  memory-profiler package
+# to create a plot of the script's memory utilization.
 
 # Set strict mode for Bash so that failures in subtasks such as python or pip install
 # fail loudly.
@@ -47,4 +52,7 @@ fi
 # for the script (all after the first, which is the name of the script).
 
 echo "Executing Python script: $PYTHON_SCRIPT with arguments " "${@:2}"
+
 python3 "$PYTHON_SCRIPT" "${@:2}"
+#mprof run "$PYTHON_SCRIPT" "${@:2}"
+#mprof plot

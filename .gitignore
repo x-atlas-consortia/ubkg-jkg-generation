@@ -31,6 +31,17 @@ generation_framework/*.ini
 # log files in any path
 **/*.log
 
+# memory_profiler / mprof outputs
+mprofile_*.dat
+mprofile_*.dat.*
+mprofile_*.png
+mprofile_*.svg
+mprofile_*.pdf
+
+# In case memory_profiler is run from a dedicated output directory
+mprof_*/
+mprof/
+
 
 
 

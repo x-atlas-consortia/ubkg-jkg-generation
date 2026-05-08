@@ -41,5 +41,8 @@ wget==3.2
 # Streaming json
 ijson==3.5.0
 
+# Memory profiling
+memory-profiler==0.61.0
+
 
 
