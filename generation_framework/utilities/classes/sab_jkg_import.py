@@ -107,6 +107,7 @@ class Sabjkgimport:
 
         # Print out comparisons of node counts.
         self._report_node_counts()
+        self._report_node_counts(to_file=True)
 
     def _update_node_counts(self, node_type: str, state: str, count: int):
         """
@@ -121,15 +122,23 @@ class Sabjkgimport:
 
         self.node_counts.append((node_type, state, count))
 
-    def _report_node_counts(self):
+    def _report_node_counts(self, to_file: bool=False):
         """
         Prints out before and after counts of nodes.
+        :param to_file: whether to print the report to file
+
         Assumes that the list of tuples in self.node_counts is ordered
         to match the workflow--e.g.,
         [('Source', 'before', 107), ('Source', 'after', 108)...]
         """
 
-        print('')
+        if not to_file:
+            print('')
+
+        if to_file:
+            outfilepath = os.path.join(self.sab_jkg_dir,'node_counts.tsv')
+
+
 
         self.ulog.print_and_logger_info("*** COMPARISONS OF NODE COUNTS ***")
         # Group the list of tuples into a dict.
@@ -144,17 +153,31 @@ class Sabjkgimport:
         w_updated = 20
         w_border = 90
 
-        self.ulog.print_and_logger_info(f"{'type':<{w_type}} {'before':>{w_before}} {'after':>{w_after}} {'updated':>{w_updated}}")
-        self.ulog.print_and_logger_info("-" * w_border)
+        if to_file:
+            with open(outfilepath, 'w') as outfile:
+                outfile.write(f'type\tbefore\tafter\tupdated\n')
+        else:
+            self.ulog.print_and_logger_info(f"{'type':<{w_type}} {'before':>{w_before}} {'after':>{w_after}} {'updated':>{w_updated}}")
+            self.ulog.print_and_logger_info("-" * w_border)
+
         for k, v in data.items():
             before = v.get("before", 0)
             updated = v.get("updated", 0)
             after = v.get("after", 0)
             if k == 'non-CODE rels':
-                self.ulog.print_and_logger_info(f"{k:<{w_type}} {before:>{w_before},} {after:>{w_after},} {updated:>{w_updated},}")
+                if to_file:
+                    with open(outfilepath, 'a') as outfile:
+                        outfile.write(f'{k}\t{before}\t{after}\t{updated}\n')
+                else:
+                    self.ulog.print_and_logger_info(
+                        f"{k:<{w_type}} {before:>{w_before},} {after:>{w_after},} {updated:>{w_updated},}")
             else:
-                self.ulog.print_and_logger_info(
-                    f"{k:<{w_type}} {before:>{w_before},} {after:>{w_after},} {"n/a":>{w_updated}}")
+                if to_file:
+                    with open(outfilepath, 'a') as outfile:
+                        outfile.write(f'{k}\t{before}\t{after}\tn/a\n')
+                else:
+                    self.ulog.print_and_logger_info(
+                        f"{k:<{w_type}} {before:>{w_before},} {after:>{w_after},} {"n/a":>{w_updated}}")
 
         self.ulog.print_and_logger_info("-" * w_border)
 
@@ -220,7 +243,8 @@ class Sabjkgimport:
 
         """
         self.ulog.print_and_logger_info("*** REBUILDING JKG JSON FILE ***")
-        outpath = os.path.join(self.jkgjson.jkg_json_dir, self.jkgjson.jkg_json_filename)
+        #outpath = os.path.join(self.jkgjson.jkg_json_dir, self.jkgjson.jkg_json_filename)
+        outpath = os.path.join(self.jkgjson.jkg_json_dir, 'new_jkg.json')
 
         # Use a JsonWriter object to build the new JKGJSON.
         self.jkgjson_writer = JsonWriter(outpath=outpath)
