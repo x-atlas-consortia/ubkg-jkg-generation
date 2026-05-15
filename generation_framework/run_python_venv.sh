@@ -68,5 +68,6 @@ PLOTFILE="$OUTDIR/mprofile_${STAMP}.png"
 
 # Wrap the execution of the script with memory profiling,
 # with profiling outputs in OUTDIR
-mprof run -o "$DATFILE" python3 "$PYTHON_SCRIPT" "${@:2}"
+mprof run --include-children -o "$DATFILE" python3 "$PYTHON_SCRIPT" "${@:2}"
 mprof plot -o "$PLOTFILE" "$DATFILE"
+

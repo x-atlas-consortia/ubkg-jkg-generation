@@ -71,9 +71,24 @@ In the JKG, a node is associated with every possible CUI indicated by the JKGEN 
 The ingestion script implements the following algorithm for CUI assignment. 
 ## Add edge nodes to the list of nodes
 
-In a
+A SAB's JKGEN edge file often includes assertions that involve codes from vocabularies other than the SAB. 
+Nodes referenced in edges should be linked to CUIs in JKG. The ingestion 
+script adds to the node list any subjects or objects from the edge file that are not
+specified in the node file. These "edge nodes" will not have cross-references.
 
-## Identify cross-referenced CUIs
-## Rank cross-referenced CUIs 
+## Identify and rank cross-referenced CUIs
+Although the ingestion script will link a node to 
+all possible CUIs, the equivalence algorithm ranks CUI assignments:
+
+| Type                     | Description                                   | Example                                      |
+|--------------------------|-----------------------------------------------|----------------------------------------------|
+| direct UMLS CUIs         | cross-references to UMLS CUIs                 | UBERON:0001748 -> UMLS:C0927176              |
+| transitive UMLS CUIs     | cross-references to codes that have UMLS CUIs | UBERON:0001748 -> FMA:55566 -> UMLS:C0927176 |
+| transitive non-UMLS CUIs | cross-references to codes that non-UMLS CUIs  | MP:0011739 -> CL:0002084 -> CL:0002084 CUI   |
+
 ## Assign CUIs in order of rank
-## 
+Assign CUIs as follows:
+1. Assign any cross-referenced CUIs.
+2. If there are no cross-referenced CUIs, check whether the node already has a CUI in JKG.
+3. If the node has no CUIs, mint a CUI in format **_SAB_:_code_ CUI**.
+
