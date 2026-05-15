@@ -31,3 +31,5 @@ jkg_schema_filename=JKG_Schema.json
 # Keys for common output file names of the JKG Edge/Node (JKEN) format
 jkg_edge=jkg_edge.tsv
 jkg_node=jkg_node.tsv
+# whether to overwrite the original JKG JSON file
+ingest_overwrite=false

@@ -97,8 +97,15 @@ class Jkgjson:
                 for prefix, event, value in ijson.parse(pf):
 
                     # Stop early if both limits are reached.
-                    nodes_done = max_nodes is not None and len(node_rows) >= max_nodes
-                    rels_done = max_rels is not None and len(rel_rows) >= max_rels
+                    num_nodes = len(source_node_rows) \
+                                + len(node_label_node_rows) \
+                                + len(rel_label_node_rows) \
+                                +len(concept_node_rows) \
+                                + len(term_node_rows)
+                    num_rels = len(code_rel_rows) + len(rel_rows)
+
+                    nodes_done = max_nodes is not None and num_nodes >= max_nodes
+                    rels_done = max_rels is not None and num_rels >= max_rels
                     if nodes_done and rels_done:
                         break
 
@@ -110,10 +117,10 @@ class Jkgjson:
 
                     # Skip building if this array's limit is already reached.
                     if prefix == "nodes.item" and event == "start_map":
-                        if max_nodes is None or len(node_rows) < max_nodes:
+                        if max_nodes is None or num_nodes < max_nodes:
                             builder = ijson.ObjectBuilder()
                     elif prefix == "rels.item" and event == "start_map":
-                        if max_rels is None or len(rel_rows) < max_rels:
+                        if max_rels is None or num_rels < max_rels:
                             builder = ijson.ObjectBuilder()
 
                     if builder is not None:
@@ -136,6 +143,12 @@ class Jkgjson:
                                 # Split node objects by type.
                                 labels = item.get("labels", [])
                                 if "Source" in labels:
+                                    # Coerce srl to integer.
+                                    # Note: the UMLS and NDC sources will have a blank string for the srl key.
+                                    # All other sources will have a float value.
+                                    if 'properties_srl' in row.keys():
+                                        if row['properties_srl'] != '':
+                                            row['properties_srl'] = int(row['properties_srl'])
                                     source_node_rows.append(row)
                                 elif "Node_Label" in labels:
                                     node_label_node_rows.append(row)
@@ -169,6 +182,7 @@ class Jkgjson:
             utimer = UbkgTimer(display_msg="-- Loading Source nodes")
 
             self.source_nodes = pd.DataFrame(source_node_rows).fillna('')
+
             source_node_rows.clear()
             gc.collect()
             utimer.stop()

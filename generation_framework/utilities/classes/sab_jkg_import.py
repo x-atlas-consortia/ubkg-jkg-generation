@@ -13,6 +13,7 @@ import os
 import ast
 import gc
 import pandas as pd
+from pandas.core.computation.ops import isnumeric
 from tqdm import tqdm
 
 # logging object
@@ -51,17 +52,19 @@ class Sabjkgimport:
         # Instantiate UBKG-JKG sources manager object
         self.usource = ubkgSources(ulog=ulog, cfg=cfg, repo_root=repo_root)
 
+        # Whether to overwrite the JKG JSON as part of ingestion.
+        self.ingest_overwrite = cfg.get_value(section='jkg_json', key='ingest_overwrite').lower() == 'true'
+
         # Initialize lists of output objects.
         self._initialize_lists()
 
         # Load the nodes and rels arrays from the original JKG JSON.
         self.jkgjson = Jkgjson(log=ulog, cfg=cfg)
 
-
         # Input/Output directory for JKG JSON.
         self.jkgjson_dir = os.path.join(self.repo_root,
-                                        self.cfg.get_value(section="jkg_json",
-                                                           key="jkg_json_dir"))
+                                        self.cfg.get_value(section='jkg_json',
+                                                           key='jkg_json_dir'))
 
         # Load the JKGEN edge and node files for the new SAB.
         self._load_jkgen()
@@ -243,8 +246,10 @@ class Sabjkgimport:
 
         """
         self.ulog.print_and_logger_info("*** REBUILDING JKG JSON FILE ***")
-        outpath = os.path.join(self.jkgjson.jkg_json_dir, self.jkgjson.jkg_json_filename)
-        #outpath = os.path.join(self.jkgjson.jkg_json_dir, 'new_jkg.json')
+        if self.ingest_overwrite:
+            outpath = os.path.join(self.jkgjson.jkg_json_dir, self.jkgjson.jkg_json_filename)
+        else:
+            outpath = os.path.join(self.jkgjson.jkg_json_dir, 'new_jkg.json')
 
         # Use a JsonWriter object to build the new JKGJSON.
         self.jkgjson_writer = JsonWriter(outpath=outpath)
@@ -346,7 +351,7 @@ class Sabjkgimport:
 
         self.jkgjson_writer.write_list(list_name=progress_display, list_content=list_unflat)
 
-    def _convert_flat_dataframe_to_unflat_list(self, df_flat: pd.DataFrame, progress_display: str="", unload_frame:bool=False):
+    def _convert_flat_dataframe_to_unflat_list(self, df_flat: pd.DataFrame, progress_display: str="", unload_frame:bool=False) -> list:
         """
         For purposes of analysis, the nested JSON objects from
         the JKG JSON are converted to DataFrames in which
@@ -371,7 +376,7 @@ class Sabjkgimport:
         if len(list_flat) == 0:
             list_flat = []
 
-        # Convert flattened objects to nested objects.
+        # Convert list of flattened objects to list of "unflattened" (nested) objects.
         return self._unflatten_objects(list_flat_objects=list_flat,
                                        progress_display=progress_display)
 
@@ -487,12 +492,19 @@ class Sabjkgimport:
         present in coderels.
         """
 
-        # 1. Explode so each linked CUI gets its own row, keeping node_label aligned
+        """
+        1. Explode so each linked CUI gets its own row, keeping node_label aligned.
+           
+           The equivalence algorithm (get_cuis_for_nodes) will not assign a CUI for 
+           a node that was added to the nodes list from the edge file and that already
+           has a CUI defined in JKG. Drop references to these nodes.
+        """
         df_exploded = (
             self.jkgen.nodes[['cuis', 'node_label']]
             .explode('cuis')
             .rename(columns={'cuis': 'cui'})
-        )
+        ).dropna() # from edge nodes added to nodes list
+
 
         # 2. Compute existing CUIs once as a set — O(1) lookups
         if self.jkgjson.coderels.empty:
@@ -594,7 +606,11 @@ class Sabjkgimport:
             .explode('node_synonyms')
             .rename(columns={'node_synonyms': 'node_synonym'})
             .reset_index(drop=True)
-        )
+        ).dropna(subset=['node_synonym'])
+
+        # Only add terms if there are synonyms.
+        df_exploded = df_exploded[df_exploded['node_synonym'] != '']
+
         listret.extend(
             [
                 {
@@ -654,10 +670,8 @@ class Sabjkgimport:
         """
         WRITE EXISTING RELS TO OUTPUT.
         """
-        write_delimiters = len(self.jkgjson.rels) > 0
-        if write_delimiters:
-            self.jkgjson_writer.write_comma()
-            self.jkgjson_writer.write_line_feed()
+        # Keep track of the number of exiting rels.
+        num_existing_rels = len(self.jkgjson.rels)
 
         self._unflatten_dataframe_and_write_list(df_flat=self.jkgjson.rels, progress_display='existing non-CODE rels')
 
@@ -674,28 +688,38 @@ class Sabjkgimport:
         list_new_rels = self._build_new_non_coderels()
         self._update_node_counts(node_type="non-CODE rels", state="after", count=len(self.jkgjson.rels) + len(list_new_rels))
 
-        write_delimiters = len(list_new_rels) > 0
-        if write_delimiters:
+        """
+        Determine whether to add delimiters between 
+        list of existing rels and list of new rels.
+        """
+
+        num_new_rels = len(list_new_rels)
+        if num_new_rels > 0 and num_existing_rels > 0:
             self.jkgjson_writer.write_comma()
             self.jkgjson_writer.write_line_feed()
 
         progress_display = 'new non-CODE rels'
 
-        self._unflatten_objects(list_flat_objects=list_new_rels, progress_display=progress_display)
-
-        self.jkgjson_writer.write_list(list_name=progress_display, list_content=list_new_rels)
-
-        # Unload list of new rels.
+        # Convert list of flattened new rels objects to a list of "unflattened" (nested) new rels objects.
+        list_unflat_new_rels = self._unflatten_objects(list_flat_objects=list_new_rels, progress_display=progress_display)
         self._unload_item(item_to_unload=list_new_rels)
+
+        self.jkgjson_writer.write_list(list_name=progress_display, list_content=list_unflat_new_rels)
+        self._unload_item(item_to_unload=list_unflat_new_rels)
 
         """
         WRITE EXISTING CODERELS TO OUTPUT.
         """
 
-        write_delimiters = len(self.jkgjson.coderels) > 0
-        if write_delimiters:
+        """
+        Determine whether to add delimiters between the 
+        new rels list and the existing coderels list.
+        """
+        num_existing_coderels = len(self.jkgjson.coderels)
+        if num_existing_coderels > 0 and num_new_rels > 0:
             self.jkgjson_writer.write_comma()
             self.jkgjson_writer.write_line_feed()
+
         self._unflatten_dataframe_and_write_list(df_flat=self.jkgjson.coderels, progress_display='existing CODE rels')
 
         # Unload DataFrame of existing coderels.
@@ -706,17 +730,26 @@ class Sabjkgimport:
         The new coderels were built earlier in the workflow.
         """
 
-        write_delimiters = len(self.list_new_coderels) > 0
-        if write_delimiters:
+        """
+        Determine whether to add delimiters between
+        the list of existing coderels and list of new coderels.
+        """
+
+        num_new_coderels = len(self.list_new_coderels)
+        if num_new_coderels > 0 and num_existing_coderels > 0:
             self.jkgjson_writer.write_comma()
             self.jkgjson_writer.write_line_feed()
 
         progress_display = 'new CODE rels'
-        self._unflatten_objects(list_flat_objects=self.list_new_coderels, progress_display=progress_display)
-        self.jkgjson_writer.write_list(list_name=progress_display, list_content=self.list_new_coderels)
+        # Convert list of flattened new coderel objects to a list of "unflattened" (nested) new coderel objects.
 
+        list_unflat_new_coderels=self._unflatten_objects(list_flat_objects=self.list_new_coderels, progress_display=progress_display)
         # Unload list of new coderels.
         self._unload_item(item_to_unload=self.list_new_coderels)
+
+        self.jkgjson_writer.write_list(list_name=progress_display, list_content=list_unflat_new_coderels)
+        self._unload_item(item_to_unload=list_unflat_new_coderels)
+
 
     def _build_new_coderels(self)-> list[dict]:
         """
@@ -761,7 +794,17 @@ class Sabjkgimport:
                 .query('_merge == "left_only"')
                 .drop(columns=['properties_codeid', 'start_id', '_merge'])
             )
+        """
+        Drop any coderels without CUIs.
+        (This handles cases in which the node identifier is a UMLS CUI 
+        or a node that already has a CUI in JKG. The equivalence
+        algorithm assigns these cases no new CUI.)
+        """
+        df_new_coderels = df_new_coderels[~df_new_coderels['cui'].isnull()]
 
+        #debug = os.path.join(self.repo_root,'debug.csv')
+        #df_new_coderels.to_csv(debug, index=False)
+        #exit(1)
         """
             The nodes DataFrame is flattened.
              
@@ -827,6 +870,8 @@ class Sabjkgimport:
             .rename(columns={'node_synonyms': 'node_synonym'})
             .reset_index(drop=True)
         )
+        # Filter to codes with synonyms.
+        df_exploded_on_cuis_synonyms = df_exploded_on_cuis_synonyms[df_exploded_on_cuis_synonyms['node_synonym']!='']
 
         # Terms of type SY do not get the definition.
         list_new_coderels.extend(
@@ -924,6 +969,10 @@ class Sabjkgimport:
            with one of the two new cross-referenced CUIs.
 
         """
+
+        if self.jkgjson.coderels.empty:
+            self._update_node_counts(node_type="non-CODE rels", state="updated", count=0)
+            return
 
         #debug = os.path.join(self.repo_root, 'rels_before_update.csv')
         #self.jkgjson.rels.to_csv(debug, index=False)
@@ -1166,8 +1215,7 @@ class Sabjkgimport:
         1. the first direct UMLS CUI
         2. the first UMLS CUI for a transitive code
         3. the first other CUI for a transitive code
-        4. the existing CUI for the code
-        5. a CUI minted from the code
+        4. a CUI minted from the code
         """
 
         # This is a block operation with no hooks for tqdm,
@@ -1312,7 +1360,7 @@ class Sabjkgimport:
             self._unload_item(item_to_unload=df_other_non_umls)
 
             """
-            Obtain any CUIs already linked to the node_id.
+            Identify any nodes that already have a CUI.            
             """
             df_node_cui = (df_nodes.merge(self.jkgjson.coderels,
                                           how='left',
@@ -1334,8 +1382,9 @@ class Sabjkgimport:
             1. direct UMLS CUIs
             2. other UMLS CUIs
             3. other non-UMLS CUIs
-            4. any CUIs for the node_id in coderels.
-            If no CUI identified, mint a new CUI.
+            
+            If no CUI identified, then check whether the node itself is 
+            linked to a CUI. If not, then mint a new CUI.
                 
             """
 
@@ -1401,19 +1450,21 @@ class Sabjkgimport:
             if other_non_umls_cuis:
                 all_cuis = all_cuis + other_non_umls_cuis
 
-        # Look for existing CUI assignment.
-        if node_cuis:
-            all_cuis = all_cuis + node_cuis
-
-        # Default: either use the UMLS CUI or mint a new CUI for the node.
+        """
+        Defaults:
+        If there was no CUI obtained from dbxrefs, check whether
+        the node itself either is a UMLS CUI or has a link to a CUI.
+        If not, then mint a new CUI.
+        
+        This will result in some nodes having no CUI. 
+        Coderels for these nodes will not be created.
+        """
         if not (direct_umls_cuis
                 or other_umls_cuis
                 or other_non_umls_cuis
+                or ('UMLS:' in node_id)
                 or node_cuis):
-            if 'UMLS:' in node_id:
-                all_cuis = [node_id.split('UMLS:')[1]]
-            else:
-                all_cuis =  [self._mint_new_cui(node_id)]
+            all_cuis =  [self._mint_new_cui(node_id)]
 
         # Get unique list of CUIs in original order, by rank.
         return list(dict.fromkeys(all_cuis))
@@ -1571,8 +1622,8 @@ class Sabjkgimport:
 
         # Reduce tqdm update frequency to address "stuttering" in terminal output.
         for flat in tqdm(list_flat_objects, mininterval=0.5, miniters=100, desc=f"-- Unflattening {progress_display}"):
-
-            out.append(self._unflatten_object(flat_object=flat))
+            unflat = self._unflatten_object(flat_object=flat)
+            out.append(unflat)
 
         return out
 
@@ -1605,7 +1656,13 @@ class Sabjkgimport:
             if k.startswith("properties_"):
                 if properties is None:
                     properties = {}
-                properties[k[11:]] = v  # len("properties_") == 11
+                # Coerce srl to integer.
+                # UMLS and NDC have srl=''; others will have a float.
+                if k=="properties_srl" and v != '':
+                    vret = int(v)
+                else:
+                    vret = v
+                properties[k[11:]] = vret  # len("properties_") == 11
 
             elif k.startswith("start_"):
                 if start_props is None:
