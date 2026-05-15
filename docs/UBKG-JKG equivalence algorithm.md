@@ -29,6 +29,7 @@ the UMLS concept C1183212 in the FMA ontology.
 To simplify discussion, a code in JKG will be represented 
 as a node linked to a Concept node, even though the code is actually a set of properties on a relationship
 between a Concept node and a Term node.
+
 ![img_5.png](img_5.png)
 
 # Equivalence
