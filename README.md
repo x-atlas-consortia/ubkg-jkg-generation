@@ -131,10 +131,21 @@ Source translations are independent.
 2. Files share a file name in format _source type_ 2 _jkgen_.
 
 # jkgen2jkg
-The **jkgen2jkg** application adds information from the JKGEN files
-of a SAB created by the **sab2jkgen** application to a file in JKG JSON format.
+The **jkgen2jkg** application integrates information from the JKGEN files
+of a SAB created by the **sab2jkgen** application into a file in JKG JSON format.
 
-The **jkgen2jkg** application implements the _UBKG-JKG equivalence class algorithm_.
+The **jkgen2jkg** application allows the construction of a JKG _context_, or a JKG JSON 
+file comprising information from multiple sources.
+
+## UBKG-JKG context
+A UBKG-JKG context extends the JKG JSON created from the UMLS by
+integrating information from non-UMLS data sources.
+
+To maximize linkages between concepts and codes in the UBKG-JKG, **jkgen2jkg** implements the following
+algorithms:
+* the UBKG-JKG [equivalence algorithm](https://github.com/x-atlas-consortia/ubkg-jkg-generation/blob/main/docs/UBKG-JKG%20equivalence%20algorithm.md)
+* the UBKG-JKG [update algorithm](https://github.com/x-atlas-consortia/ubkg-jkg-generation/blob/main/docs/UBKG-JKG%20correction%20algorithm.md)
+
 
 # ubkgjkg.ini
 **sab2jkgen** and **jkgen2jkg** are configured by means of the **ubkg.ini** file.

@@ -1,4 +1,4 @@
-# UBKG-JKG equivalence  algorithm
+# UBKG-JKG Equivalence  algorithm
 
 # Concepts, Terms, and codes in JKG
 
@@ -53,7 +53,7 @@ For example, in UBERON, UBERON:0001748 has the following value for _node_dbxrefs
 
 The format of each element in node_dbxrefs is _SAB_:_identifier in SAB_. Node files
 will specify two types of dbxrefs:
-1. If the _SAB_ is **UMLS**, then the dbxref corresponds to a UMLS _Concept Unique Identifier_ (CUI).
+1. If the _SAB_ is **UMLS**, then the dbxref corresponds to a UMLS _[Concept Unique Identifier](https://github.com/x-atlas-consortia/json-knowledge-graph#id)_ (CUI).
 2. All other values of _SAB_, then the dbxref corresponds to a code in a source--e.g, a vocabulary or ontology.
 
 ## Code-Concept links 
@@ -66,7 +66,7 @@ The concepts to which a code links depends on a number of factors:
 An identifier in node_dbxrefs is most often a code in a vocabulary, not a CUI. If the code for the dbxref
 was in the JKG at the time of ingestion, then it will be necessary to identify the CUI associated with the code in JKG.
 
-# Equivalence algorithm
+# Equivalence algorithm steps
 In the JKG, a node is associated with every possible CUI indicated by the JKGEN node and edge file.
 
 The ingestion script implements the following algorithm for CUI assignment. 
