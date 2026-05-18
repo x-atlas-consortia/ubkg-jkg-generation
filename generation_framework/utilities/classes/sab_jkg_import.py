@@ -238,6 +238,11 @@ class Sabjkgimport:
                                  sab=self.sab,
                                  filedir=self.sab_jkg_dir)
 
+        # Standardize the values in the "node_synonyms" column per
+        # the codeid regex pattern in JKG Schema.
+
+        self.jkgen.nodes['node_synonyms'] = self.ustand.standardize_synonyms(x=self.jkgen.nodes['node_synonyms'])
+
     def _start_new_jkgjson(self):
 
         """

@@ -9,6 +9,7 @@ including:
 import numpy as np
 import pandas as pd
 import os
+import re
 
 # Centralized logging
 from .ubkg_logging import ubkgLogging
@@ -82,6 +83,30 @@ class ubkgStandardizer:
             exit(1)
         return df
 
+    def standardize_synonyms(self, x: pd.Series) -> pd.Series:
+
+        """
+        Converts strings in the node_synonyms column
+        of the JKGEN node file to formats that match the corresponding
+        regex pattern for a CURIE-like id, specified in the JKG Schema.
+
+        :param x: Pandas Series corresponding to the node_synonyms column,
+        split into a list of strings.
+
+        path in schema: rels array -> properties -> codeid
+        The corresponding pattern is
+        r"^[A-Za-z0-9._-]+:[A-Za-z0-9._-]+(?: CUI)?$"
+        
+        For synonyms, only special characters need to be replaced.
+        """
+
+        disallowed = r"[^A-Za-z0-9._ ]"
+
+        return x.apply(lambda lst:
+                       lst if lst==[]
+                       else [re.sub(disallowed, "_", s)
+                             for s in lst])
+
     def standardize_code(self, x: pd.Series, sab: str) -> pd.Series:
 
         """
@@ -128,8 +153,6 @@ class ubkgStandardizer:
 
         In addition, the hash and backslash figure are delimiters in URIs--e.g., ...#/SAB_CODE
         """
-
-        #utime = UbkgTimer(f'Standardizing codes for {x.name}')
 
         # Start by reformatting as SAB<space>CODE. The exclusive delimiter (colon) will be added at the end of this
         # script.
@@ -218,7 +241,6 @@ class ubkgStandardizer:
         # REACTOME - restore underscores.
         ret = np.where(x.str.contains('REACTOME'), x.str.replace('REACTOME ', 'REACTOME:').str.replace(' ', '_'), ret)
 
-        # SEPT 2023
         # CEDAR
         ret = np.where(x.str.contains('https://repo.metadatacenter.org/templates/'),
                        'CEDAR:' + x.str.split('/').str[-1], ret)
@@ -329,7 +351,6 @@ class ubkgStandardizer:
                 code = ' '.join(xsplit[1:len(xsplit)])
                 ret[idx] = sab+':'+code
             elif len(x)>0:
-                # JULY 2023
                 # For the case of a CodeID that appears to be a "naked" UMLS CUI, format as UMLS:CUI.
                 # Account for codes in the CEDAR SAB.
                 if x[0] == 'C' and not 'CEDAR' in x and x[1].isnumeric:
@@ -337,7 +358,6 @@ class ubkgStandardizer:
             else:
                 ret[idx] = x
 
-        #utime.stop()
         return ret
 
     def standardize_relationships(self, predicate: pd.Series) -> pd.Series:
@@ -755,3 +775,4 @@ class ubkgStandardizer:
         dfrelnodes = pd.DataFrame(dfbspo.graphs[0]['nodes']).apply(
             lambda x: x.str.lower() if x.dtype == 'object' else x)
         return dfrelnodes
+

@@ -150,3 +150,28 @@ algorithms:
 # ubkgjkg.ini
 **sab2jkgen** and **jkgen2jkg** are configured by means of the **ubkg.ini** file.
 
+# Memory management
+Analytical tasks in these scripts (especially **jkgen2jkg**) require reading large amounts of information into memory from 
+files in the local system, such as the JKGJSON. As the source files grow (such as the JKG JSON after multiple ingestinos), 
+memory pressure will increase, and swapping is likely.
+
+To address memory pressure issues, scripts attempt to minimize memory by 
+explicit unloading and garbage collection.
+
+## Memory profiling
+The Bash scripts wrap their execution of their corresponding Python scripts with the
+[memory_profiler](https://github.com/pythonprofilers/memory_profiler) package. The 
+memory profiler monitors memory consumption at regular intervals.
+
+The memory profiler generates two monitoring files in the _memory_profiling_ directory for each
+execution of a script:
+* a data file
+* a chart
+
+The files for a particular execution are stamped with the name of the 
+script and the execution time. For example, _mprofile_jkgen2jkg_20260515_044307.dat_ corresponds to 
+the memory profiler's data file for an execution of **jkgen2jkg** on May 5, 2026 at 04:43:307.
+
+
+
+

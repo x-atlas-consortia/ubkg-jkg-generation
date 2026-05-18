@@ -121,7 +121,7 @@ def write_edges_file(target_path: str, sab:str,
     :param sab: SAB
     :param jkgen: Jkgedgenode object that contains the source UBKG edge node files
     :param ulog: ubkgLogging object
-    :param ustand: Ustandardizer object for codes and relationships
+    :param ustand: ubkgStandardizer object for codes and relationships
     :param uext: ubkgExtract object
     :param jout: JKGEN output file object
 
@@ -149,7 +149,7 @@ def write_nodes_file(target_path: str, sab:str,
     :param sab: SAB
     :param jkgen: Jkgedgenode object that contains the source UBKG edge node files
     :param ulog: ubkgLogging object
-    :param ustand: Ustandardizer object for codes and relationships
+    :param ustand: ubkgStandardizer object for codes and relationships
     :param uext: ubkgExtract object
     :param jout: JKGEN output file object
 
