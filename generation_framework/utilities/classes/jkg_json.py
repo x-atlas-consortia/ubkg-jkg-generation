@@ -206,7 +206,9 @@ class Jkgjson:
             utimer.stop()
 
             utimer = UbkgTimer(display_msg="-- Loading Term nodes")
-            self.term_nodes = pd.DataFrame(term_node_rows).fillna('')
+
+            # Drop duplicate term nodes.
+            self.term_nodes = pd.DataFrame(term_node_rows).fillna('').drop_duplicates('properties_id')
             term_node_rows.clear()
             gc.collect()
             utimer.stop()
