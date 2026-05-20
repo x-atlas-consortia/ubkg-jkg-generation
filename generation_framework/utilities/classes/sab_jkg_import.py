@@ -280,41 +280,13 @@ class Sabjkgimport:
         # Build and write the updated list of Source nodes.
         self._build_and_write_source_nodes()
 
-        """
-        The new ingestion will not add any new nodes of types:
-         - Node_Labels
-         - Rel_Labels
-
-        Add the original lists of these node types from the JKG JSON.
-        """
         # Node_Labels
-
         self.ulog.print_and_logger_info('* NODE_LABEL NODES')
-        write_delimiters = len(self.jkgjson.node_label_nodes) > 0
-        if write_delimiters:
-            self.jkgjson_writer.write_comma()
-            self.jkgjson_writer.write_line_feed()
-
-        self._unflatten_dataframe_and_write_list(df_flat=self.jkgjson.node_label_nodes, progress_display='existing Node_Label nodes (JKG JSON)')
-        self._update_node_counts(node_type='Node_Labels',state="before", count=len(self.jkgjson.node_label_nodes))
-        self._update_node_counts(node_type='Node_Labels', state="after", count=len(self.jkgjson.node_label_nodes))
-
-        # Unload the Node_Label nodes.
-        self._unload_item(item_to_unload=self.jkgjson.node_label_nodes)
+        self._build_and_write_node_label_nodes()
 
         # Rel_Labels
         self.ulog.print_and_logger_info('* REL_LABEL NODES')
-        write_delimiters = len(self.jkgjson.rel_label_nodes) > 0
-        if write_delimiters:
-            self.jkgjson_writer.write_comma()
-            self.jkgjson_writer.write_line_feed()
-
-        self._unflatten_dataframe_and_write_list(df_flat=self.jkgjson.rel_label_nodes, progress_display='existing Rel_Label nodes (JKG JSON)')
-        self._update_node_counts(node_type='Rel_Labels', state="before", count=len(self.jkgjson.rel_label_nodes))
-        self._update_node_counts(node_type='Rel_Labels', state="after", count=len(self.jkgjson.rel_label_nodes))
-
-        # Unload the Rel_Label nodes.
-        self._unload_item(item_to_unload=self.jkgjson.rel_label_nodes)
+        self._build_and_write_rel_label_nodes()
 
         """
         GET CUIS FOR JKGEN NODES.
@@ -402,7 +374,6 @@ class Sabjkgimport:
         list_unflat_sources = self._convert_flat_dataframe_to_unflat_list(df_flat=self.jkgjson.source_nodes, progress_display='existing Source nodes (JKG JSON)')
         self._update_node_counts(node_type="Source", state="before", count=len(list_unflat_sources))
 
-
         # Build the source node for the SAB.
         # (Although there is only one source, treat as a
         # list with one element for purposes of combination.)
@@ -414,7 +385,6 @@ class Sabjkgimport:
         # Write the complete nested list to output.
         self._update_node_counts(node_type="Source", state="after", count=len(list_unflat_sources))
         self.jkgjson_writer.write_list(list_name='all Source nodes (JKGJSON + JKGEN)', list_content=list_unflat_sources)
-
 
     def _build_sab_source_node(self) -> list[dict]:
 
@@ -455,6 +425,129 @@ class Sabjkgimport:
             dictsource["properties"]["source"] = usource.get(sab=self.sab, key='owl_url')
 
         return [dictsource]
+
+    def _build_and_write_node_label_nodes(self):
+
+        """
+        Does the following:
+        1. Unflattens the list of exiting Node_Label node objects from the JKG JSON.
+           from the JKG JSON.
+        2. Writes the list to output.
+
+        The types of Node_Label types are defined by the JKG Schema.
+        New ingestions will not define new Node_Label types.
+
+        """
+
+        write_delimiters = len(self.jkgjson.node_label_nodes) > 0
+        if write_delimiters:
+            self.jkgjson_writer.write_comma()
+            self.jkgjson_writer.write_line_feed()
+
+        self._unflatten_dataframe_and_write_list(df_flat=self.jkgjson.node_label_nodes,
+                                                 progress_display='existing Node_Label nodes (JKG JSON)')
+
+        # No net new node labels.
+        self._update_node_counts(node_type='Node_Labels', state="before", count=len(self.jkgjson.node_label_nodes))
+        self._update_node_counts(node_type='Node_Labels', state="after", count=len(self.jkgjson.node_label_nodes))
+
+        # Unload the Node_Label nodes.
+        self._unload_item(item_to_unload=self.jkgjson.node_label_nodes)
+
+    def _build_and_write_rel_label_nodes(self):
+        """
+        Does the following:
+        1. Builds a list of unflattened Rel_Label nodes for Rel_Labels linked
+           to predicate labels from the JKGEN edge file that are not already
+           in the array of Rel_Label nodes in JKG JSON.
+        2. Unflattens the list of exiting Rel_Label node objects from the JKG JSON.
+           from the JKG JSON.
+        3. Combines the list of new Rel_Label nodes and original Rel_Label nodes.
+        3. Writes the combined list to output.
+
+        """
+
+        # Build list of unflattened objects for new Rel_Label nodes.
+        list_new_unflat_rel_labels = self._build_new_rel_label_nodes()
+
+        # Convert the DataFrame of flattened original Rel_Label nodes
+        # to a list of unflattened (nested) objects.
+        list_unflat_rel_labels = self._convert_flat_dataframe_to_unflat_list(df_flat=self.jkgjson.rel_label_nodes,
+                                                                           progress_display='existing Rel_Label nodes (JKG JSON)')
+        self._update_node_counts(node_type="Rel_Label", state="before", count=len(list_new_unflat_rel_labels))
+
+        # Add the list of new nested concept nodes to the list of original nested concept nodes.
+        list_unflat_rel_labels.extend(list_new_unflat_rel_labels)
+        self._update_node_counts(node_type="Rel_Label", state="after", count=len(list_unflat_rel_labels))
+
+        self._unload_item(item_to_unload=list_new_unflat_rel_labels)
+
+        write_delimiters = len(list_unflat_rel_labels) > 0
+        if write_delimiters:
+            self.jkgjson_writer.write_comma()
+            self.jkgjson_writer.write_line_feed()
+
+        # Write the complete nested list to output.
+        self.jkgjson_writer.write_list(list_name='all Rel_Label nodes (JKG JSON + JKGEN)',
+                                       list_content=list_unflat_rel_labels)
+
+        # Unload the Rel_Label nodes DataFrame.
+        self._unload_item(item_to_unload=self.jkgjson.rel_label_nodes)
+
+    def _build_new_rel_label_nodes(self) -> list[dict]:
+        """
+        Builds a list of unflattened Rel_Label objects for predicates
+        in the JKGEN edge file that are not in the existing set of
+        Rel_Label nodes in JKG JSON.
+
+        To identify new Rel_Label objects, the function compares the
+        predicate string from the JKGEN edga against the rel_label
+        property of JKG JSON Rel_Label objects. This means that if
+        a predicate string from an JKGEN import matches an
+        existing Rel_Label object, the predicate will be treated as
+        already existing in JKG JSON.
+
+        In other words, there is a risk of lost information for a SAB
+        that has an edge that has a meaning different from a similar
+        edge that is already in JKG JSON. For example, if "part_of" is
+        already in JKG JSON when a SAB is ingested, "part_of" will mean what
+        it means in JKG JSON--not necessarily what "part_of" means in the SAB.
+
+        The JKG framework makes a reasonable attempt to use standardized
+        relation labels from either UMLS or Relations Ontology. The risk
+        of a semantic conflict seems low--e.g., "part_of" is likely to
+        mean the same thing across SABs. The risk of semantic conflict
+        is outweighed by the benefit of avoiding unncessarily different
+        versions of the same relationship--e.g.,
+        a "ABC:part_of" from SAB ABC that really means the same as
+        the standard "part_of".
+
+        """
+
+        # Compute existing Rel_Label node values once as a set — O(1) lookups
+        if self.jkgjson.rel_label_nodes.empty:
+            existing_rel_labels = set()
+        else:
+            existing_rel_labels = set(self.jkgjson.rel_label_nodes['properties_rel_label'])
+
+        # Filter to only new relation labels in a single pass
+        df_new = self.jkgen.edges[~self.jkgen.edges['predicate'].isin(existing_rel_labels)].drop_duplicates(subset='predicate')
+
+        # Build the result. Wrap in tqdm.
+        sab_upper = self.sab.upper()
+        return [
+            {
+                "labels": ["Rel_Label"],
+                "properties": {
+                    "id": f"{sab_upper}:{row.predicate}",
+                    "def": row.predicate,
+                    "rel_label": row.predicate,
+                    "sab": sab_upper
+                }
+            }
+            for row in
+            tqdm(df_new.itertuples(index=False), total=len(df_new), desc="-- Building new Rel_Label nodes (JKGEN)")
+        ]
 
     def _build_and_write_concept_nodes(self):
         """
