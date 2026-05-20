@@ -3,7 +3,18 @@ The **generation framework** for the Unified Biomedical Knowledge Graph-JSON Kno
 comprises a suite of Extraction, Translation, and Load (ETL) processes that
 * obtains data from standard biomedical sources not maintained in the National Library of Medicine's **Unified Medical Language System** ([UMLS](https://www.nlm.nih.gov/research/umls/index.html))
 * translates data into files in **JKG edge/node** (**JKGEN**) format.
-* adds data from JKG edge node files to a **JKG JSON** file built from a UMLS release by means of the [jkg-umls](https://github.com/x-atlas-consortia/ubkg-jkg-umls) architecture.
+* integrates data from JKG edge node files to a **JKG JSON** file built from a UMLS release by means of the [jkg-umls](https://github.com/x-atlas-consortia/ubkg-jkg-umls) architecture.
+
+# UMLS JKG JSON
+The JKG integration of data from a set of JKGEN assumes the presence of a file that complies with the JKG Schema and populated
+from a release of the UMLS. 
+
+It would be possible to start from empty--i.e., without data from the UMLS. However, such a 
+JKG would likely be of limited value: a significant application of JKG is to connect concepts
+across multiple data sources. 
+
+Reference implementations of the JKG, including the
+UBKG-JKG, start from UMLS.
 
 # JKG Edge/Node (JKGEN) format
 The **JKG Edge/Node format** is an enhanced triplet representation of ontological information. 
@@ -40,17 +51,49 @@ For each non-UMLS SAB,
    * jkg-edge.tsv - assertion triplets
    * jkg-node.tsv - node information
 
-# Architecture and workflow 
-![img_1.png](img_1.png)
+# Architecture
 
 The JGKEN generation framework comprises:
 * a **controller application** (**sab2jkgen**)
 * **source translator applications** that 
   * obtain data from sources
   * convert data to JKGEN format
-* an **JKG import** application (**jkgen2jkg**) that adds data from files in JGKEN format to a JKG JSON built from a UMLS release
+* a **JKG import** application (**jkgen2jkg**) that adds data from files in JGKEN format to a JKG JSON built from a UMLS release
 
-## Component patterns
+![img_2.png](img_2.png)
+
+# Workflow
+To integrate data from a data source (SAB) into an existing JKG JSON:
+
+## Convert source to JKGEN
+1. Execute [**sab2jkgen**.sh](https://github.com/x-atlas-consortia/ubkg-jkg-generation/blob/main/README.md#sab2jkgen) with the SAB as argument. 
+2. **sab2jkgen.py** executes the [source translator](https://github.com/x-atlas-consortia/ubkg-jkg-generation/blob/main/README.md#source-translator-applications) appropriate for the SAB.
+3. The source translator generates two files in JKGEN format:
+   * an edge file
+   * a node file
+## Integrate JKGEN into JKG JSON
+1. Execute [**jkgen2jkg.sh**](https://github.com/x-atlas-consortia/ubkg-jkg-generation/blob/main/README.md#jkgen2jkg) with the SAB as argument.
+2. **jkgen2jkg.py** will:
+   * read the JGKEN files for the SAB
+   * read the JKG JSON
+   * build new nodes and rels objects for the SAB
+   * write nodes back to the JKG JSON in the following order:
+      * existing Source nodes
+      * new Source node for the SAB
+      * existing Node_Label nodes
+      * existing Rel_Label nodes
+      * new Rel_Label nodes
+      * existing Concept nodes
+      * new Concept nodes
+      * existing Term nodes
+      * new Term nodes
+   * write rels back to the JKG JSON in the following order:
+      * existing rels (concept-concept relationships)
+      * new rels
+      * existing coderels (concept-code relationships)
+      * new coderels
+
+# Component patterns
 1. The controller and JKG import applications comprise:
    * a Bash shell script that
      * establishes a Python virtual environment
@@ -59,7 +102,7 @@ The JGKEN generation framework comprises:
      * executes a Python script
 2. The Bash shell script and the Python script components of an application share a file name, but use different file extensions.
 
-# sab2jkgen
+# Component: sab2jkgen
 The **sab2jkgen** controller application:
 1. Obtains ETL configuration from **sources.json**
 2. Passes information to a source translator application
@@ -122,7 +165,7 @@ directory in the _/generation_framework/translators_ path of the repository.
 
 Source translations are independent.
 
-### Tool patterns
+## Tool patterns
 1. Most source translator applications comprise:
    * a Python script 
    * an INI file that is excluded by .gitignore
@@ -130,7 +173,7 @@ Source translations are independent.
    * a README.md documentation file
 2. Files share a file name in format _source type_ 2 _jkgen_.
 
-# jkgen2jkg
+# Component: jkgen2jkg
 The **jkgen2jkg** application integrates information from the JKGEN files
 of a SAB created by the **sab2jkgen** application into a file in JKG JSON format.
 
@@ -145,7 +188,6 @@ To maximize linkages between concepts and codes in the UBKG-JKG, **jkgen2jkg** i
 algorithms:
 * the UBKG-JKG [equivalence algorithm](https://github.com/x-atlas-consortia/ubkg-jkg-generation/blob/main/docs/UBKG-JKG%20equivalence%20algorithm.md)
 * the UBKG-JKG [update algorithm](https://github.com/x-atlas-consortia/ubkg-jkg-generation/blob/main/docs/UBKG-JKG%20correction%20algorithm.md)
-
 
 # ubkgjkg.ini
 **sab2jkgen** and **jkgen2jkg** are configured by means of the **ubkg.ini** file.
@@ -169,9 +211,10 @@ execution of a script:
 * a chart
 
 The files for a particular execution are stamped with the name of the 
-script and the execution time. For example, _mprofile_jkgen2jkg_20260515_044307.dat_ corresponds to 
-the memory profiler's data file for an execution of **jkgen2jkg** on May 5, 2026 at 04:43:307.
+script and the execution time. For example, _mprofile_jkgen2jkg_20260515_094307.dat_ corresponds to 
+the memory profiler's data file for an execution of **jkgen2jkg** on May 5, 2026 at 09:43:307.
 
-
+The **jkgen2jkg** script pauses before terminating to allow the memory profiler time
+to terminate gracefully.
 
 

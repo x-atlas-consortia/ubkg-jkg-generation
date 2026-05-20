@@ -112,6 +112,7 @@ class Sabjkgimport:
         self._report_node_counts()
         self._report_node_counts(to_file=True)
 
+
     def _update_node_counts(self, node_type: str, state: str, count: int):
         """
         Updates the list of node count tuples

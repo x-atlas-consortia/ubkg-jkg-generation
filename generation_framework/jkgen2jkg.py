@@ -32,6 +32,8 @@ from utilities.classes.sab_jkg_import import Sabjkgimport
 # Subprocess handling
 from utilities.functions.find_repo_root import find_repo_root
 from utilities.classes.ubkg_sources import ubkgSources
+# Spinner timer
+from utilities.classes.ubkg_timer import UbkgTimer
 
 def getargs() -> argparse.Namespace:
     """
@@ -86,9 +88,13 @@ def main():
 
         jkg_import = Sabjkgimport(sab=sab_name, ulog=ulog, cfg=cfg,  repo_root=repo_root)
 
+    # Pause to allow memory profiler to terminate gracefully.
+    utimer = UbkgTimer(display_msg="Pausing 60 seconds for the memory profiler")
+    time.sleep(60)
+    utimer.stop()
+
     elapsed_time = time.time() - start_time
     ulog.print_and_logger_info(f'INGESTION COMPLETED. Total Elapsed time {"{:0>8}".format(str(timedelta(seconds=elapsed_time)))}')
-
 
 if __name__ == "__main__":
     main()
