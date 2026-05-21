@@ -686,6 +686,16 @@ class Sabjkgimport:
             First, build Terms for the node's preferred term, corresponding to the 
             node_label field.
         """
+
+        # Drop duplicates.
+        self.jkgen.nodes= self.jkgen.nodes.drop_duplicates(subset='node_label')
+        # Filter to terms that are not already in JKGJSON.
+        if not self.jkgjson.term_nodes.empty:
+            self.jkgen.nodes = self.jkgen.nodes.merge(self.jkgjson.term_nodes,
+                                                   how='left',
+                                                   left_on='node_label',
+                                                   right_on='properties_id')
+
         listret.extend(
             [
                 {
@@ -700,7 +710,7 @@ class Sabjkgimport:
 
         # Build Terms for the node's synonyms.
         # Explode on synonyms list.
-        df_exploded = (
+        df_exploded_syn = (
             self.jkgen.nodes[['node_id', 'node_synonyms']]
             .explode('node_synonyms')
             .rename(columns={'node_synonyms': 'node_synonym'})
@@ -708,7 +718,30 @@ class Sabjkgimport:
         ).dropna(subset=['node_synonym'])
 
         # Only add terms if there are synonyms.
-        df_exploded = df_exploded[df_exploded['node_synonym'] != '']
+        df_exploded_syn = df_exploded_syn[df_exploded_syn['node_synonym'] != '']
+
+        # Drop duplicates.
+        df_exploded_syn = df_exploded_syn.drop_duplicates(subset='node_synonym')
+
+        # Only add terms for synonyms that are not already in either
+        # new preferred terms or existing terms.
+        if not self.jkgen.nodes.empty:
+            df_exploded_syn = df_exploded_syn.merge(self.jkgen.nodes,
+                                            how='left',
+                                            left_on='node_synonym',
+                                            right_on='node_label')
+            df_exploded_syn = df_exploded_syn[df_exploded_syn['node_label'].isnull()]
+
+        if not df_exploded_syn.empty:
+            df_exploded_syn = df_exploded_syn.drop_duplicates(subset='node_synonym')
+
+            if not self.jkgjson.term_nodes.empty:
+                df_exploded_syn = df_exploded_syn.merge(self.jkgjson.term_nodes,
+                               how='left',
+                               left_on='node_synonym',
+                               right_on='properties_id')
+
+                df_exploded_syn = df_exploded_syn[df_exploded_syn['properties_id_y'].isnull()]
 
         listret.extend(
             [
@@ -719,7 +752,7 @@ class Sabjkgimport:
                     }
                 }
                 for row in
-                tqdm(df_exploded.itertuples(), total=len(df_exploded), desc="-- Building new Term nodes for node synonyms (JKGEN)")
+                tqdm(df_exploded_syn.itertuples(), total=len(df_exploded_syn), desc="-- Building new Term nodes for node synonyms (JKGEN)")
             ]
         )
 
@@ -901,9 +934,6 @@ class Sabjkgimport:
         """
         df_new_coderels = df_new_coderels[~df_new_coderels['cui'].isnull()]
 
-        #debug = os.path.join(self.repo_root,'debug.csv')
-        #df_new_coderels.to_csv(debug, index=False)
-        #exit(1)
         """
             The nodes DataFrame is flattened.
              
@@ -992,7 +1022,6 @@ class Sabjkgimport:
 
             ]
         )
-
         return list_new_coderels
 
     def _get_node_base_cols(self)-> set:
@@ -1026,6 +1055,8 @@ class Sabjkgimport:
                      'properties_def',
                      'properties_tty',
                      'properties_codeid',
+                     'labels',
+                     'properties_id'
                      }
 
 
@@ -1073,8 +1104,6 @@ class Sabjkgimport:
             self._update_node_counts(node_type="non-CODE rels", state="updated", count=0)
             return
 
-        #debug = os.path.join(self.repo_root, 'rels_before_update.csv')
-        #self.jkgjson.rels.to_csv(debug, index=False)
 
         # Obtain count of rels before updates.
         self._update_node_counts(node_type="non-CODE rels", state="before", count=len(self.jkgjson.rels))
@@ -1113,8 +1142,6 @@ class Sabjkgimport:
 
         # Filter to those CUIs were minted from the node id.
         df_changed_cuis = df_changed_cuis[df_changed_cuis['old_cui']==df_changed_cuis['properties_codeid'] + ' CUI']
-        # debug = os.path.join(self.repo_root, 'changed_cuis.csv')
-        # df_changed_cuis.to_csv(debug, index=False)
         gc.collect()
 
         """
@@ -1137,9 +1164,6 @@ class Sabjkgimport:
                                                              right_on='old_cui'))
 
         log_updated = len(df_rels_changed_cuis_end)
-
-        #debug = os.path.join(self.repo_root, 'rels_changed_cuis_end.csv')
-        #df_rels_changed_cuis_end.to_csv(debug, index=False)
 
         # Identify the custom node properties.
         custom_prop_cols = [c for c in df_rels_changed_cuis_end.columns if c not in base_cols]
@@ -1200,9 +1224,6 @@ class Sabjkgimport:
         # Unload the DataFrame of changes in CUIs.
         self._unload_item(item_to_unload=df_changed_cuis)
 
-        #debug = os.path.join(self.repo_root, 'rels_changed_cuis_start.csv')
-        #df_rels_changed_cuis_start.to_csv(debug, index=False)
-
         custom_prop_cols = [c for c in df_rels_changed_cuis_start.columns if c not in base_cols]
 
         # For each rel for which the start CUI changed,
@@ -1238,9 +1259,6 @@ class Sabjkgimport:
         # Delete the original rels with the old CUIs.
         self.jkgjson.rels = self.jkgjson.rels[~self.jkgjson.rels['start_id'].isin(df_rels_changed_cuis_start['old_cui'])]
         gc.collect()
-
-        #debug = os.path.join(self.repo_root, 'rels_after_update.csv')
-        #self.jkgjson.rels.to_csv(debug, index=False)
 
     def _parse_cui_list(self, val):
         """
