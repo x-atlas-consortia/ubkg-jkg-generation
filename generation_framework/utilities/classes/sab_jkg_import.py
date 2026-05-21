@@ -61,6 +61,12 @@ class Sabjkgimport:
         # Load the nodes and rels arrays from the original JKG JSON.
         self.jkgjson = Jkgjson(log=ulog, cfg=cfg)
 
+        # Verify that the SAB does not already exist in the JKG JSON.
+        if not self.jkgjson.source_nodes.empty:
+            if self.sab.upper() in self.jkgjson.source_nodes['properties_sab'].values:
+                self.ulog.print_and_logger_error(f"The SAB '{self.sab.upper()}' already exists in the JKG JSON.")
+                exit(1)
+
         # Input/Output directory for JKG JSON.
         self.jkgjson_dir = os.path.join(self.repo_root,
                                         self.cfg.get_value(section='jkg_json',
@@ -502,7 +508,7 @@ class Sabjkgimport:
         Rel_Label nodes in JKG JSON.
 
         To identify new Rel_Label objects, the function compares the
-        predicate string from the JKGEN edga against the rel_label
+        predicate string from the JKGEN edg against the rel_label
         property of JKG JSON Rel_Label objects. This means that if
         a predicate string from an JKGEN import matches an
         existing Rel_Label object, the predicate will be treated as
@@ -688,13 +694,15 @@ class Sabjkgimport:
         """
 
         # Drop duplicates.
-        self.jkgen.nodes= self.jkgen.nodes.drop_duplicates(subset='node_label')
+        df_nodes= self.jkgen.nodes.drop_duplicates(subset='node_label')
         # Filter to terms that are not already in JKGJSON.
         if not self.jkgjson.term_nodes.empty:
-            self.jkgen.nodes = self.jkgen.nodes.merge(self.jkgjson.term_nodes,
+            df_nodes = df_nodes.merge(self.jkgjson.term_nodes,
                                                    how='left',
                                                    left_on='node_label',
                                                    right_on='properties_id')
+
+            df_nodes = df_nodes[df_nodes['properties_id'].isnull()]
 
         listret.extend(
             [
@@ -704,7 +712,7 @@ class Sabjkgimport:
                         "id": row.node_label
                     }
                 }
-                for row in tqdm(self.jkgen.nodes.itertuples(), total=len(self.jkgen.nodes), desc="-- Building new Term nodes for node preferred terms (JKGEN)")
+                for row in tqdm(df_nodes.itertuples(), total=len(df_nodes), desc="-- Building new Term nodes for node preferred terms (JKGEN)")
             ]
         )
 
@@ -736,12 +744,14 @@ class Sabjkgimport:
             df_exploded_syn = df_exploded_syn.drop_duplicates(subset='node_synonym')
 
             if not self.jkgjson.term_nodes.empty:
-                df_exploded_syn = df_exploded_syn.merge(self.jkgjson.term_nodes,
+                df_exploded_syn = (df_exploded_syn.merge(self.jkgjson.term_nodes,
                                how='left',
                                left_on='node_synonym',
                                right_on='properties_id')
+                                   .rename(columns={'properties_id_y': 'properties_id_'}))
 
-                df_exploded_syn = df_exploded_syn[df_exploded_syn['properties_id_y'].isnull()]
+                if not df_exploded_syn.empty:
+                    df_exploded_syn = df_exploded_syn[df_exploded_syn['properties_id'].isnull()]
 
         listret.extend(
             [
