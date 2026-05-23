@@ -303,7 +303,7 @@ class Sabjkgimport:
         """
         self.jkgen.nodes['cuis'] = self._get_cuis_for_nodes()
 
-        # Write the results of the algorithm to the JKGEN directory.
+        # Write the results of the algorithm in the JKGEN directory.
         cuifile = os.path.join(self.sab_jkg_dir, 'node_cuis.csv')
         self.jkgen.nodes.to_csv(cuifile, index=False)
 
@@ -615,7 +615,7 @@ class Sabjkgimport:
         if self.jkgjson.coderels.empty:
             existing_cuis = set()
         else:
-            existing_cuis = set(self.jkgjson.coderels['properties_codeid'])
+            existing_cuis = set(self.jkgjson.coderels['start_id'])
 
         # 3. Filter to only new CUIs in a single pass
         df_new = df_exploded[~df_exploded['cui'].isin(existing_cuis)]
@@ -936,13 +936,6 @@ class Sabjkgimport:
                 .query('_merge == "left_only"')
                 .drop(columns=['properties_codeid', 'start_id', '_merge'])
             )
-        """
-        Drop any coderels without CUIs.
-        (This handles cases in which the node identifier is a UMLS CUI 
-        or a node that already has a CUI in JKG. The equivalence
-        algorithm assigns these cases no new CUI.)
-        """
-        df_new_coderels = df_new_coderels[~df_new_coderels['cui'].isnull()]
 
         """
             The nodes DataFrame is flattened.
@@ -1068,7 +1061,6 @@ class Sabjkgimport:
                      'labels',
                      'properties_id'
                      }
-
 
     def _update_node_cuis_in_rels(self):
         """
@@ -1487,13 +1479,22 @@ class Sabjkgimport:
             self._unload_item(item_to_unload=df_other_non_umls)
 
             """
-            Identify any nodes that already have a CUI.            
+            Identify any nodes that already have a CUI.    
+            A node_id can be either a code or a CUI, so join on both
+            codeid and start_id        
             """
             df_node_cui = (df_nodes.merge(self.jkgjson.coderels,
                                           how='left',
                                           left_on='node_id',
                                           right_on='properties_codeid')
                         .rename(columns={'node_label_x': 'node_label'}))
+
+            df_node_cui = (df_nodes.merge(self.jkgjson.coderels,
+                                          how='left',
+                                          left_on='node_id',
+                                          right_on='start_id')
+                        .rename(columns={'node_label_x': 'node_label'}))
+
 
             node_cui_map = (
                 df_node_cui.groupby('node_id')['start_id']
@@ -1583,15 +1584,15 @@ class Sabjkgimport:
         the node itself either is a UMLS CUI or has a link to a CUI.
         If not, then mint a new CUI.
         
-        This will result in some nodes having no CUI. 
-        Coderels for these nodes will not be created.
         """
         if not (direct_umls_cuis
                 or other_umls_cuis
-                or other_non_umls_cuis
-                or ('UMLS:' in node_id)
-                or node_cuis):
-            all_cuis =  [self._mint_new_cui(node_id)]
+                or other_non_umls_cuis):
+                #or ('UMLS:' in node_id)):
+            if node_cuis:
+                all_cuis = node_cuis
+            else:
+                all_cuis =  [self._mint_new_cui(node_id)]
 
         # Get unique list of CUIs in original order, by rank.
         return list(dict.fromkeys(all_cuis))
@@ -1658,27 +1659,26 @@ class Sabjkgimport:
         # Custom property columns.
         custom_prop_cols = [c for c in self.jkgen.edges.columns if c not in base_cols]
 
+        # Explode nodes DataFrame on CUI.
+        df_nodes_exploded_on_cuis = (
+            self.jkgen.nodes
+            .explode('cuis')
+            .rename(columns={'cuis': 'cui'})
+            .reset_index(drop=True)
+        )
         """
         IDENTIFY SUBJECT CUIS
         
-        Merge edges against new node coderels to obtain
+        Merge edges against the nodes DataFrame to obtain
         CUIs for JKGEN edge subjects.
-        
-        Drop rels for which the subject node has no CUI.
-        (This is defensive. Subject nodes that are not defined
-        in the node file are added explicitly to the node 
-        DataFrame.)
+       
         """
-        self.jkgen.edges = (((self.jkgen.edges.merge(
-            dfnewcoderels,
-            how ='left',
-            left_on ='subject',
-            right_on ='properties_codeid')
-        .rename(columns = {
-            'start_id': 'start_cui'
-            }
-            ))
-        .dropna(subset=['start_cui'])))
+
+        self.jkgen.edges = self.jkgen.edges.merge(
+            df_nodes_exploded_on_cuis,
+            how='inner',
+            left_on='subject',
+            right_on='node_id').rename(columns={'cui': 'start_cui'})
 
         # Restore names of custom property columns that got a _x suffix due to naming collisions.
         rename_map = self._map_restored_custom_col_names(dfrels=self.jkgen.edges, custom_prop_cols=custom_prop_cols)
@@ -1688,23 +1688,17 @@ class Sabjkgimport:
         """
         IDENTIFY OBJECT CUIS
         
-        Merge edges against new node coderels to obtain
+        Merge edges against nodes DataFrame to obtain
         CUIs for JKGEN edge objects.
-        Drop rels for which the object node has no CUI.
-        (This is defensive. Object nodes that are not defined
-        in the node file are added explicitly to the node 
-        DataFrame.)
+        
         """
 
-        self.jkgen.edges = (((self.jkgen.edges.merge(
-            dfnewcoderels,
-            how='left',
+        self.jkgen.edges = self.jkgen.edges.merge(
+            df_nodes_exploded_on_cuis,
+            how='inner',
             left_on='object',
-            right_on='properties_codeid')
-        .rename(columns={
-            'start_id': 'end_cui'
-        }
-        )).dropna(subset=['end_cui'])))
+            right_on='node_id').rename(columns={'cui': 'end_cui'})
+
 
         # Fix any custom property columns that got a _x suffix due to naming collisions.
         rename_map = self._map_restored_custom_col_names(dfrels=self.jkgen.edges, custom_prop_cols=custom_prop_cols)
