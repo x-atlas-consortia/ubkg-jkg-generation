@@ -1481,27 +1481,36 @@ class Sabjkgimport:
             """
             Identify any nodes that already have a CUI.    
             A node_id can be either a code or a CUI, so join on both
-            codeid and start_id        
+            codeid and start_id.        
             """
-            df_node_cui = (df_nodes.merge(self.jkgjson.coderels,
+
+            df_node_cui_from_code = (df_nodes.merge(self.jkgjson.coderels,
                                           how='left',
                                           left_on='node_id',
                                           right_on='properties_codeid')
                         .rename(columns={'node_label_x': 'node_label'}))
 
-            df_node_cui = (df_nodes.merge(self.jkgjson.coderels,
+            df_node_cui_from_cui = (df_nodes.merge(self.jkgjson.coderels,
                                           how='left',
                                           left_on='node_id',
                                           right_on='start_id')
                         .rename(columns={'node_label_x': 'node_label'}))
 
+            df_node_cui = pd.concat([df_node_cui_from_code, df_node_cui_from_cui], ignore_index=True)
 
+            # Select for node: CUI from the code, then direct CUI.
+            df_node_cui['cui_value'] = (
+                df_node_cui['properties_codeid']
+                .combine_first(df_node_cui['start_id'])
+            )
             node_cui_map = (
-                df_node_cui.groupby('node_id')['start_id']
+                df_node_cui.groupby('node_id')['cui_value']
                 .apply(lambda x: x.dropna().unique().tolist())
                 .to_dict()
             )
 
+            self._unload_item(item_to_unload=df_node_cui_from_code)
+            self._unload_item(item_to_unload=df_node_cui_from_cui)
             self._unload_item(item_to_unload=df_node_cui)
 
             """
@@ -1707,6 +1716,8 @@ class Sabjkgimport:
 
         # Unload the DataFrame of new code rels used for merges.
         self._unload_item(item_to_unload=dfnewcoderels)
+
+        utimer.stop()
 
         # Vectorized build, using packing operator.
         # Note that the key for node objects is "label", not "labels".
