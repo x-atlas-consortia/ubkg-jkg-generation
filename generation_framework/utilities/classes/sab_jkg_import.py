@@ -1137,10 +1137,14 @@ class Sabjkgimport:
                                             'start_id_y': 'old_cui'}))
                            .drop_duplicates(subset=['old_cui','new_cui','properties_codeid']))
 
+
         # Unload the DataFrame of new coderels.
         self._unload_item(item_to_unload=df_new_coderels)
 
         df_changed_cuis = df_changed_cuis[['old_cui','new_cui','properties_codeid']]
+        cuifile = os.path.join(self.sab_jkg_dir, 'updated_cuis.csv')
+        df_changed_cuis.to_csv(cuifile, index=False)
+
 
         # Filter to those CUIs were minted from the node id.
         df_changed_cuis = df_changed_cuis[df_changed_cuis['old_cui']==df_changed_cuis['properties_codeid'] + ' CUI']
@@ -1337,10 +1341,9 @@ class Sabjkgimport:
         4. a CUI minted from the code
         """
 
-        # This is a block operation with no hooks for tqdm,
-        # so start a spinner.
-        utimer = UbkgTimer(display_msg="* IDENTIFYING CUIS FOR NODES")
+        self.ulog.print_and_logger_info("* IDENTIFYING CUIS FOR NODES")
 
+        utimer = UbkgTimer(display_msg="** Expanding dbxrefs")
         direct_umls_map = {}
         other_umls_map = {}
         other_non_umls_map = {}
@@ -1369,7 +1372,9 @@ class Sabjkgimport:
         df_nodes = self.jkgen.nodes.copy()
 
         df_exploded = self.jkgen.nodes[['node_id', 'node_dbxrefs']].explode('node_dbxrefs').reset_index(drop=True)
+        utimer.stop()
 
+        utimer = UbkgTimer(display_msg="** Standardizing dbxref codes")
         """
         2. Standardize dbxref codes, grouping by SAB. 
            (The standardization of a code depends on the code SAB.)
@@ -1392,7 +1397,8 @@ class Sabjkgimport:
                 )
                 for sab_val, group in df_exploded.groupby('sab')
             ])
-
+        utimer.stop()
+        utimer = UbkgTimer(display_msg="** Identifying direct UMLS CUIs")
         """
         3. Identify direct UMLS CUIs--dbxrefs that start with 'umls:'.
            a. Filter to only those dbxrefs that start with UMLS.
@@ -1414,6 +1420,8 @@ class Sabjkgimport:
             .apply(lambda x: x.dropna().unique().tolist())
             .to_dict()
         )
+        utimer.stop()
+        utimer = UbkgTimer(display_msg="** Identifying other CUIs")
 
         """
         4. Identify "other CUIs"--dbxrefs with codes that have CUIs in coderels.
@@ -1478,39 +1486,39 @@ class Sabjkgimport:
             self._unload_item(item_to_unload=df_other_umls)
             self._unload_item(item_to_unload=df_other_non_umls)
 
+            utimer.stop()
+            utimer = UbkgTimer(display_msg="** Identifying nodes with existing CUIs")
             """
             Identify any nodes that already have a CUI.    
             A node_id can be either a code or a CUI, so join on both
             codeid and start_id.        
             """
 
-            df_node_cui_from_code = (df_nodes.merge(self.jkgjson.coderels,
-                                          how='left',
-                                          left_on='node_id',
-                                          right_on='properties_codeid')
-                        .rename(columns={'node_label_x': 'node_label'}))
-
-            df_node_cui_from_cui = (df_nodes.merge(self.jkgjson.coderels,
-                                          how='left',
-                                          left_on='node_id',
-                                          right_on='start_id')
-                        .rename(columns={'node_label_x': 'node_label'}))
-
-            df_node_cui = pd.concat([df_node_cui_from_code, df_node_cui_from_cui], ignore_index=True)
-
-            # Select for node: CUI from the code, then direct CUI.
-            df_node_cui['cui_value'] = (
-                df_node_cui['properties_codeid']
-                .combine_first(df_node_cui['start_id'])
+            # Nodes mapped directly to CUI via coderels: start_id=cui
+            df_node_to_cui = self.jkgjson.coderels[['properties_codeid', 'start_id']].rename(
+                columns={'properties_codeid': 'node_id', 'start_id': 'cui'}
             )
+
+            # Nodes linked to CUIs via coderels
+            df_node_to_code_to_cui = self.jkgjson.coderels[['start_id']].drop_duplicates().rename(
+                columns={'start_id': 'node_id'}
+            )
+            df_node_to_code_to_cui['cui'] = df_node_to_code_to_cui['node_id']
+
+            # node-CUI maps.
+            df_node_to_cui = pd.concat([df_node_to_cui, df_node_to_code_to_cui], ignore_index=True).drop_duplicates()
+
+            # Map nodes in node file to CUIs.
+            df_node_cui = df_nodes.merge(df_node_to_cui, how='left', on='node_id')
+
             node_cui_map = (
-                df_node_cui.groupby('node_id')['cui_value']
+                df_node_cui.groupby('node_id')['cui']
                 .apply(lambda x: x.dropna().unique().tolist())
                 .to_dict()
             )
 
-            self._unload_item(item_to_unload=df_node_cui_from_code)
-            self._unload_item(item_to_unload=df_node_cui_from_cui)
+            self._unload_item(item_to_unload=df_node_to_code_to_cui)
+            self._unload_item(item_to_unload=df_node_to_cui)
             self._unload_item(item_to_unload=df_node_cui)
 
             """
@@ -1526,6 +1534,7 @@ class Sabjkgimport:
             """
 
         utimer.stop()
+
 
         return df_nodes['node_id'].map(
         lambda node_id: self._get_cuis_from_maps(
