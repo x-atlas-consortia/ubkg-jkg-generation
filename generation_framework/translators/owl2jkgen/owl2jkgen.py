@@ -628,12 +628,11 @@ def get_rdf_graph(ulog: ubkgLogging, usource: ubkgSources, owl_dir: str, owl_fil
 
     except:
 
-        utimer.stop()
+        #utimer.stop()
         """
         If the file is not in RDF/XML, the exception will be from xml (ExpatError), 
         not rdflib. Exception handling does not seem able to catch this lower-level error, 
-        so use the generic exception handler. 
-
+        so use the generic exception handler.
         The risk here, of course, is that the error is not from ExpatError.
         """
 

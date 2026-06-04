@@ -76,8 +76,9 @@ class Jkgedgenode:
             df_missing_object_nodes = df_missing_object_nodes[['object']].rename(columns={'object': 'node_id'})
 
         df_missing_nodes = pd.concat([df_missing_subject_nodes, df_missing_object_nodes]).drop_duplicates()
-        df_missing_nodes = df_missing_nodes[['node_id']]
-        self.nodes = pd.concat([self.nodes, df_missing_nodes]).fillna('')
+        if not df_missing_nodes.empty:
+            df_missing_nodes = df_missing_nodes[['node_id']]
+            self.nodes = pd.concat([self.nodes, df_missing_nodes]).fillna('')
 
         # Split node_synonyms on pipe delimiter.
         self.nodes['node_synonyms'] = (self.nodes['node_synonyms'].fillna('').str.split('|'))
