@@ -171,7 +171,7 @@ def write_edges_file(dfsk: pd.DataFrame,
     dfedges['predicate'] = ustand.standardize_relationships(dfedges['predicate'])
 
     # Write to file
-    dfedges.to_csv(edgelist_path, sep='\t', index=False, header=False)
+    dfedges.to_csv(edgelist_path, sep='\t', index=False)
 
 def write_nodes_file(dfsk: pd.DataFrame,
                      out_dir: str,

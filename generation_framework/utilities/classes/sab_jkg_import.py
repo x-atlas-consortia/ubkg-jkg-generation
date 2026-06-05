@@ -1461,6 +1461,7 @@ class Sabjkgimport:
                 ]
             df_other_non_umls = df_other[~df_other['start_id'].str.startswith('UMLS', na=False)]
 
+
             """
             Create "maps" of dbxrefs to lists of CUIs. 
             These maps are dicts with a dbxref for a key
@@ -1606,14 +1607,18 @@ class Sabjkgimport:
         if not (direct_umls_cuis
                 or other_umls_cuis
                 or other_non_umls_cuis):
-                #or ('UMLS:' in node_id)):
             if node_cuis:
                 all_cuis = node_cuis
             else:
                 all_cuis =  [self._mint_new_cui(node_id)]
 
+        # DOID formats UMLS CUIs as "umls_cui:x", which is translated to "UMLS CUI:x".
+        stripped_all_cuis = []
+        for a in all_cuis:
+            stripped_all_cuis.append(a.replace(':CUI ',':'))
+
         # Get unique list of CUIs in original order, by rank.
-        return list(dict.fromkeys(all_cuis))
+        return list(dict.fromkeys(stripped_all_cuis))
 
     def _map_restored_custom_col_names(self, dfrels: pd.DataFrame,custom_prop_cols:list):
 
