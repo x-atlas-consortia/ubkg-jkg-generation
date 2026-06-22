@@ -120,7 +120,7 @@ def getspeciesedges(ulog: ubkgLogging, uext: ubkgExtract, base_url: str, species
     """
     # Get hierarchical data for the species from the Reactome Content Service API.
     url = base_url + f'eventsHierarchy/{species_id}?pathwaysOnly=false&resource=TOTAL&interactors=false&importableOnly=false'
-    time.sleep(1)
+    time.sleep(0.1)
     listevent = uext.getresponsejson(url)
     listedges = []
 
@@ -178,7 +178,7 @@ def getpropertyedges(ulog: ubkgLogging, uext: ubkgExtract, listhierarchyedges:li
         # Call the https://reactome.org/ContentService/data/query/enhanced endpoint.
         # Remove the SAB from the code for the event.
         url = base_url + f'query/enhanced/{id.replace("REACTOME:","")}'
-        time.sleep(1)
+        time.sleep(0.1)
         queryjson = uext.getresponsejson(url)
 
         # GO biological process
@@ -248,7 +248,7 @@ def getparticipantedges(uext: ubkgExtract, base_url: str, event_id: str) -> list
     """
     # Call the referenceEntities endpoint.
     url = base_url + f'participants/{event_id.replace("REACTOME:","")}/referenceEntities'
-    time.sleep(1)
+    time.sleep(0.1)
     participantjson = uext.getresponsejson(url=url)
     listedges = []
     if participantjson is not None:
@@ -325,7 +325,7 @@ def getnodesfromedges(ulog: ubkgLogging, uext: ubkgExtract, cfg: ubkgConfigParse
 
         # Remove the REACTOME SAB from the ID.
         url = base_url + f'query/enhanced/{node_id.replace("REACTOME:", "")}'
-        time.sleep(1)
+        time.sleep(0.1)
         queryjson = uext.getresponsejson(url)
         node_label = queryjson.get('displayName','')
         #summation = queryjson.get('summation')
