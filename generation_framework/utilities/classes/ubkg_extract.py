@@ -338,7 +338,7 @@ class ubkgExtract:
         retry = Retry(
             total=6,
             backoff_factor=2,
-            status_forcelist=[429, 500, 502, 503, 504],
+            status_forcelist=[429, 500, 502, 503, 504, 521],
             allowed_methods=['GET']  # Explicitly state methods (for urllib3 >=1.26.0)
         )
 
@@ -352,12 +352,12 @@ class ubkgExtract:
             return response.json()
 
         except requests.exceptions.RequestException as e:
-            self.ulog.printer_and_error_info(f'Error during GET request on {url}: {e}')
+            self.ulog.print_and_logger_error(f'Error during GET request on {url}: {e}')
             exit(1)
 
         except ValueError as e:
 
-            self.ulog.print_and_error_info(f'Error decoding JSON: {e}')
+            self.ulog.print_and_logger_error(f'Error decoding JSON: {e}')
             exit(1)
 
     def polars_scan_csv_with_timer(self, filename: str, separator: str,
