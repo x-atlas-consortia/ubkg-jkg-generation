@@ -39,9 +39,9 @@
     "owl_url": "http://purl.obolibrary.org/obo/chebi.owl.gz",
     "name": "Chemical Entities of Biological Interest",
     "description": "Chemical Entities of Biological Interest",
-    "version": "v246",
+    "version": "v252",
     "history": {
-      "download_size_mb": 69,
+      "download_size_mb": 63,
       "download_time_minutes": 2,
       "parse_time_seconds": 180
     }
@@ -51,9 +51,9 @@
     "owl_url": "http://purl.obolibrary.org/obo/cl/cl-base.owl",
     "name": "Cell Ontology",
     "description": "Complete cell ontology, but with no imports or external axioms",
-    "version": "2025-NOV-25",
+    "version": "2026-JUN-08",
     "history": {
-      "download_size_mb": 12,
+      "download_size_mb": 12.6,
       "download_time_minutes": 1,
       "parse_time_seconds": 10
     }
@@ -98,9 +98,9 @@
     "owl_url": "http://purl.obolibrary.org/obo/doid.owl",
     "name": "Human Disease Ontology (DOID)",
     "description": "An ontology for describing the classification of human diseases organized by etiology.",
-    "version": "2025-NOV-25",
+    "version": "2026-MAY-30",
     "history": {
-      "download_size_mb": 27,
+      "download_size_mb": 278.4,
       "download_time_minutes": 1,
       "parse_time_seconds": 10
     }
@@ -366,6 +366,7 @@
     "owl_url": "http://purl.obolibrary.org/obo/mondo/mondo-simple.owl",
     "name": "The Mondo Disease Ontology (MONDO)",
     "description": "A global community effort to harmonize multiple disease resources to yield a coherent merged ontology",
+    "version": "07-APR-2026",
     "history": {
       "download_size_mb": 220,
       "download_time_minutes": 1,
@@ -384,7 +385,7 @@
     "owl_url": "http://purl.obolibrary.org/obo/mp.owl",
     "name": "Mammalian Phenotype Ontology",
     "description": "Standard terms for annotating mammalian phenotypic data",
-    "version": "2025-NOV-19",
+    "version": "2026-MAY-19",
     "history": {
       "download_size_mb": 103,
       "download_time_minutes": 1,
@@ -441,9 +442,9 @@
     "owl_url": "http://purl.obolibrary.org/obo/obi.owl",
     "name": "Ontology for Biomedical Investigations (OBI)",
     "description": "The Ontology for Biomedical Investigations (OBI) project is developing an integrated ontology for the description of life science and clinical investigations.",
-    "version": "2025-OCT-14",
+    "version": "2026-MAY-08",
     "history": {
-      "download_size_mb": 10,
+      "download_size_mb": 9.9,
       "download_time_minutes": 1,
       "parse_time_seconds": 10
     }
@@ -465,7 +466,7 @@
     "owl_url": "https://data.bioontology.org/ontologies/ORDO/submissions/32/download?apikey=8b5b7825-538d-40e0-9e9e-5ab9274a9aeb",
     "name": "Orphanet Rare Disease Ontology (ORDO)",
     "description": "Jointly developed by Orphanet and the EBI to provide a structured vocabulary for rare diseases capturing relationships between diseases genes and other relevant features which will form a useful resource for the computational analysis of rare diseases.",
-    "version": "2025-NOV-30",
+    "version": "4.8",
     "history": {
       "download_size_mb": 51,
       "download_time_minutes": 1,
@@ -486,7 +487,7 @@
     "description": "Phenotypic qualities (properties)",
     "version": "2025-MAY-14",
     "history": {
-      "download_size_mb": 3,
+      "download_size_mb": 3.1,
       "download_time_minutes": 1,
       "parse_time_seconds": 10
     }
@@ -502,7 +503,8 @@
     "source_type": "gzip_csv",
     "execute": "./translators/gzip_csv2jkgen/gzip_csv2jkgen.py PGO",
     "name": "Pseudogene (PGO)",
-    "description": "Pseudogene"
+    "description": "Pseudogene",
+    "version": "v1.0"
   },
   "PROTEOFORM": {
     "source_type": "ubkg_edge_node",
@@ -577,9 +579,9 @@
     "owl_url": "http://purl.obolibrary.org/obo/uberon/uberon-base.owl",
     "name": "Uberon",
     "description": "Uberon multi species anatomy ontology",
-    "version": "2025-JAN-15",
+    "version": "2026-APR-01",
     "history": {
-      "download_size_mb": 57,
+      "download_size_mb": 57.3,
       "download_time_minutes": 1,
       "parse_time_seconds": 15
     }
@@ -613,14 +615,15 @@
     "execute_url": "https://www.uniprot.org/uniprot/?query=facets=reviewed%3Atrue&fil=organism%3A%22Homo+sapiens+%28Human%29+%5B9606%5D%22",
     "execute": "./translators/uniprotkb2jkgen/uniprotkb2jkgen.py",
     "name": "UniProtKB",
-    "description": "Data from UniProtKB exported to OWLNETS format."
+    "description": "Data from UniProtKB exported to OWLNETS format.",
+    "version": "2026-JUN-18"
   },
   "UO": {
     "source_type": "owl",
     "owl_url": "http://purl.obolibrary.org/obo/uo.owl",
     "name": "Unit Ontology (UO)",
     "description": "Metrical units for use in conjunction with PATO",
-    "version": "2023-MAY-25",
+    "version": "2026-JAN-16",
     "history": {
       "download_size_mb": 0.6,
       "download_time_minutes": 1,

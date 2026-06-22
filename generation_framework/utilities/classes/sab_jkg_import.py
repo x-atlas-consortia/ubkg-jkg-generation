@@ -303,6 +303,14 @@ class Sabjkgimport:
         """
         self.jkgen.nodes['cuis'] = self._get_cuis_for_nodes()
 
+        """
+        A blank list for self.jkgen['cuis'] means that the equivalence class
+        algorithm made no CUI assignment. This can occur when 
+        the node file has a cross-references, but the SABs for the 
+        node is not the SAB of the ingestion. 
+        """
+        self.jkgen.nodes = self.jkgen.nodes[self.jkgen.nodes['cuis'].apply(lambda v: isinstance(v, list) and len(v) > 0)]
+
         # Write the results of the algorithm in the JKGEN directory.
         cuifile = os.path.join(self.sab_jkg_dir, 'node_cuis.csv')
         self.jkgen.nodes.to_csv(cuifile, index=False)
@@ -1461,7 +1469,6 @@ class Sabjkgimport:
                 ]
             df_other_non_umls = df_other[~df_other['start_id'].str.startswith('UMLS', na=False)]
 
-
             """
             Create "maps" of dbxrefs to lists of CUIs. 
             These maps are dicts with a dbxref for a key
@@ -1474,6 +1481,7 @@ class Sabjkgimport:
                 .apply(lambda x: x.dropna().unique().tolist())
                 .to_dict()
             )
+
             other_non_umls_map = (
                 df_other_non_umls.groupby('node_id')['start_id']
                 .apply(lambda x: x.dropna().unique().tolist())
@@ -1535,7 +1543,6 @@ class Sabjkgimport:
             """
 
         utimer.stop()
-
 
         return df_nodes['node_id'].map(
         lambda node_id: self._get_cuis_from_maps(
