@@ -338,7 +338,7 @@ class ubkgExtract:
         retry = Retry(
             total=6,
             backoff_factor=2,
-            status_forcelist=[429, 500, 502, 503, 504, 521],
+            status_forcelist=[429, 500, 502, 503, 504, 521, 522, 525],
             allowed_methods=['GET']  # Explicitly state methods (for urllib3 >=1.26.0)
         )
 

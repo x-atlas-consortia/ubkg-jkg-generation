@@ -120,7 +120,7 @@ def getspeciesedges(ulog: ubkgLogging, uext: ubkgExtract, base_url: str, species
     """
     # Get hierarchical data for the species from the Reactome Content Service API.
     url = base_url + f'eventsHierarchy/{species_id}?pathwaysOnly=false&resource=TOTAL&interactors=false&importableOnly=false'
-    time.sleep(0.1)
+    time.sleep(0.05)
     listevent = uext.getresponsejson(url)
     listedges = []
 
@@ -178,7 +178,7 @@ def getpropertyedges(ulog: ubkgLogging, uext: ubkgExtract, listhierarchyedges:li
         # Call the https://reactome.org/ContentService/data/query/enhanced endpoint.
         # Remove the SAB from the code for the event.
         url = base_url + f'query/enhanced/{id.replace("REACTOME:","")}'
-        time.sleep(0.1)
+        time.sleep(0.05)
         queryjson = uext.getresponsejson(url)
 
         # GO biological process
@@ -248,7 +248,7 @@ def getparticipantedges(uext: ubkgExtract, base_url: str, event_id: str) -> list
     """
     # Call the referenceEntities endpoint.
     url = base_url + f'participants/{event_id.replace("REACTOME:","")}/referenceEntities'
-    time.sleep(0.1)
+    time.sleep(0.05)
     participantjson = uext.getresponsejson(url=url)
     listedges = []
     if participantjson is not None:
@@ -325,7 +325,7 @@ def getnodesfromedges(ulog: ubkgLogging, uext: ubkgExtract, cfg: ubkgConfigParse
 
         # Remove the REACTOME SAB from the ID.
         url = base_url + f'query/enhanced/{node_id.replace("REACTOME:", "")}'
-        time.sleep(0.1)
+        time.sleep(0.05)
         queryjson = uext.getresponsejson(url)
         node_label = queryjson.get('displayName','')
         #summation = queryjson.get('summation')
@@ -398,6 +398,10 @@ def main():
                                   cfg.get_value(section='Directories', key='sab_source_dir'), 'REACTOME')
     sab_jkg_dir = os.path.join(os.path.dirname(os.getcwd()), cfg.get_value(section='Directories', key='sab_jkg_dir'),'REACTOME')
 
+    # Create output folders for source files. Use the existing sab_source and sab_jkg folder structure.
+    os.system(f'mkdir -p {sab_source_dir}')
+    os.system(f'mkdir -p {sab_jkg_dir}')
+
     # Obtain the path to the OWLNETS files that correspond to the application ontology information for GenCode (GENCODE_VS)
     vs_dir = os.path.join(os.path.dirname(os.getcwd()), cfg.get_value(section='Directories', key='vs_dir'))
 
@@ -418,7 +422,6 @@ def main():
 
     # Build the nodes file, using the edge DataFrame.
     dfnodes = getnodesfromedges(ulog=ulog, uext=uext, cfg=cfg, df=dfedges)
-
 
     # Write edges to file.
     dfedges = dfedges[['subject', 'predicate', 'object']]
