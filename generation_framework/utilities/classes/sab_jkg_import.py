@@ -489,7 +489,7 @@ class Sabjkgimport:
         # to a list of unflattened (nested) objects.
         list_unflat_rel_labels = self._convert_flat_dataframe_to_unflat_list(df_flat=self.jkgjson.rel_label_nodes,
                                                                            progress_display='existing Rel_Label nodes (JKG JSON)')
-        self._update_node_counts(node_type="Rel_Label", state="before", count=len(list_new_unflat_rel_labels))
+        self._update_node_counts(node_type="Rel_Label", state="before", count=len(list_unflat_rel_labels))
 
         # Add the list of new nested concept nodes to the list of original nested concept nodes.
         list_unflat_rel_labels.extend(list_new_unflat_rel_labels)
@@ -823,6 +823,9 @@ class Sabjkgimport:
         # Keep track of the number of exiting rels.
         num_existing_rels = len(self.jkgjson.rels)
 
+        # Delete self-referential edges.
+        self.jkgjson.rels = self.jkgjson.rels[self.jkgjson.rels['start_id'] != self.jkgjson.rels['end_id']]
+
         self._unflatten_dataframe_and_write_list(df_flat=self.jkgjson.rels, progress_display='existing non-CODE rels')
 
         # Unload DataFrame of existing rels.
@@ -836,6 +839,7 @@ class Sabjkgimport:
         """
 
         list_new_rels = self._build_new_non_coderels()
+
         self._update_node_counts(node_type="non-CODE rels", state="after", count=len(self.jkgjson.rels) + len(list_new_rels))
 
         """
@@ -1301,9 +1305,9 @@ class Sabjkgimport:
         :param code: code, presumably in format SAB:code
         """
         if type(code) == str:
-            return code + ' CUI'
+            return code #+ ' CUI'
         elif type(code) == pd.Series:
-            return code.iloc[0] + ' CUI'
+            return code.iloc[0] #+ ' CUI'
         else:
             raise TypeError(f"Minting new CUI: Unknown type for code {code}")
 
@@ -1739,6 +1743,9 @@ class Sabjkgimport:
         self._unload_item(item_to_unload=dfnewcoderels)
 
         utimer.stop()
+
+        # Remove self-referential edges.
+        self.jkgen.edges = self.jkgen.edges[self.jkgen.edges['start_cui'] != self.jkgen.edges['end_cui']]
 
         # Vectorized build, using packing operator.
         # Note that the key for node objects is "label", not "labels".
