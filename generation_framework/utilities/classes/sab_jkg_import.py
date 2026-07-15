@@ -1159,7 +1159,7 @@ class Sabjkgimport:
 
 
         # Filter to those CUIs were minted from the node id.
-        df_changed_cuis = df_changed_cuis[df_changed_cuis['old_cui']==df_changed_cuis['properties_codeid'] + ' CUI']
+        df_changed_cuis = df_changed_cuis[df_changed_cuis['old_cui']==df_changed_cuis['properties_codeid']]
         gc.collect()
 
         """
@@ -1237,7 +1237,7 @@ class Sabjkgimport:
         # Update count of updated rels.
         # If both the start and end CUIs were updated, then a rel will be counted more than once.
         log_updated = len(df_rels_changed_cuis_end) + len(df_rels_changed_cuis_start)
-        self._update_node_counts(node_type="non-CODE rels", state="updated", count=99)
+        self._update_node_counts(node_type="non-CODE rels", state="updated", count=log_updated)
 
         # Unload the DataFrame of changes in CUIs.
         self._unload_item(item_to_unload=df_changed_cuis)

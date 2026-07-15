@@ -59,7 +59,10 @@ class Jkgjson:
 
         # Build the full path to JKG JSON file.
         jkg_json_full = os.path.join(self.jkg_json_dir, self.jkg_json_filename)
-        # Get the file size of JKG JSON for tqdm
+        if not(os.path.exists(jkg_json_full)):
+            self.log.print_and_logger_error(f"JKG JSON file {jkg_json_full} not found.")
+            exit(1)
+        # Get the file size of JKG JSON for tqdm.
         file_size = os.path.getsize(jkg_json_full)
 
         # Node types:
