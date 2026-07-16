@@ -56,6 +56,7 @@ from lxml import etree
 
 # Working with tabular data
 import pandas as pd
+import numpy as np
 
 # The following allows for an absolute import from an adjacent script directory
 # in the repo--i.e., up and over instead of down.
@@ -884,7 +885,7 @@ def write_nodes_file(sab: str,
                      entity_metadata: dict,
                      jout: Jkgout):
     """
-    Writes an edges file in OWLNETS format.
+    Writes a nodes file in OWLNETS format.
     :param sab: SAB for standardizing codes
     :param ulog: logging object
     :param uextractor: UBKG extractor object
@@ -942,6 +943,9 @@ def write_nodes_file(sab: str,
     dfmeta['node_id'] = ustand.standardize_code(x=dfmeta['node_id'], sab=sab)
 
     dfmeta = dfmeta[['node_id', 'label', 'definitions', 'synonyms', 'dbxrefs']]
+
+    # Default value for label is the node_id.
+    dfmeta['label'] = np.where(dfmeta['label'].isna(), dfmeta['node_id'], dfmeta['label'])
     dfmeta.columns = ['node_id', 'node_label', 'node_definition', 'node_synonyms', 'node_dbxrefs']
     uextractor.to_csv_with_progress_bar(df=dfmeta, path=node_metadata_filename, sep='\t', index=False)
 

@@ -1086,7 +1086,7 @@ class Sabjkgimport:
         It is often the case that one SAB's node file will refer to
         a code that does not have a CUI in the existing coderels data.
         The equivalence class algorithm will create a new concept
-        for this code with a default CUI in format "<code> CUI".
+        for this code with a default CUI in format "<code>".
         This CUI is used to build rels objects for concept-concept
         relationships involving the code as defined in the edge file.
 
@@ -1102,14 +1102,14 @@ class Sabjkgimport:
            - edge in edge file with SAB1:code1 -[rel1]-> SAB2:code2
            Because SAB2 was not ingested prior to SAB1,
            SAB2:code2 is linked to a concept with
-           CUI= "SAB2:code2 CUI". The rel uses SAB2:code2 CUI.
+           CUI= "SAB2:code2". The rel uses SAB2:code2.
         2. SAB2 specifies node with
            - node_id SAB2:code2
            - node_dbxrefs that links SAB2:code2 to the CUIs
              CUI1 and CUI2.
 
-           The rel involving CUI "SAB2:code2 CUI" must be
-           replaced with two rels in which "SAB2:code2 CUI" is replaced
+           The rel involving CUI "SAB2:code2" must be
+           replaced with two rels in which "SAB2:code2" is replaced
            with one of the two new cross-referenced CUIs.
 
         """
