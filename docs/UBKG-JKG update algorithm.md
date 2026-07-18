@@ -10,8 +10,8 @@ a _coderel_ (where _label_="CODE") involves the CUIs of two Concept nodes.
 For example, UBERON ingestion asserts a **_primarily_composed_of_** relationship between UMLS CUI C00866 and the CUI for 
 the code 0000077 in Cell Ontology. 
 
-Because CL is not in JKG when UBERON is ingested, the ingestion script mints a new "default CUI" for the CL code--in 
-this case, **CL:0000077 CUI**.
+Because CL is not in JKG when UBERON is ingested, the ingestion script mints a new "default CUI" for the CL code, using the code's value--in 
+this case, **CL:0000077**.
 
 ![img_7.png](img_7.png)
 
@@ -38,6 +38,7 @@ For each node,
 5. Identify all previously ingested rels for which the default CUI was the ending concept.
 6. Add new rels with the new CUIs as ending concepts.
 7. Delete the original rels with the default CUI.
+8. Delete the original codrels that involve the default CUI.
 
 It is possible that both the starting and ending concepts in a rel from a previous ingestion will
 need to be updated. 

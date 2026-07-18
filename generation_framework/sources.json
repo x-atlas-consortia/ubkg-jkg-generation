@@ -98,7 +98,7 @@
     "owl_url": "http://purl.obolibrary.org/obo/doid.owl",
     "name": "Human Disease Ontology (DOID)",
     "description": "An ontology for describing the classification of human diseases organized by etiology.",
-    "version": "2026-MAY-30",
+    "version": "2026-JUN-30",
     "history": {
       "download_size_mb": 278.4,
       "download_time_minutes": 1,
@@ -579,7 +579,7 @@
     "owl_url": "http://purl.obolibrary.org/obo/uberon/uberon-base.owl",
     "name": "Uberon",
     "description": "Uberon multi species anatomy ontology",
-    "version": "2026-APR-01",
+    "version": "2026-JUN-19",
     "history": {
       "download_size_mb": 57.3,
       "download_time_minutes": 1,

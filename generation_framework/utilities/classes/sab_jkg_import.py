@@ -1219,6 +1219,9 @@ class Sabjkgimport:
         # Delete the original rels that use the old CUIs.
         self.jkgjson.rels = self.jkgjson.rels[~self.jkgjson.rels['end_id'].isin(df_rels_changed_cuis_end['old_cui'])]
 
+        # Delete the original coderels that use the old CUIs.
+        self.jkgjson.coderels = self.jkgjson.coderels[~self.jkgjson.coderels['start_id'].isin(df_rels_changed_cuis_end['old_cui'])]
+
         gc.collect()
 
         """
@@ -1277,6 +1280,10 @@ class Sabjkgimport:
         # Delete the original rels with the old CUIs.
         self.jkgjson.rels = self.jkgjson.rels[~self.jkgjson.rels['start_id'].isin(df_rels_changed_cuis_start['old_cui'])]
         gc.collect()
+
+        # Delete the original coderels that use the old CUIs.
+        self.jkgjson.coderels = self.jkgjson.coderels[
+            ~self.jkgjson.coderels['start_id'].isin(df_rels_changed_cuis_start['old_cui'])]
 
     def _parse_cui_list(self, val):
         """
