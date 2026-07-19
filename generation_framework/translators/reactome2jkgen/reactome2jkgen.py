@@ -340,7 +340,9 @@ def getnodesfromedges(ulog: ubkgLogging, uext: ubkgExtract, cfg: ubkgConfigParse
                           'node_namespace': 'REACTOME',
                           'node_label': node_label,
                           'node_definition': node_definition,
-                          'node_dbxref':''})
+                          'node_dbxref':'',
+                          'node_synonyms':''
+                          })
 
     dfret = pd.DataFrame(listnodes)
     return dfret
@@ -430,7 +432,7 @@ def main():
     #dfedges.to_csv(fout, sep='\t', index=False)
 
     # Write nodes to file.
-    dfnodes = dfnodes[['node_id', 'node_namespace', 'node_label', 'node_definition', 'node_dbxref']]
+    dfnodes = dfnodes[['node_id', 'node_namespace', 'node_label', 'node_definition', 'node_dbxref', 'node_synonyms']]
     fout = os.path.join(sab_jkg_dir, jout.jkg_node)
     uext.to_csv_with_progress_bar(df=dfnodes, path=fout, sep='\t', index=False)
     #dfnodes.to_csv(fout, sep='\t', index=False)
