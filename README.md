@@ -257,7 +257,16 @@ The files for a particular execution are stamped with the name of the
 script and the execution time. For example, _mprofile_jkgen2jkg_20260515_094307.dat_ corresponds to 
 the memory profiler's data file for an execution of **jkgen2jkg** on May 5, 2026 at 09:43:307.
 
-The **jkgen2jkg** script pauses before terminating to allow the memory profiler time
+### PID errors
+
+The **jkgen2jkg** Shell script calls the memory profiler via CLI. The alternative offered by memprof is to import 
+a Python package into the **jkgen2jkg** Python script; however, per mprof's documentation, the CLI implementation offers more 
+functionality than does the Python implementation.
+
+The CLI implementation of the memory profiler can fail when attempting to create a plot of memory utilization if
+the underlying processes that it was monitoring have terminated. To address this issue:
+1. The **jkgen2jkg** script pauses before terminating to allow the memory profiler time
 to terminate gracefully.
+2. The Shell script **run_python_venv.sh**  (invoked by other Shell scripts) calls an in-line Python block using _subprocess.run_ to handle exceptions raised by the CLI.
 
 

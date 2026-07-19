@@ -67,7 +67,35 @@ DATFILE="$OUTDIR/mprofile_${STAMP}.dat"
 PLOTFILE="$OUTDIR/mprofile_${STAMP}.png"
 
 # Wrap the execution of the script with memory profiling,
-# with profiling outputs in OUTDIR
+# with profiling outputs in OUTDIR.
 mprof run -o "$DATFILE" python3 "$PYTHON_SCRIPT" "${@:2}"
-mprof plot -o "$PLOTFILE" "$DATFILE"
+
+# Attempt to plot memory utilization.
+# Guard against psutil.NoSuchProcess if the process
+# has already exited before mprof/psutil can query it.
+python3 - "$DATFILE" "$PLOTFILE" <<'PYEOF'
+import sys
+import subprocess
+import psutil
+
+datfile, plotfile = sys.argv[1], sys.argv[2]
+
+try:
+    subprocess.run(
+        ["mprof", "plot", "-o", plotfile, datfile],
+        check=True,
+    )
+except psutil.NoSuchProcess as e:
+    print(f"Warning: process no longer exists while plotting ({e}); "
+          f"skipping plot generation for this run.", file=sys.stderr)
+except subprocess.CalledProcessError as e:
+    # In case the underlying mprof CLI call itself raises via a traceback
+    # containing NoSuchProcess text rather than the exception object directly
+    if "psutil.NoSuchProcess" in str(e):
+        print(f"Warning: mprof plot failed due to NoSuchProcess ({e}); "
+              f"skipping plot generation.", file=sys.stderr)
+    else:
+        raise
+PYEOF
+#mprof plot -o "$PLOTFILE" "$DATFILE"
 
