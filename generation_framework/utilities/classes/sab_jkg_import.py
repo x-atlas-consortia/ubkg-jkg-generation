@@ -1388,7 +1388,7 @@ class Sabjkgimport:
             node1   SAB2:Code2
         """
 
-        df_nodes = self.jkgen.nodes.copy()
+        #df_nodes = self.jkgen.nodes.copy()
 
         df_exploded = self.jkgen.nodes[['node_id', 'node_dbxrefs']].explode('node_dbxrefs').reset_index(drop=True)
         utimer.stop()
@@ -1507,6 +1507,7 @@ class Sabjkgimport:
             self._unload_item(item_to_unload=df_other_non_umls)
 
             utimer.stop()
+
             utimer = UbkgTimer(display_msg="** Identifying nodes with existing CUIs")
             """
             Identify any nodes that already have a CUI.    
@@ -1529,7 +1530,7 @@ class Sabjkgimport:
             df_node_to_cui = pd.concat([df_node_to_cui, df_node_to_code_to_cui], ignore_index=True).drop_duplicates()
 
             # Map nodes in node file to CUIs.
-            df_node_cui = df_nodes.merge(df_node_to_cui, how='left', on='node_id')
+            df_node_cui = self.jkgen.nodes.merge(df_node_to_cui, how='left', on='node_id')
 
             node_cui_map = (
                 df_node_cui.groupby('node_id')['cui']
@@ -1555,7 +1556,7 @@ class Sabjkgimport:
 
         utimer.stop()
 
-        return df_nodes['node_id'].map(
+        return self.jkgen.nodes['node_id'].map(
         lambda node_id: self._get_cuis_from_maps(
             node_id=node_id,
             direct_umls_map=direct_umls_map,

@@ -432,7 +432,7 @@ def main():
     #dfedges.to_csv(fout, sep='\t', index=False)
 
     # Write nodes to file.
-    dfnodes = dfnodes[['node_id', 'node_namespace', 'node_label', 'node_definition', 'node_dbxref', 'node_synonyms']]
+    dfnodes = dfnodes[['node_id', 'node_namespace', 'node_label', 'node_definition', 'node_dbxrefs', 'node_synonyms']]
     fout = os.path.join(sab_jkg_dir, jout.jkg_node)
     uext.to_csv_with_progress_bar(df=dfnodes, path=fout, sep='\t', index=False)
     #dfnodes.to_csv(fout, sep='\t', index=False)
