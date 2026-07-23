@@ -987,7 +987,7 @@ class Sabjkgimport:
                     "properties_codeid": row.node_id,
                     "properties_tty": "PT",
                     # ** unpacks a dict built per-row from the optional columns
-                    **{f"properties_{col}": getattr(row, col) for col in optional_cols}
+                    **{f"properties_{col}": str(getattr(row, col)) for col in optional_cols}
                 }
                 for row in tqdm(df_new_coderels.itertuples(),
                                 total=len(df_nodes_exploded_on_cuis),

@@ -76,8 +76,10 @@ class Jkgedgenode:
             df_missing_object_nodes = df_missing_object_nodes[['object']].rename(columns={'object': 'node_id'})
 
         df_missing_nodes = pd.concat([df_missing_subject_nodes, df_missing_object_nodes]).drop_duplicates()
+
         if not df_missing_nodes.empty:
             df_missing_nodes = df_missing_nodes[['node_id']]
+            df_missing_nodes['node_label'] = df_missing_nodes['node_id']
             self.nodes = pd.concat([self.nodes, df_missing_nodes]).fillna('')
 
         if 'node_synonyms' in self.nodes.columns:
@@ -87,6 +89,9 @@ class Jkgedgenode:
         if 'node_dbxrefs' in self.nodes.columns:
             # Split node_dbxrefs on pipe delimiter.
             self.nodes['node_dbxrefs'] = (self.nodes['node_dbxrefs'].fillna('').str.split('|'))
+
+        # Drop duplicate nodes.
+        self.nodes = self.nodes.drop_duplicates(subset=['node_id'])
 
         self.log.print_and_logger_info('*** JKGEN LOAD COMPLETE ***')
 
