@@ -1419,8 +1419,8 @@ class Sabjkgimport:
                 for sab_val, group in df_exploded.groupby('sab')
             ])
         utimer.stop()
-        debug = os.path.join(self.sab_jkg_dir,'df_exploded.csv')
-        df_exploded.to_csv(debug, index=False)
+        #debug = os.path.join(self.sab_jkg_dir,'df_exploded.csv')
+        #df_exploded.to_csv(debug, index=False)
 
         utimer = UbkgTimer(display_msg="** Identifying direct UMLS CUIs")
         """
@@ -1435,8 +1435,8 @@ class Sabjkgimport:
         df_direct_umls = df_direct_umls[df_direct_umls['node_dbxrefs'].str.lower().str.startswith('umls:')]
         df_direct_umls['node_dbxrefs'] = df_direct_umls['node_dbxrefs'].apply(lambda x: str(x).upper())
 
-        debug = os.path.join(self.sab_jkg_dir, 'df_direct_umls.csv')
-        df_direct_umls.to_csv(debug, index=False)
+        #debug = os.path.join(self.sab_jkg_dir, 'df_direct_umls.csv')
+        #df_direct_umls.to_csv(debug, index=False)
 
         # 3b.
         # The map is a dict in format
@@ -1476,8 +1476,8 @@ class Sabjkgimport:
                                           right_on='properties_codeid')
                         .rename(columns={'node_label_x': 'node_label'}))
 
-            debug = os.path.join(self.sab_jkg_dir, 'df_other.csv')
-            df_other.to_csv(debug, index=False)
+            #debug = os.path.join(self.sab_jkg_dir, 'df_other.csv')
+            #df_other.to_csv(debug, index=False)
 
             """
             4b. Split other CUIs into UMLS and non-UMLS
@@ -1490,11 +1490,11 @@ class Sabjkgimport:
                 ~df_other['node_dbxrefs'].str.upper().str.startswith('UMLS', na=False)
                 ]
             df_other_non_umls = df_other[~df_other['start_id'].str.startswith('UMLS', na=False)]
-            debug = os.path.join(self.sab_jkg_dir, 'df_other_umls.csv')
-            df_other_umls.to_csv(debug, index=False)
+            #debug = os.path.join(self.sab_jkg_dir, 'df_other_umls.csv')
+            #df_other_umls.to_csv(debug, index=False)
 
-            debug = os.path.join(self.sab_jkg_dir, 'df_other_non_umls.csv')
-            df_other_non_umls.to_csv(debug, index=False)
+            #debug = os.path.join(self.sab_jkg_dir, 'df_other_non_umls.csv')
+            #df_other_non_umls.to_csv(debug, index=False)
             """
             Create "maps" of dbxrefs to lists of CUIs. 
             These maps are dicts with a dbxref for a key
@@ -1564,8 +1564,8 @@ class Sabjkgimport:
             # Map nodes in node file to CUIs.
             df_nodes_with_cuis = self.jkgen.nodes.merge(df_node_cui, how='inner', on='node_id')
 
-            debug = os.path.join(self.sab_jkg_dir, 'df_nodes_with_cuis.csv')
-            df_nodes_with_cuis.to_csv(debug, index=False)
+            #debug = os.path.join(self.sab_jkg_dir, 'df_nodes_with_cuis.csv')
+            #df_nodes_with_cuis.to_csv(debug, index=False)
 
             node_cui_map = (
                 df_nodes_with_cuis.groupby('node_id')['cui']
