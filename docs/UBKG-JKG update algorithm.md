@@ -27,8 +27,6 @@ If the SAB that owns a node's code is ingested into JKG such that the code links
 the rels that use the default CUI must be updated to reflect the new CUI assignments. 
 Updating these previously ingested rels allows these rels to integrate with information from the node's SAB.
 
-Updates to CUIs only occur when the node's "owning" SAB is ingested. 
-
 ## Algorithm
 For each node,
 1. Assign new CUIs (including cross-references)

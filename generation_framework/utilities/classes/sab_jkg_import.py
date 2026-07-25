@@ -151,6 +151,7 @@ class Sabjkgimport:
 
 
         self.ulog.print_and_logger_info("*** COMPARISONS OF NODE COUNTS ***")
+        self.ulog.print_and_logger_info(f'SAB: {self.sab.upper()}')
         # Group the list of tuples into a dict.
         data = {}
         for node_type, state, count in self.node_counts:
@@ -314,6 +315,7 @@ class Sabjkgimport:
         # Write the results of the algorithm in the JKGEN directory.
         cuifile = os.path.join(self.sab_jkg_dir, 'node_cuis.csv')
         self.jkgen.nodes.to_csv(cuifile, index=False)
+        exit(1)
 
         self.ulog.print_and_logger_info('* CONCEPT NODES')
         # Concept nodes.
@@ -1417,6 +1419,9 @@ class Sabjkgimport:
                 for sab_val, group in df_exploded.groupby('sab')
             ])
         utimer.stop()
+        debug = os.path.join(self.sab_jkg_dir,'df_exploded.csv')
+        df_exploded.to_csv(debug, index=False)
+
         utimer = UbkgTimer(display_msg="** Identifying direct UMLS CUIs")
         """
         3. Identify direct UMLS CUIs--dbxrefs that start with 'umls:'.
@@ -1429,6 +1434,9 @@ class Sabjkgimport:
         df_direct_umls = df_exploded.copy()
         df_direct_umls = df_direct_umls[df_direct_umls['node_dbxrefs'].str.lower().str.startswith('umls:')]
         df_direct_umls['node_dbxrefs'] = df_direct_umls['node_dbxrefs'].apply(lambda x: str(x).upper())
+
+        debug = os.path.join(self.sab_jkg_dir, 'df_direct_umls.csv')
+        df_direct_umls.to_csv(debug, index=False)
 
         # 3b.
         # The map is a dict in format
@@ -1468,6 +1476,9 @@ class Sabjkgimport:
                                           right_on='properties_codeid')
                         .rename(columns={'node_label_x': 'node_label'}))
 
+            debug = os.path.join(self.sab_jkg_dir, 'df_other.csv')
+            df_other.to_csv(debug, index=False)
+
             """
             4b. Split other CUIs into UMLS and non-UMLS
             The filter on dbxrefs not including UMLS prevents
@@ -1479,7 +1490,11 @@ class Sabjkgimport:
                 ~df_other['node_dbxrefs'].str.upper().str.startswith('UMLS', na=False)
                 ]
             df_other_non_umls = df_other[~df_other['start_id'].str.startswith('UMLS', na=False)]
+            debug = os.path.join(self.sab_jkg_dir, 'df_other_umls.csv')
+            df_other_umls.to_csv(debug, index=False)
 
+            debug = os.path.join(self.sab_jkg_dir, 'df_other_non_umls.csv')
+            df_other_non_umls.to_csv(debug, index=False)
             """
             Create "maps" of dbxrefs to lists of CUIs. 
             These maps are dicts with a dbxref for a key
@@ -1515,32 +1530,53 @@ class Sabjkgimport:
             codeid and start_id.        
             """
 
-            # Nodes mapped directly to CUI via coderels: start_id=cui
+            """
+            1. Identify in the existing set of coderels the codes that
+               map to CUIs. Rename the codeid to node_id and merge against
+               the node_id in the JKGEN node set to get the JKGEN nodes
+               that are codes with CUIs.
+            """
             df_node_to_cui = self.jkgjson.coderels[['properties_codeid', 'start_id']].rename(
                 columns={'properties_codeid': 'node_id', 'start_id': 'cui'}
             )
 
-            # Nodes linked to CUIs via coderels
-            df_node_to_code_to_cui = self.jkgjson.coderels[['start_id']].drop_duplicates().rename(
+            """
+            2. Identify the CUIs in the existing set of coderels. 
+               Merging this against the node_id in the JKGEN node set to 
+               get JKGEN nodes that are CUIs.
+            """
+            df_node_as_cui = self.jkgjson.coderels[['start_id']].drop_duplicates().rename(
                 columns={'start_id': 'node_id'}
             )
-            df_node_to_code_to_cui['cui'] = df_node_to_code_to_cui['node_id']
+            df_node_as_cui['cui'] = df_node_as_cui['node_id']
 
-            # node-CUI maps.
-            df_node_to_cui = pd.concat([df_node_to_cui, df_node_to_code_to_cui], ignore_index=True).drop_duplicates()
+            """
+            Concatenate the sets of 
+            "CUIs that map to nodes" 
+            and 
+            "CUIs that are nodes"
+            to get unique set of node-CUI maps
+            (because a node with a minted CUI will have a row in each set)
+            """
+            df_node_cui = pd.concat([df_node_to_cui, df_node_as_cui], ignore_index=True)#
+            df_node_cui = df_node_cui.drop_duplicates(subset='node_id', keep='first')
 
             # Map nodes in node file to CUIs.
-            df_node_cui = self.jkgen.nodes.merge(df_node_to_cui, how='left', on='node_id')
+            df_nodes_with_cuis = self.jkgen.nodes.merge(df_node_cui, how='inner', on='node_id')
+
+            debug = os.path.join(self.sab_jkg_dir, 'df_nodes_with_cuis.csv')
+            df_nodes_with_cuis.to_csv(debug, index=False)
 
             node_cui_map = (
-                df_node_cui.groupby('node_id')['cui']
+                df_nodes_with_cuis.groupby('node_id')['cui']
                 .apply(lambda x: x.dropna().unique().tolist())
                 .to_dict()
             )
 
-            self._unload_item(item_to_unload=df_node_to_code_to_cui)
+            self._unload_item(item_to_unload=df_node_as_cui)
             self._unload_item(item_to_unload=df_node_to_cui)
             self._unload_item(item_to_unload=df_node_cui)
+            self._unload_item(item_to_unload=df_nodes_with_cuis)
 
             """
             Identify CUIs for the node_id. Select the first CUI from lists 
@@ -1602,34 +1638,31 @@ class Sabjkgimport:
 
         all_cuis = []
 
-        # Only assign cross-references if the ingestion SAB
-        # corresponds to the node SAB.
-        sab_node = node_id.split(':')[0].upper()
-        if sab_node == self.sab:
-
-            if direct_umls_cuis:
-                all_cuis = all_cuis + direct_umls_cuis
-
-            if other_umls_cuis:
-                all_cuis = all_cuis +  other_umls_cuis
-
-            if other_non_umls_cuis:
-                all_cuis = all_cuis + other_non_umls_cuis
 
         """
-        Defaults:
-        If there was no CUI obtained from dbxrefs, check whether
-        the node itself either is a UMLS CUI or has a link to a CUI.
-        If not, then mint a new CUI.
+        Assignment logic:
+        1. Order of preference for dbxrefs:
+           a. Direct UMLS CUIs
+           b. Other UMLS CUIs
+           c. Other non-UMLS CUis
+        2. If there was no CUI obtained from dbxrefs, check whether
+           the node itself either is a UMLS CUI or has a link to a CUI.
+        3. If no other CUIs, then mint a new CUI.
         
         """
-        if not (direct_umls_cuis
-                or other_umls_cuis
-                or other_non_umls_cuis):
-            if node_cuis:
-                all_cuis = node_cuis
-            else:
-                all_cuis =  [self._mint_new_cui(node_id)]
+
+
+        if direct_umls_cuis:
+            all_cuis = all_cuis + direct_umls_cuis
+        elif other_umls_cuis:
+            all_cuis = all_cuis + other_umls_cuis
+        elif other_non_umls_cuis:
+            all_cuis = all_cuis + other_non_umls_cuis
+        elif node_cuis:
+            all_cuis = all_cuis + node_cuis
+        else:
+            all_cuis = [self._mint_new_cui(node_id)]
+
 
         # DOID formats UMLS CUIs as "umls_cui:x", which is translated to "UMLS CUI:x".
         stripped_all_cuis = []
