@@ -313,8 +313,8 @@ class Sabjkgimport:
         self.jkgen.nodes = self.jkgen.nodes[self.jkgen.nodes['cuis'].apply(lambda v: isinstance(v, list) and len(v) > 0)]
 
         # Write the results of the algorithm in the JKGEN directory.
-        cuifile = os.path.join(self.sab_jkg_dir, 'node_cuis.csv')
-        self.jkgen.nodes.to_csv(cuifile, index=False)
+        cuifile = os.path.join(self.sab_jkg_dir, 'node_cuis.tsv')
+        self.jkgen.nodes.to_csv(cuifile, sep='\t',index=False)
 
         self.ulog.print_and_logger_info('* CONCEPT NODES')
         # Concept nodes.
