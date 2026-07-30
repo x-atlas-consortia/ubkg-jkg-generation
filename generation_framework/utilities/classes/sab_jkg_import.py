@@ -824,8 +824,8 @@ class Sabjkgimport:
         # Keep track of the number of exiting rels.
         num_existing_rels = len(self.jkgjson.rels)
 
-        # Delete self-referential edges.
-        self.jkgjson.rels = self.jkgjson.rels[self.jkgjson.rels['start_id'] != self.jkgjson.rels['end_id']]
+        # Do not delete self-referential edges.
+        #self.jkgjson.rels = self.jkgjson.rels[self.jkgjson.rels['start_id'] != self.jkgjson.rels['end_id']]
 
         self._unflatten_dataframe_and_write_list(df_flat=self.jkgjson.rels, progress_display='existing non-CODE rels')
 
@@ -1158,7 +1158,6 @@ class Sabjkgimport:
         cuifile = os.path.join(self.sab_jkg_dir, 'updated_cuis.csv')
         df_changed_cuis.to_csv(cuifile, index=False)
 
-
         # Filter to those CUIs were minted from the node id.
         df_changed_cuis = df_changed_cuis[df_changed_cuis['old_cui']==df_changed_cuis['properties_codeid']]
         gc.collect()
@@ -1218,7 +1217,8 @@ class Sabjkgimport:
         self._unload_item(item_to_unload=df_new_rels_end)
 
         # Delete the original rels that use the old CUIs.
-        self.jkgjson.rels = self.jkgjson.rels[~self.jkgjson.rels['end_id'].isin(df_rels_changed_cuis_end['old_cui'])]
+
+        #self.jkgjson.rels = self.jkgjson.rels[~self.jkgjson.rels['end_id'].isin(df_rels_changed_cuis_end['old_cui'])]
 
         # Delete the original coderels that use the old CUIs.
         self.jkgjson.coderels = self.jkgjson.coderels[~self.jkgjson.coderels['start_id'].isin(df_rels_changed_cuis_end['old_cui'])]
@@ -1784,8 +1784,15 @@ class Sabjkgimport:
 
         utimer.stop()
 
-        # Remove self-referential edges.
-        self.jkgen.edges = self.jkgen.edges[self.jkgen.edges['start_cui'] != self.jkgen.edges['end_cui']]
+        # Identify self-referential edges.
+        self.ulog.print_and_logger_info('Identifying self-referential edges from JKGEN edge file.')
+        df_self_edge = self.jkgen.edges[self.jkgen.edges['start_cui'] == self.jkgen.edges['end_cui']]
+        self_edge_file = os.path.join(self.sab_jkg_dir, 'self_referential_edges_jkgen.csv')
+        df_self_edge.to_csv(self_edge_file, index=False)
+        self._unload_item(item_to_unload=df_self_edge)
+
+        # Do not delete self-referential edges.
+        #self.jkgen.edges = self.jkgen.edges[self.jkgen.edges['start_cui'] != self.jkgen.edges['end_cui']]
 
         # Vectorized build, using packing operator.
         # Note that the key for node objects is "label", not "labels".
