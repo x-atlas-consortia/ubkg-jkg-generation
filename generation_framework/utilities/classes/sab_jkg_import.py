@@ -307,13 +307,18 @@ class Sabjkgimport:
         """
         A blank list for self.jkgen['cuis'] means that the equivalence class
         algorithm made no CUI assignment. This can occur when 
-        the node file has a cross-references, but the SABs for the 
+        the node file has cross-references, but the SABs for the 
         node is not the SAB of the ingestion. 
         """
         self.jkgen.nodes = self.jkgen.nodes[self.jkgen.nodes['cuis'].apply(lambda v: isinstance(v, list) and len(v) > 0)]
 
+        """
+        Identify the "preferred CUI" for each concept. 
+        """
+        self._get_preferred_cui()
+
         # Write the results of the algorithm in the JKGEN directory.
-        cuifile = os.path.join(self.sab_jkg_dir, 'node_cuis.tsv')
+        cuifile = os.path.join(self.sab_jkg_dir, 'node_concept_assignments.tsv')
         self.jkgen.nodes.to_csv(cuifile, sep='\t',index=False)
 
         self.ulog.print_and_logger_info('* CONCEPT NODES')
@@ -905,6 +910,37 @@ class Sabjkgimport:
         self.jkgjson_writer.write_list(list_name=progress_display, list_content=list_unflat_new_coderels)
         self._unload_item(item_to_unload=list_unflat_new_coderels)
 
+    def _add_assigned_cui(self,cuis, assigned_cui)->list[str]:
+        """
+        Used in vectorized function _add_assigned_cuis_to_nodes.
+
+        :param cuis: the value of the cuis field in the nodes dataframe
+        :param assigned_cui: the assigned_cui field in the node
+        :return: concatenated list
+        """
+
+        if pd.notna(assigned_cui) and assigned_cui not in cuis:
+            return cuis + [assigned_cui]
+        return cuis
+
+    def _add_assigned_cuis_to_nodes(self):
+
+        """
+        The equivalence logic assigns to a node a set of concepts
+        that corresponds to cross-references.
+        By default, the assigned cui is the first cui in the list.
+
+        The preferred concept logic may override this assignment
+        with a minted concept for the case of nodes that share concepts.
+
+        Add any minted concepts to the list of assigned concepts
+        so that concepts and coderels will be built for the minted concepts.
+
+        """
+        self.jkgen.nodes['cuis'] = [
+            self._add_assigned_cui(cuis, assigned_cui)
+            for cuis, assigned_cui in zip(self.jkgen.nodes['cuis'], self.jkgen.nodes['assigned_cui'])
+        ]
 
     def _build_new_coderels(self)-> list[dict]:
         """
@@ -920,14 +956,17 @@ class Sabjkgimport:
         """
         Explode the DataFrame of JKGEN nodes on the CUIs that
         were assigned by the equivalence class algorithm.
+        
+        First, add any CUIs that were minted by the preferred concept
+        logic (aka the exhaustion logic).
         """
 
         df_nodes_exploded_on_cuis = (
-            self.jkgen.nodes
-            .explode('cuis')
+            df.explode('cuis')
             .rename(columns={'cuis': 'cui'})
             .reset_index(drop=True)
         )
+
 
         """
         Identify coderels that do not already exist in the JKG JSON.
@@ -949,6 +988,7 @@ class Sabjkgimport:
                 .query('_merge == "left_only"')
                 .drop(columns=['properties_codeid', 'start_id', '_merge'])
             )
+
 
         """
             The nodes DataFrame is flattened.
@@ -1063,6 +1103,8 @@ class Sabjkgimport:
                      'node_synonyms',
                      'node_dbxrefs',
                      'cui',
+                     'assigned_cui',
+                     'assignment_comment',
                      # Exclude coderel merge artifacts:
                      'start_id',
                      'end_id',
@@ -1358,7 +1400,8 @@ class Sabjkgimport:
         1. the first direct UMLS CUI
         2. the first UMLS CUI for a transitive code
         3. the first other CUI for a transitive code
-        4. a CUI minted from the code
+        4. the node itself, if the node is a CUI
+        5. a CUI minted from the code
         """
 
         self.ulog.print_and_logger_info("* IDENTIFYING CUIS FOR NODES")
@@ -1650,18 +1693,20 @@ class Sabjkgimport:
         
         """
 
-
         if direct_umls_cuis:
             all_cuis = all_cuis + direct_umls_cuis
-        elif other_umls_cuis:
+        if other_umls_cuis:
             all_cuis = all_cuis + other_umls_cuis
-        elif other_non_umls_cuis:
+        if other_non_umls_cuis:
             all_cuis = all_cuis + other_non_umls_cuis
-        elif node_cuis:
+        if node_cuis:
             all_cuis = all_cuis + node_cuis
-        else:
-            all_cuis = [self._mint_new_cui(node_id)]
 
+        if not (direct_umls_cuis or
+                other_umls_cuis or
+                other_non_umls_cuis or
+                node_cuis):
+            all_cuis = [self._mint_new_cui(node_id)]
 
         # DOID formats UMLS CUIs as "umls_cui:x", which is translated to "UMLS CUI:x".
         stripped_all_cuis = []
@@ -1670,6 +1715,131 @@ class Sabjkgimport:
 
         # Get unique list of CUIs in original order, by rank.
         return list(dict.fromkeys(stripped_all_cuis))
+
+    def _get_preferred_cui(self):
+        """
+        Identifies the preferred CUIs for nodes.
+
+        The _get_cuis_for_codes function associates with
+        each node in the JKGEN node file a set of CUIs to associate
+        with the node's code via coderels, ordered by proximity to
+        UMLS CUIs.
+
+        The majority of node codes associate with only one concept,
+        which is either an existing concept in the JKG or a concept
+        minted expressly for the code.
+
+        There are two cases which must be addressed:
+        1. A code associates with multiple concepts.
+           This is often a reflection of an ingested SAB that has a
+           lower code-concept resolution than that of the JKG.
+           An example is UBERON:0000011, which
+           maps to both UMLS:C0030510 and UMLS:C1305770.
+
+        2. A concept associates with multiple codes.
+           This is often a reflection of an ingested SAB that has
+           a higher code-concept resolution than that of the JKG.
+           Alternatively, it can be the result of two codes with multiple
+           concepts sharing the highest-priority concept.
+           An example is UBERON:0001421 and UBERON:0007831, which
+           share UMLS:C0427245.
+
+        To accurately replicate the edges of anm ingested SAB
+        in the JKG, the code for each ingested node must associate uniquely with
+        a JKG concept.
+        1. If a code associates with multiple concepts, then
+           a rel in JKG involving the code will have multiple paths.
+        2. If a concept associates with two codes, then a rel involving
+           the codes will be "self-referential" with respect to the
+           concept--i.e., a loop.
+
+        """
+
+        self.ulog.print_and_logger_info('Assigning preferred concepts')
+        """
+        First, select the first concept in the list for each node. 
+        Because the list of concepts is ordered by preference
+        (i.e., proximity to a UMLS CUI), selecting the first
+        concept works for almost all cases.
+        """
+        self.jkgen.nodes['assigned_cui'] = self.jkgen.nodes['cuis'].str[0]
+        self.jkgen.nodes['assignment_comment'] = 'default'
+
+        """
+        Next, resolve duplicate assignments via the "exhaustion algorithm".
+        For the case in which a node codes shares its default concept assignment
+        with another code, look through the available concepts for the code,
+        picking the first one that does not already have an assignment.
+        If all concepts in the list are already assigned, then 
+        mint a new CUI.
+        """
+
+        # 1. Identify nodes that share assigned concepts.
+        node_metadata_duplicates = self.jkgen.nodes.groupby(['assigned_cui']).count().reset_index()
+        node_metadata_duplicates = node_metadata_duplicates[node_metadata_duplicates['node_id'] > 1]
+
+        """
+        2. Exhaustion algorithm:
+           For each cui that has shared code assignments,
+           a. Get the codes that share assignments to the shared cui.
+           b. For each code, find the first assigned concept that has not already been 
+              assigned either to the code itself or to another code in the set of codes.
+           c. If no unassigned concepts remain, mint a new cui for the node.
+           
+        Example:
+        node_id         cuis                                default assigned cui
+        UBERON:0002637  ['UMLS:C0175276']                   UMLS:C0175276
+        UBERON:0002596  ['UMLS:C0175276', 'UMLS:C0228336']  UMLS:C0175276
+        
+        the set of cuis for the shared codes is ['UMLS:C0175276', 'UMLS:C0228336']
+        cui=UMLS:C0175276 is assigned to UBERON:0002637
+        cui=UMLS:C0228336 is not assigned to UBERON:0002637 because that code is already assigned
+        cui=UMLS:C0228336 is assigned to UBERON:0002596.
+        
+        If the order of nodes was reversed, then 
+        UMLS:C0175276 would be mapped to UBERON:0002596
+        UBERON:0002637 would get a minted CUI.
+        """
+
+        self.ulog.print_and_logger_info('Exhaustion algorithm for codes that share concept assignments.')
+        for cui in tqdm(node_metadata_duplicates['assigned_cui']):
+            # Get rows for nodes that share the assigned concept.
+            dfduplicatenodes = self.jkgen.nodes[self.jkgen.nodes['assigned_cui'] == cui]
+
+            cui_assigned = []
+            shared_node_ids = []
+            # Loop through nodes.
+            for index, rows in dfduplicatenodes.iterrows():
+                # Track node for comment display.
+                shared_node_ids.append(rows['node_id'])
+
+                assigned = False
+                # Look through concepts assigned to the node.
+                # Find the first one that is not already assigned, if one exists.
+                for c in rows['cuis']:
+                    if not (c in cui_assigned):
+                        if not assigned:
+                            cui_assigned.append(c)
+                            assigned = True
+                """
+                If all the node's assigned concepts were exhausted:
+                1. Mint a new cui for the node.
+                2. Assign the minted cui.
+                """
+                if not assigned:
+                    cui_assigned.append(self._mint_new_cui(rows['node_id']))
+
+            # Revise CUI assignments.
+            # First, update comments in all affected node rows.
+            self.jkgen.nodes.loc[self.jkgen.nodes[
+                                     'assigned_cui'] == cui, 'assignment_comment'] = f'exhaustion algorithm for shared nodes {shared_node_ids}'
+
+            # Revise those codes that were reassigned by replacing the entire column with the list of mapped cuis.
+            self.jkgen.nodes.loc[self.jkgen.nodes['assigned_cui'] == cui, 'assigned_cui'] = cui_assigned
+
+            # Add any newly minted assigned concepts to the lists of node concepts.
+            # This results in concepts and coderels being created for the minted concepts.
+            self._add_assigned_cuis_to_nodes()
 
     def _map_restored_custom_col_names(self, dfrels: pd.DataFrame,custom_prop_cols:list):
 
@@ -1734,12 +1904,12 @@ class Sabjkgimport:
         custom_prop_cols = [c for c in self.jkgen.edges.columns if c not in base_cols]
 
         # Explode nodes DataFrame on CUI.
-        df_nodes_exploded_on_cuis = (
-            self.jkgen.nodes
-            .explode('cuis')
-            .rename(columns={'cuis': 'cui'})
-            .reset_index(drop=True)
-        )
+        #df_nodes_exploded_on_cuis = (
+            #self.jkgen.nodes
+            #.explode('cuis')
+            #.rename(columns={'cuis': 'cui'})
+            #.reset_index(drop=True)
+        #)
         """
         IDENTIFY SUBJECT CUIS
         
@@ -1748,11 +1918,16 @@ class Sabjkgimport:
        
         """
 
+        #self.jkgen.edges = self.jkgen.edges.merge(
+            #df_nodes_exploded_on_cuis,
+            #how='inner',
+            #left_on='subject',
+            #right_on='node_id').rename(columns={'cui': 'start_cui'})
         self.jkgen.edges = self.jkgen.edges.merge(
-            df_nodes_exploded_on_cuis,
+            self.jkgen.nodes,
             how='inner',
             left_on='subject',
-            right_on='node_id').rename(columns={'cui': 'start_cui'})
+            right_on='node_id').rename(columns={'assigned_cui': 'start_cui'})
 
         # Restore names of custom property columns that got a _x suffix due to naming collisions.
         rename_map = self._map_restored_custom_col_names(dfrels=self.jkgen.edges, custom_prop_cols=custom_prop_cols)
@@ -1767,11 +1942,16 @@ class Sabjkgimport:
         
         """
 
+        #self.jkgen.edges = self.jkgen.edges.merge(
+            #df_nodes_exploded_on_cuis,
+            #how='inner',
+            #left_on='object',
+            #right_on='node_id').rename(columns={'cui': 'end_cui'})
         self.jkgen.edges = self.jkgen.edges.merge(
-            df_nodes_exploded_on_cuis,
+            self.jkgen.nodes,
             how='inner',
             left_on='object',
-            right_on='node_id').rename(columns={'cui': 'end_cui'})
+            right_on='node_id').rename(columns={'assigned_cui': 'end_cui'})
 
 
         # Fix any custom property columns that got a _x suffix due to naming collisions.

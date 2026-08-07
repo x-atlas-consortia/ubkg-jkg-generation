@@ -77,19 +77,35 @@ Nodes referenced in edges should be linked to CUIs in JKG. The ingestion
 script adds to the node list any subjects or objects from the edge file that are not
 specified in the node file. These "edge nodes" will not have cross-references.
 
-## Identify and rank cross-referenced CUIs
-Although the ingestion script will link a node to 
-all possible CUIs, the equivalence algorithm ranks CUI assignments:
+## "Preferred concept" assignment
 
-| Type                     | Description                                   | Example                                      |
-|--------------------------|-----------------------------------------------|----------------------------------------------|
-| direct UMLS CUIs         | cross-references to UMLS CUIs                 | UBERON:0001748 -> UMLS:C0927176              |
-| transitive UMLS CUIs     | cross-references to codes that have UMLS CUIs | UBERON:0001748 -> FMA:55566 -> UMLS:C0927176 |
-| transitive non-UMLS CUIs | cross-references to codes that non-UMLS CUIs  | MP:0011739 -> CL:0002084 -> CL:0002084 CUI   |
+The equivalence algorithm will link a node to 
+all of the possible concepts that are cross-references for the node.
 
-## Assign CUIs in order of rank
-Assign CUIs as follows:
-1. Assign any cross-referenced CUIs.
-2. If there are no cross-referenced CUIs, check whether the node already has a CUI in JKG.
-3. If the node has no CUIs, mint a CUI in format **_SAB_:_code_ CUI**.
+For the majority of nodes, the equivalence algorithm associates
+the node's code with a single concept--often a concept created ("minted")
+explicitly for the node. 
 
+However, there are two other possible arrangements:
+1. A node's code may associate with multiple concepts. 
+2. Multiple nodes may share an assignment with a concept.
+
+These arrangements will cause issues in the resulting graph database
+unless corrected.
+1. If a code associates with multiple concepts, queries that work with both concepts and codes will be Cartesian because of the duplicate code-concept links.
+2. If a concept associates with multiple codes, assertions that involve the codes will be _self-referential_ with respect to the concept.
+
+To address these issues, the ingestion script identifies a unique concept for each code. This
+"preferred concept" is the concept that is the closest to a UMLS CUI.
+
+The equivalence algorithm ranks concepts based on their proximity to UMLS. 
+The rank order is:
+
+| Rank | Type                     | Description                                   | Example                                      |
+|:-----|--------------------------|-----------------------------------------------|----------------------------------------------|
+| 1    | direct UMLS CUIs         | cross-references to UMLS CUIs                 | UBERON:0001748 -> UMLS:C0927176              |
+| 2    | transitive UMLS CUIs     | cross-references to codes that have UMLS CUIs | UBERON:0001748 -> FMA:55566 -> UMLS:C0927176 |
+| 3    | transitive non-UMLS CUIs | cross-references to codes that non-UMLS CUIs  | MP:0011739 -> CL:0002084 -> CL:0002084 CUI   |
+| 4    | minted CUI               | new CUI explicitly for the node               |                                              |
+
+The assertion predicates in the JKGEN edge file are associated only with the "preferred concept" for a node.

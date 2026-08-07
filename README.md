@@ -184,10 +184,7 @@ file comprising information from multiple sources.
 A UBKG-JKG context extends the JKG JSON created from the UMLS by
 integrating information from non-UMLS data sources.
 
-To maximize linkages between concepts and codes in the UBKG-JKG, **jkgen2jkg** implements the following
-algorithms:
-* the UBKG-JKG [equivalence algorithm](https://github.com/x-atlas-consortia/ubkg-jkg-generation/blob/main/docs/UBKG-JKG%20equivalence%20algorithm.md)
-* the UBKG-JKG [update algorithm](https://github.com/x-atlas-consortia/ubkg-jkg-generation/blob/main/docs/UBKG-JKG%20correction%20algorithm.md)
+To maximize linkages between concepts and codes in the UBKG-JKG, **jkgen2jkg** implements the UBKG-JKG [equivalence algorithm](https://github.com/x-atlas-consortia/ubkg-jkg-generation/blob/main/docs/UBKG-JKG%20equivalence%20algorithm.md)
 
 ## Analytic outputs
 **jkgen2jkg** creates the output files in the _sab_jkg_ directory of a SAB, summarizing
@@ -208,17 +205,18 @@ Example (UBERON)
 | CODE rels     | 9086510 | 9145528 | n/a     |
 | non-CODE rels | 9672922 | 9721494 | n/a     |
 
-### node_cuis.csv
+### node_concept_assignments.csv
 This is a file showing the results of the equivalence algorithm for each
 node in the node file.
 
 Relevant columns:
 
-| column       | description                                        | example                                                                                                                                                                                                                                   |
-|--------------|----------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| node_id      | code for the node in the SAB                       | UBERON:0002192                                                                                                                                                                                                                            |
-| node_dbxrefs | list of cross-references                           | ['fma:74512', 'tao:0001075', 'emapa:17768', 'vhog:0001756', 'ehdaa2:0000250', 'emapa:17548', 'umls:c0262212', 'zfa:0001075', 'fma:83715', 'mba:116', 'bams:chf', 'ehdaa:7567', 'dhba:12094', 'bams:chfl', 'neuronames:24', 'ncit:c32311'] |
-| cuis         | list of CUIs assigned by the equivalence algorithm | ['UMLS:C0262212', 'UMLS:C2337254']                                                                                                                                                                                                        |
+| column       | description                                                                          | example                                                                                                                                                                                                                                   |
+|--------------|--------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| node_id      | code for the node in the SAB                                                         | UBERON:0002192                                                                                                                                                                                                                            |
+| node_dbxrefs | list of cross-references                                                             | ['fma:74512', 'tao:0001075', 'emapa:17768', 'vhog:0001756', 'ehdaa2:0000250', 'emapa:17548', 'umls:c0262212', 'zfa:0001075', 'fma:83715', 'mba:116', 'bams:chf', 'ehdaa:7567', 'dhba:12094', 'bams:chfl', 'neuronames:24', 'ncit:c32311'] |
+| cuis         | list of CUIs assigned by the equivalence algorithm                                   | ['UMLS:C0262212', 'UMLS:C2337254']                                                                                                                                                                                                        |
+| assigned_cui | identfier for the unique concept assigned to the node from the equivalence algorithm |                                                                                                                                                                                                                                           |
 
 
 ### changed_cuis.csv
