@@ -961,12 +961,19 @@ class Sabjkgimport:
         logic (aka the exhaustion logic).
         """
 
+        """
+        Drop any nodes that are actually UMLS CUIs.
+        These are usually objects of predicates in the edge file.
+        These do not need coderels.
+        """
+        df_nodes = self.jkgen.nodes.copy()
+        df_nodes=df_nodes[~df_nodes['node_id'].str.startswith('UMLS:')]
+
         df_nodes_exploded_on_cuis = (
-            self.jkgen.nodes.explode('cuis')
+            df_nodes.explode('cuis')
             .rename(columns={'cuis': 'cui'})
             .reset_index(drop=True)
         )
-
 
         """
         Identify coderels that do not already exist in the JKG JSON.

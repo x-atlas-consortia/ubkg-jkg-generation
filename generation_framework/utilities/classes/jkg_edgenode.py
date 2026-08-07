@@ -83,13 +83,6 @@ class Jkgedgenode:
             df_missing_nodes['node_label'] = df_missing_nodes['node_id']
             self.nodes = pd.concat([self.nodes, df_missing_nodes]).fillna('')
 
-        """
-        Remove any nodes that are actually UMLS CUIs.
-        (These are usually added in the step that adds to the nodes file 
-        nodes referenced in edges in the edge file.)
-        """
-        self.nodes = self.nodes[~self.nodes['node_id'].str.startswith('UMLS:')]
-
         if 'node_synonyms' in self.nodes.columns:
             # Split node_synonyms on pipe delimiter.
             self.nodes['node_synonyms'] = (self.nodes['node_synonyms'].fillna('').str.split('|'))
