@@ -962,7 +962,7 @@ class Sabjkgimport:
         """
 
         df_nodes_exploded_on_cuis = (
-            self.jkgen.nodes('cuis')
+            self.jkgen.nodes.explode('cuis')
             .rename(columns={'cuis': 'cui'})
             .reset_index(drop=True)
         )
