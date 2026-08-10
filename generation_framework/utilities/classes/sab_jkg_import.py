@@ -709,6 +709,9 @@ class Sabjkgimport:
 
         # Drop duplicates.
         df_nodes= self.jkgen.nodes.drop_duplicates(subset='node_label')
+        outfile = os.path.join(self.jkgjson_dir, 'df_nodes.tsv')
+        df_nodes.to_csv(outfile, sep='\t', index=False)
+
         # Filter to terms that are not already in JKGJSON.
         if not self.jkgjson.term_nodes.empty:
             df_nodes = df_nodes.merge(self.jkgjson.term_nodes,
@@ -821,7 +824,7 @@ class Sabjkgimport:
         prior ingestions for which the CUIs were updated in 
         the current ingestion.
         """
-        self._update_node_cuis_in_rels()
+        #self._update_node_cuis_in_rels()
 
         """
         WRITE EXISTING RELS TO OUTPUT.
@@ -975,27 +978,34 @@ class Sabjkgimport:
             .reset_index(drop=True)
         )
 
+        df_new_coderels = df_nodes_exploded_on_cuis
+
         """
         Identify coderels that do not already exist in the JKG JSON.
         These correspond to new concepts introduced by the JKGEN node file.
         
+        Deprecated logic, kept in comments until it is certain that this 
+        is no longer needed.
+        
+        Keeping all coderels allows for the addition of coderels for 
+        existing concepts that are updated in subsequent ingestions.
+        
         """
-        if self.jkgjson.coderels.empty:
+        #if self.jkgjson.coderels.empty:
             # Defensive. It is unlikely that the original JKG JSON would not have any concepts.
-            df_new_coderels = df_nodes_exploded_on_cuis
-        else:
-            df_new_coderels = (
-                df_nodes_exploded_on_cuis.merge(
-                    self.jkgjson.coderels[['properties_codeid', 'start_id']],
-                    how='left',
-                    left_on=['node_id', 'cui'],
-                    right_on=['properties_codeid', 'start_id'],
-                    indicator=True
-                )
-                .query('_merge == "left_only"')
-                .drop(columns=['properties_codeid', 'start_id', '_merge'])
-            )
-
+            #df_new_coderels = df_nodes_exploded_on_cuis
+        #else:
+            #df_new_coderels = (
+                #df_nodes_exploded_on_cuis.merge(
+                    #self.jkgjson.coderels[['properties_codeid', 'start_id']],
+                    #how='left',
+                    #left_on=['node_id', 'cui'],
+                    #$right_on=['properties_codeid', 'start_id'],
+                    #indicator=True
+                #)
+                #.query('_merge == "left_only"')
+                #.drop(columns=['properties_codeid', 'start_id', '_merge'])
+            #)
 
         """
             The nodes DataFrame is flattened.
@@ -1126,6 +1136,12 @@ class Sabjkgimport:
 
     def _update_node_cuis_in_rels(self):
         """
+
+        AUGUST 2026 - DEPRECATED.
+        With the reversion to the "preferred cui" assignment logic,
+        this function is no longer relevant.
+
+        ---
         Updates existing rels from previous ingestions
         that involve nodes for which CUI-code links were updated
         by the current ingestion.
@@ -1468,8 +1484,6 @@ class Sabjkgimport:
                 for sab_val, group in df_exploded.groupby('sab')
             ])
         utimer.stop()
-        #debug = os.path.join(self.sab_jkg_dir,'df_exploded.csv')
-        #df_exploded.to_csv(debug, index=False)
 
         utimer = UbkgTimer(display_msg="** Identifying direct UMLS CUIs")
         """
@@ -1483,9 +1497,6 @@ class Sabjkgimport:
         df_direct_umls = df_exploded.copy()
         df_direct_umls = df_direct_umls[df_direct_umls['node_dbxrefs'].str.lower().str.startswith('umls:')]
         df_direct_umls['node_dbxrefs'] = df_direct_umls['node_dbxrefs'].apply(lambda x: str(x).upper())
-
-        #debug = os.path.join(self.sab_jkg_dir, 'df_direct_umls.csv')
-        #df_direct_umls.to_csv(debug, index=False)
 
         # 3b.
         # The map is a dict in format
@@ -1525,9 +1536,6 @@ class Sabjkgimport:
                                           right_on='properties_codeid')
                         .rename(columns={'node_label_x': 'node_label'}))
 
-            #debug = os.path.join(self.sab_jkg_dir, 'df_other.csv')
-            #df_other.to_csv(debug, index=False)
-
             """
             4b. Split other CUIs into UMLS and non-UMLS
             The filter on dbxrefs not including UMLS prevents
@@ -1539,11 +1547,7 @@ class Sabjkgimport:
                 ~df_other['node_dbxrefs'].str.upper().str.startswith('UMLS', na=False)
                 ]
             df_other_non_umls = df_other[~df_other['start_id'].str.startswith('UMLS', na=False)]
-            #debug = os.path.join(self.sab_jkg_dir, 'df_other_umls.csv')
-            #df_other_umls.to_csv(debug, index=False)
 
-            #debug = os.path.join(self.sab_jkg_dir, 'df_other_non_umls.csv')
-            #df_other_non_umls.to_csv(debug, index=False)
             """
             Create "maps" of dbxrefs to lists of CUIs. 
             These maps are dicts with a dbxref for a key
@@ -1613,8 +1617,6 @@ class Sabjkgimport:
             # Map nodes in node file to CUIs.
             df_nodes_with_cuis = self.jkgen.nodes.merge(df_node_cui, how='inner', on='node_id')
 
-            #debug = os.path.join(self.sab_jkg_dir, 'df_nodes_with_cuis.csv')
-            #df_nodes_with_cuis.to_csv(debug, index=False)
 
             node_cui_map = (
                 df_nodes_with_cuis.groupby('node_id')['cui']
@@ -1781,7 +1783,9 @@ class Sabjkgimport:
         mint a new CUI.
         """
 
-        # 1. Identify nodes that share assigned concepts.
+        """
+        1. Identify nodes that share assigned concepts.
+        """
         node_metadata_duplicates = self.jkgen.nodes.groupby(['assigned_cui']).count().reset_index()
         node_metadata_duplicates = node_metadata_duplicates[node_metadata_duplicates['node_id'] > 1]
 
@@ -1812,22 +1816,37 @@ class Sabjkgimport:
         for cui in tqdm(node_metadata_duplicates['assigned_cui']):
             # Get rows for nodes that share the assigned concept.
             dfduplicatenodes = self.jkgen.nodes[self.jkgen.nodes['assigned_cui'] == cui]
+            debug = os.path.join(self.sab_jkg_dir,'dfduplicatenodes.tsv')
+            dfduplicatenodes.to_csv(debug, sep='\t', index=False)
 
             cui_assigned = []
             shared_node_ids = []
+
             # Loop through nodes.
             for index, rows in dfduplicatenodes.iterrows():
                 # Track node for comment display.
                 shared_node_ids.append(rows['node_id'])
 
                 assigned = False
-                # Look through concepts assigned to the node.
-                # Find the first one that is not already assigned, if one exists.
+                """
+                Look through concepts assigned to the node.
+                Find the first concept that is not already assigned, if one exists.
+                However, if the concept is identical to the node_id, then
+                override assignment.
+           
+                """
+
                 for c in rows['cuis']:
                     if not (c in cui_assigned):
+                        # possible assignment
                         if not assigned:
-                            cui_assigned.append(c)
-                            assigned = True
+                            """
+                                If the cui matches the code, then the cui was minted 
+                                for the code in a prior ingestion.
+                            """
+                            if c == rows['node_id']:
+                                cui_assigned.append(c)
+                                assigned = True
                 """
                 If all the node's assigned concepts were exhausted:
                 1. Mint a new cui for the node.
