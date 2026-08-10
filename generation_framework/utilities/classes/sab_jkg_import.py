@@ -1835,14 +1835,13 @@ class Sabjkgimport:
                 override assignment.
            
                 """
-
                 for c in rows['cuis']:
                     if not (c in cui_assigned):
                         # possible assignment
                         if not assigned:
                             """
-                                If the cui matches the code, then the cui was minted 
-                                for the code in a prior ingestion.
+                                If the cui matches the node code, then the cui was minted 
+                                for the code in a prior ingestion and assigned to the code.
                             """
                             if c == rows['node_id']:
                                 cui_assigned.append(c)
