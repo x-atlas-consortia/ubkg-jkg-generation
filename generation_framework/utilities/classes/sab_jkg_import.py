@@ -1816,8 +1816,6 @@ class Sabjkgimport:
         for cui in tqdm(node_metadata_duplicates['assigned_cui']):
             # Get rows for nodes that share the assigned concept.
             dfduplicatenodes = self.jkgen.nodes[self.jkgen.nodes['assigned_cui'] == cui]
-            debug = os.path.join(self.sab_jkg_dir,'dfduplicatenodes.tsv')
-            dfduplicatenodes.to_csv(debug, sep='\t', index=False)
 
             cui_assigned = []
             shared_node_ids = []
