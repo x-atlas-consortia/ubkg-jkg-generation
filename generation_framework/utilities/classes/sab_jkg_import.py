@@ -1987,15 +1987,15 @@ class Sabjkgimport:
 
         utimer.stop()
 
-        # Identify self-referential edges.
-        self.ulog.print_and_logger_info('Identifying self-referential edges from JKGEN edge file.')
+        # Identify and remove self-referential edges.
+        self.ulog.print_and_logger_info('Removing self-referential edges from JKGEN edge file.')
         df_self_edge = self.jkgen.edges[self.jkgen.edges['start_cui'] == self.jkgen.edges['end_cui']]
         self_edge_file = os.path.join(self.sab_jkg_dir, 'self_referential_edges_jkgen.csv')
         df_self_edge.to_csv(self_edge_file, index=False)
         self._unload_item(item_to_unload=df_self_edge)
 
-        # Do not delete self-referential edges.
-        #self.jkgen.edges = self.jkgen.edges[self.jkgen.edges['start_cui'] != self.jkgen.edges['end_cui']]
+        # Remove self-referential edges.
+        self.jkgen.edges=self.jkgen.edges[self.jkgen.edges['start_cui'] != self.jkgen.edges['end_cui']]
 
         # Vectorized build, using packing operator.
         # Note that the key for node objects is "label", not "labels".
