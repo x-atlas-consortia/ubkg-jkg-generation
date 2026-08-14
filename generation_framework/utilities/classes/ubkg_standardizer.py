@@ -325,7 +325,7 @@ class ubkgStandardizer:
         At this point in the script, the code should be in one of two formats:
         1. SAB CODE, where
            a. SAB may be lowercase
-           b. CODE may be mixed case, wiht spaces.
+           b. CODE may be mixed case, with spaces.
         2. The result of a custom formatting--e.g., HGNC:code.
 
         The assumption is that if there are spaces at this point, the first space 
