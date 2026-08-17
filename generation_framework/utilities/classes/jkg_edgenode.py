@@ -77,6 +77,8 @@ class Jkgedgenode:
             df_missing_object_nodes = df_missing_object_nodes[['object']].rename(columns={'object': 'node_id'})
 
         df_missing_nodes = pd.concat([df_missing_subject_nodes, df_missing_object_nodes]).drop_duplicates()
+        outfile = os.path.join(self.jkg_path, 'missing_nodes.tsv')
+        df_missing_nodes.to_csv(outfile, sep='\t')
 
         if not df_missing_nodes.empty:
             df_missing_nodes = df_missing_nodes[['node_id']]
