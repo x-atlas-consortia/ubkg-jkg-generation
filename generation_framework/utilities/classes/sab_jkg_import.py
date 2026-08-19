@@ -178,17 +178,18 @@ class Sabjkgimport:
             if k == 'non-CODE rels':
                 if to_file:
                     with open(outfilepath, 'a') as outfile:
-                        outfile.write(f'{k}\t{before}\t{after}\t{updated}\n')
+                        #outfile.write(f'{k}\t{before}\t{after}\t{updated}\n')
+                        outfile.write(f'{k}\t{before}\t{after}\n')
                 else:
                     self.ulog.print_and_logger_info(
-                        f"{k:<{w_type}} {before:>{w_before},} {after:>{w_after},} {updated:>{w_updated},}")
+                        f"{k:<{w_type}} {before:>{w_before},} {after:>{w_after},}")
             else:
                 if to_file:
                     with open(outfilepath, 'a') as outfile:
-                        outfile.write(f'{k}\t{before}\t{after}\tn/a\n')
+                        outfile.write(f'{k}\t{before}\t{after}\n')
                 else:
                     self.ulog.print_and_logger_info(
-                        f"{k:<{w_type}} {before:>{w_before},} {after:>{w_after},} {"n/a":>{w_updated}}")
+                        f"{k:<{w_type}} {before:>{w_before},} {after:>{w_after},}")
 
         self.ulog.print_and_logger_info("-" * w_border)
 
@@ -849,6 +850,9 @@ class Sabjkgimport:
 
         list_new_rels = self._build_new_non_coderels()
 
+        # Obtain count of rels before updates.
+        self._update_node_counts(node_type="non-CODE rels", state="before", count=len(self.jkgjson.rels))
+
         self._update_node_counts(node_type="non-CODE rels", state="after", count=len(self.jkgjson.rels) + len(list_new_rels))
 
         """
@@ -1184,9 +1188,6 @@ class Sabjkgimport:
             self._update_node_counts(node_type="non-CODE rels", state="updated", count=0)
             return
 
-
-        # Obtain count of rels before updates.
-        self._update_node_counts(node_type="non-CODE rels", state="before", count=len(self.jkgjson.rels))
         list_updated = 0
 
         # Set of rel field names that are not for custom node properties.
