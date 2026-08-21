@@ -250,8 +250,7 @@ class Sabjkgimport:
         # Standardize the values in the "node_synonyms" column per
         # the codeid regex pattern in JKG Schema.
 
-        if 'node_synonyms' in self.jkgen.nodes.columns:
-            self.jkgen.nodes['node_synonyms'] = self.ustand.standardize_synonyms(x=self.jkgen.nodes['node_synonyms'])
+        self.jkgen.nodes['node_synonyms'] = self.ustand.standardize_synonyms(x=self.jkgen.nodes['node_synonyms'])
 
     def _start_new_jkgjson(self):
 
@@ -1458,13 +1457,6 @@ class Sabjkgimport:
         """
 
         #df_nodes = self.jkgen.nodes.copy()
-
-        """
-        If the JKGEN node file did not contain a dbxrefs column,
-        add a blank one.
-        """
-        if 'node_dbxrefs' not in self.jkgen.nodes.columns:
-            self.jkgen.nodes['node_dbxrefs'] = ''
 
         df_exploded = self.jkgen.nodes[['node_id', 'node_dbxrefs']].explode('node_dbxrefs').reset_index(drop=True)
         utimer.stop()

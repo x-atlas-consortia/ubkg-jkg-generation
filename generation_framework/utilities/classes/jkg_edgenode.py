@@ -88,10 +88,14 @@ class Jkgedgenode:
         if 'node_synonyms' in self.nodes.columns:
             # Split node_synonyms on pipe delimiter.
             self.nodes['node_synonyms'] = (self.nodes['node_synonyms'].fillna('').str.split('|'))
+        else:
+            self.nodes['node_synonyms'] = ''
 
         if 'node_dbxrefs' in self.nodes.columns:
             # Split node_dbxrefs on pipe delimiter.
             self.nodes['node_dbxrefs'] = (self.nodes['node_dbxrefs'].fillna('').str.split('|'))
+        else:
+            self.jkgen.nodes['node_dbxrefs'] = ''
 
         # Drop duplicate nodes.
         self.nodes = self.nodes.drop_duplicates(subset=['node_id'])
