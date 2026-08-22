@@ -95,7 +95,7 @@ class Jkgedgenode:
             # Split node_dbxrefs on pipe delimiter.
             self.nodes['node_dbxrefs'] = (self.nodes['node_dbxrefs'].fillna('').str.split('|'))
         else:
-            self.jkgen.nodes['node_dbxrefs'] = ''
+            self.nodes['node_dbxrefs'] = ''
 
         # Drop duplicate nodes.
         self.nodes = self.nodes.drop_duplicates(subset=['node_id'])
