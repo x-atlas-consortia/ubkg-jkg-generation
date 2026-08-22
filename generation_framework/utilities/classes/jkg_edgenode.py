@@ -91,13 +91,14 @@ class Jkgedgenode:
         else:
             self.nodes['node_synonyms'] = ''
 
+        # Add columns expected by the script for non-compliant SABs.
         if 'node_dbxrefs' in self.nodes.columns:
             # Split node_dbxrefs on pipe delimiter.
             self.nodes['node_dbxrefs'] = (self.nodes['node_dbxrefs'].fillna('').str.split('|'))
         else:
             self.nodes['node_dbxrefs'] = ''
 
-        if 'node_definition' not in self.node.columns:
+        if 'node_definition' not in self.nodes.columns:
             self.nodes['node_definition'] = ''
 
         # Drop duplicate nodes.
