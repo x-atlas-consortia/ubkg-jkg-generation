@@ -97,6 +97,9 @@ class Jkgedgenode:
         else:
             self.nodes['node_dbxrefs'] = ''
 
+        if 'node_definition' not in self.node.columns:
+            self.nodes['node_definition'] = ''
+
         # Drop duplicate nodes.
         self.nodes = self.nodes.drop_duplicates(subset=['node_id'])
 
