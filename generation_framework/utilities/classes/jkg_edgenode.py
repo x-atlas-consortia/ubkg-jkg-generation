@@ -88,7 +88,11 @@ class Jkgedgenode:
 
         if 'node_synonyms' in self.nodes.columns:
             # Split node_synonyms on pipe delimiter.
-            self.nodes['node_synonyms'] = (self.nodes['node_synonyms'].fillna('').str.split('|'))
+            self.nodes['node_synonyms'] = np.where(
+                (self.nodes['node_synonyms'].isna()) | (self.nodes['node_synonyms'] == ''),
+                '',
+                (self.nodes['node_synonyms'].fillna('').str.split('|'))
+            )
         else:
             self.nodes['node_synonyms'] = ''
 
@@ -104,8 +108,11 @@ class Jkgedgenode:
         )
 
         if 'node_dbxrefs' in self.nodes.columns:
-            # Split node_dbxrefs on pipe delimiter.
-            self.nodes['node_dbxrefs'] = (self.nodes['node_dbxrefs'].fillna('').str.split('|'))
+            self.nodes['node_dbxrefs'] = np.where(
+                (self.nodes['node_dbxrefs'].isna()) | (self.nodes['node_dbxrefs'] == ''),
+                '',
+                (self.nodes['node_dbxrefs'].fillna('').str.split('|'))
+            )
         else:
             self.nodes['node_dbxrefs'] = ''
 
