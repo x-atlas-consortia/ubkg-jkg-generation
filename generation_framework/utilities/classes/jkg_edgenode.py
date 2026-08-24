@@ -7,6 +7,7 @@ import os
 import sys
 #import polars as pl
 import pandas as pd
+import numpy as np
 
 from .ubkg_extract import ubkgExtract
 # Centralized logging
@@ -92,6 +93,12 @@ class Jkgedgenode:
             self.nodes['node_synonyms'] = ''
 
         # Add columns expected by the script for non-compliant SABs.
+
+        if 'node_label' in self.nodes.columns:
+            self.nodes['node_label'] = np.where(self.nodes['node_label'].isna(), self.nodes['node_id'], self.nodes['node_label'])
+        else:
+            self.nodes['node_label'] = self.nodes['node_id']
+
         if 'node_dbxrefs' in self.nodes.columns:
             # Split node_dbxrefs on pipe delimiter.
             self.nodes['node_dbxrefs'] = (self.nodes['node_dbxrefs'].fillna('').str.split('|'))

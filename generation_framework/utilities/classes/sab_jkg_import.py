@@ -58,6 +58,9 @@ class Sabjkgimport:
         # Initialize lists of output objects.
         self._initialize_lists()
 
+        # Load the JKGEN edge and node files for the new SAB.
+        self._load_jkgen()
+
         # Load the nodes and rels arrays from the original JKG JSON.
         self.jkgjson = Jkgjson(log=ulog, cfg=cfg)
 
@@ -71,9 +74,6 @@ class Sabjkgimport:
         self.jkgjson_dir = os.path.join(self.repo_root,
                                         self.cfg.get_value(section='jkg_json',
                                                            key='jkg_json_dir'))
-
-        # Load the JKGEN edge and node files for the new SAB.
-        self._load_jkgen()
 
         # Ordered list of tuples that stores counts of nodes before and after ingestion
         self.node_counts = []
