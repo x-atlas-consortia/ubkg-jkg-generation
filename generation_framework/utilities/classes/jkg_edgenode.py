@@ -94,10 +94,14 @@ class Jkgedgenode:
 
         # Add columns expected by the script for non-compliant SABs.
 
-        if 'node_label' in self.nodes.columns:
-            self.nodes['node_label'] = np.where(self.nodes['node_label'].isna(), self.nodes['node_id'], self.nodes['node_label'])
-        else:
-            self.nodes['node_label'] = self.nodes['node_id']
+        if 'node_label' not in self.nodes.columns:
+            self.nodes['node_label'] = ''
+
+        self.nodes['node_label'] = np.where(
+            (self.nodes['node_label'].isna()) | (self.nodes['node_label'] == ''),
+            self.nodes['node_id'],
+            self.nodes['node_label']
+        )
 
         if 'node_dbxrefs' in self.nodes.columns:
             # Split node_dbxrefs on pipe delimiter.
