@@ -122,6 +122,7 @@ class Jkgedgenode:
         # Drop duplicate nodes.
         self.nodes = self.nodes.drop_duplicates(subset=['node_id'])
 
+
         self.log.print_and_logger_info('*** JKGEN LOAD COMPLETE ***')
 
     def get_filename(self, filetype: str) -> str:

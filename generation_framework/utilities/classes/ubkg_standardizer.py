@@ -102,9 +102,15 @@ class ubkgStandardizer:
 
         disallowed = r"[^A-Za-z0-9._ ]"
 
+        """
+        If the synonym column is empty, then return the blank string.
+        If a value in the synonym column is the empty string, return
+        the empty string.
+        """
+
         return x.apply(lambda lst:
-                       lst if lst==[]
-                       else [re.sub(disallowed, "_", s)
+                       '' if (lst is None or (hasattr(lst, '__len__') and len(lst) == 0) or lst == '[]')
+                       else [s if s == '' else re.sub(disallowed, "_", s)
                              for s in lst])
 
     def standardize_code(self, x: pd.Series, sab: str) -> pd.Series:
