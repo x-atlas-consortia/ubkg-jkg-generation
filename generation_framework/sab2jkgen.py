@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 """
 2026
-sab2edgenode.py
+sab2jkgen.py
 
-sab2edgenode.py is the foundation of the UBKG-JKG generation framework.
+sab2jkgen.py is the foundation of the UBKG-JKG generation framework.
 
 The framework is a set of ETL subprocesses (translators) that obtain information from multiple
 source formats, including

@@ -204,6 +204,7 @@ def main():
     uext = ubkgExtract(ulog=ulog)
     unzipfiles(path=frompath, uext=uext, ulog=ulog)
 
+
     if containsedgenodefiles(frompath):
 
         # Copy UBKG edge/node files from the local path to the jkg_source path.
