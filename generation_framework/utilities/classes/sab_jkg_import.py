@@ -1606,6 +1606,7 @@ class Sabjkgimport:
             )
             df_node_as_cui['cui'] = df_node_as_cui['node_id']
 
+
             """
             Concatenate the sets of 
             "CUIs that map to nodes" 
@@ -1619,7 +1620,6 @@ class Sabjkgimport:
 
             # Map nodes in node file to CUIs.
             df_nodes_with_cuis = self.jkgen.nodes.merge(df_node_cui, how='inner', on='node_id')
-
 
             node_cui_map = (
                 df_nodes_with_cuis.groupby('node_id')['cui']
@@ -1695,24 +1695,25 @@ class Sabjkgimport:
 
         """
         Assignment logic:
-        1. Order of preference for dbxrefs:
+        1. Check whether
+           the node itself either is a UMLS CUI or has a link to a CUI.
+        2. If the node is neither a UMLS CUI or lined to a CUI,
+           Order of preference for dbxrefs:
            a. Direct UMLS CUIs
            b. Other UMLS CUIs
            c. Other non-UMLS CUis
-        2. If there was no CUI obtained from dbxrefs, check whether
-           the node itself either is a UMLS CUI or has a link to a CUI.
         3. If no other CUIs, then mint a new CUI.
         
         """
 
+        if node_cuis:
+            all_cuis = all_cuis + node_cuis
         if direct_umls_cuis:
             all_cuis = all_cuis + direct_umls_cuis
         if other_umls_cuis:
             all_cuis = all_cuis + other_umls_cuis
         if other_non_umls_cuis:
             all_cuis = all_cuis + other_non_umls_cuis
-        if node_cuis:
-            all_cuis = all_cuis + node_cuis
 
         if not (direct_umls_cuis or
                 other_umls_cuis or
