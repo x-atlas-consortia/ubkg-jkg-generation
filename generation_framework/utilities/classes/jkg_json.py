@@ -226,6 +226,11 @@ class Jkgjson:
             code_rel_rows.clear()
             utimer.stop()
 
+            # Remove MTH:NOCODE rels
+            utimer = UbkgTimer(display_msg="-- Deleting MTH:NOCODE CODE rels")
+            self.coderels = self.coderels.loc[self.coderels['properties_codeid'] != 'MTH:NOCODE'].copy()
+            utimer.stop()
+
             self.log.print_and_logger_info(f'*** JKG JSON LOAD SUMMARY:')
             self.log.print_and_logger_info('* NODE OBJECTS')
             self.log.print_and_logger_info(f"---- Source nodes: {len(self.source_nodes):,}")

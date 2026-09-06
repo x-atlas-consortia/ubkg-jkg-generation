@@ -1798,7 +1798,7 @@ class Sabjkgimport:
            For each cui that has shared code assignments,
            a. Get the codes that share assignments to the shared cui.
            b. For each code, find the first assigned concept that has not already been 
-              assigned either to the code itself or to another code in the set of codes.
+              assigned either to the code itself or to another code in the set of codes *from the same vocabulary*.
            c. If no unassigned concepts remain, mint a new cui for the node.
            
         Example:
@@ -1814,6 +1814,13 @@ class Sabjkgimport:
         If the order of nodes was reversed, then 
         UMLS:C0175276 would be mapped to UBERON:0002596
         UBERON:0002637 would get a minted CUI.
+        
+        For sets of duplicate nodes that do have the same vocabulary SAB, 
+        the first code from each vocabulary will share the duplicated concept.
+        e.g.
+        HGNC:X - gets the duplicated concept
+        OMIM:Y - gets the duplicated concept
+        HGNC:Z - gets its first alternate concept
         """
 
         self.ulog.print_and_logger_info('Exhaustion algorithm for codes that share concept assignments.')
@@ -1824,30 +1831,45 @@ class Sabjkgimport:
             cui_assigned = []
             shared_node_ids = []
 
+            duplicate_sab = []
             # Loop through nodes.
             for index, rows in dfduplicatenodes.iterrows():
                 # Track node for comment display.
                 shared_node_ids.append(rows['node_id'])
 
-                assigned = False
                 """
-                Look through concepts assigned to the node.
-                Find the first concept that is not already assigned, if one exists.
-                However, if the concept is identical to the node_id, then
-                override assignment.
+                    Get vocabulary for node.
+                    If the shared CUI has not yet been assigned to a code from the current code's
+                    vocabulary, assign the shared CUI; otherwise, loop through the list of alternate CUIs.
+                """
+                sab = rows['node_id'].split(':')[0]
+
+                if sab not in duplicate_sab or len(duplicate_sab) < 1:
+                    duplicate_sab.append(sab)
+                    cui_assigned.append(rows['cuis'][0])
+                    assigned = True
+                else:
+                    duplicate_sab.append(sab)
+                    assigned = False
+                    """
+                    Look through concepts assigned to the node.
+                    Find the first concept that is not already assigned, if one exists.
+                    However, if the concept is identical to the node_id, then
+                    override assignment.
            
-                """
-                for c in rows['cuis']:
-                    if not (c in cui_assigned):
-                        # possible assignment
-                        if not assigned:
-                            """
-                                If the cui matches the node code, then the cui was minted 
-                                for the code in a prior ingestion and assigned to the code.
-                            """
-                            if c == rows['node_id']:
-                                cui_assigned.append(c)
-                                assigned = True
+                    """
+                    for c in rows['cuis']:
+                        if not (c in cui_assigned):
+                            # possible assignment
+                            if not assigned:
+                                """
+                                    If the cui matches the node code, then the cui was minted 
+                                    for the code in a prior ingestion and assigned to the code.
+                                """
+                                if c == rows['node_id']:
+                                    cui_assigned.append(c)
+                                    assigned = True
+
                 """
                 If all the node's assigned concepts were exhausted:
                 1. Mint a new cui for the node.
