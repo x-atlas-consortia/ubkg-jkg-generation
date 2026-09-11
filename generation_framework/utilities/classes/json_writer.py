@@ -67,7 +67,7 @@ class JsonWriter:
             # Close array, using top indentation.
             f.write("\n" + self.top_indent + "]")
 
-    def write_list(self, list_name: str, list_content: list):
+    def write_list_OLD(self, list_name: str, list_content: list):
         """
         Writes a list to the JSON file as the value of a key, using
         a TQDM progress bar.
@@ -107,6 +107,65 @@ class JsonWriter:
                     f.write(",\n")
 
                 f.write(node_indented)
+
+    def write_list(self, list_name: str, list_content):
+        """
+        Writes a list to the JSON file as the value of a key, using
+        a TQDM progress bar.
+        :param list_content: iterable of elements to write (list, generator, etc.)
+        :param list_name: display name for the list
+
+        The use case is: write {"keyname":[list of elements]}
+
+        Assumptions:
+        1. This routine is called between start_list and end_list.
+        2. This routine assumes that list_content contains JSON-compliant strings.
+        """
+
+        # Support generators/iterators as well as lists, without forcing
+        # the whole collection to be materialized if the caller passes an iterator.
+        try:
+            total = len(list_content)
+        except TypeError:
+            total = None
+
+        if total == 0:
+            return
+
+        # Because start_list was called, always append.
+        with open(self.outpath, "a", encoding="utf-8") as f:
+
+            # Consume from the front so items can be garbage-collected as we go,
+            # instead of iterating an indexable list that keeps every element alive.
+            iterator = iter(list_content)
+
+            for i, node in enumerate(tqdm(iterator, desc=f"-- Writing {list_name}...", total=total)):
+
+                if isinstance(node, str):
+                    node_indented = node.strip()
+                else:
+                    if self.write_pretty:
+                        node_json = json.dumps(node, ensure_ascii=False, indent=self.indent_spaces, default=str)
+                        node_indented = textwrap.indent(node_json, self.node_indent)
+                    else:
+                        node_json = json.dumps(node, ensure_ascii=False, separators=(',', ':'), default=str)
+                        node_indented = self.node_indent + node_json
+                    del node_json  # free intermediate string reference immediately
+
+                if i:
+                    f.write(",\n")
+
+                f.write(node_indented)
+
+                # Drop references so the item (and its JSON string) can be
+                # collected before the next iteration allocates a new one.
+                del node
+                del node_indented
+
+            # If the caller passed a real list, empty it so the caller's
+            # reference no longer holds every element in memory.
+            if isinstance(list_content, list):
+                list_content.clear()
 
     def write_line_feed(self):
         """

@@ -313,16 +313,15 @@ class Sabjkgimport:
         """
         self.jkgen.nodes = self.jkgen.nodes[self.jkgen.nodes['cuis'].apply(lambda v: isinstance(v, list) and len(v) > 0)]
 
-
         """
         Identify the "preferred CUI" for each concept. 
         """
         self._get_preferred_cui()
 
+
         # Write the results of the algorithm in the JKGEN directory.
         cuifile = os.path.join(self.sab_jkg_dir, 'node_concept_assignments.tsv')
         self.jkgen.nodes.to_csv(cuifile, sep='\t',index=False)
-
 
         self.ulog.print_and_logger_info('* CONCEPT NODES')
         # Concept nodes.
@@ -627,7 +626,6 @@ class Sabjkgimport:
             .rename(columns={'cuis': 'cui'})
         ).dropna() # from edge nodes added to nodes list
 
-
         # 2. Compute existing CUIs once as a set — O(1) lookups
         if self.jkgjson.coderels.empty:
             existing_cuis = set()
@@ -636,6 +634,13 @@ class Sabjkgimport:
 
         # 3. Filter to only new CUIs in a single pass
         df_new = df_exploded[~df_exploded['cui'].isin(existing_cuis)]
+
+        # 4. Any UMLS CUIs will be for problematic concepts--e.g., obsolete.
+        df_new = df_new[~df_new['cui'].str.startswith('UMLS:')]
+
+        #5. Drop duplicate pref_terms.
+        df_new = df_new.drop_duplicates(subset='cui', keep='first')
+
         
         # Unload exploded DataFrame.
         self._unload_item(item_to_unload=df_exploded)
@@ -832,7 +837,7 @@ class Sabjkgimport:
         """
         WRITE EXISTING RELS TO OUTPUT.
         """
-        # Keep track of the number of exiting rels.
+        # Keep track of the number of existing rels.
         num_existing_rels = len(self.jkgjson.rels)
 
         # Do not delete self-referential edges.
@@ -986,6 +991,9 @@ class Sabjkgimport:
 
         df_new_coderels = df_nodes_exploded_on_cuis
 
+        debug = os.path.join(self.sab_jkg_dir,'df_new_coderels_pt.tsv')
+        df_new_coderels.to_csv(debug, sep='\t', index=False)
+
         """
         Identify coderels that do not already exist in the JKG JSON.
         These correspond to new concepts introduced by the JKGEN node file.
@@ -1080,6 +1088,9 @@ class Sabjkgimport:
         )
         # Filter to codes with synonyms.
         df_exploded_on_cuis_synonyms = df_exploded_on_cuis_synonyms[df_exploded_on_cuis_synonyms['node_synonym']!='']
+
+        debug = os.path.join(self.sab_jkg_dir, 'df_exploded_on_cuis_synonyms.tsv')
+        df_exploded_on_cuis_synonyms.to_csv(debug, sep='\t', index=False)
 
         # Terms of type SY do not get the definition.
         list_new_coderels.extend(
@@ -1920,9 +1931,15 @@ class Sabjkgimport:
         # advantage of Pandas DataFrame merging.
         dfnewcoderels = pd.DataFrame(self.list_new_coderels)
 
+        debug = os.path.join(self.sab_jkg_dir,'dfnewcoderels_before_drop_duplicates.tsv')
+        dfnewcoderels.to_csv(debug, sep='\t', index=False)
+
         # Drop duplicates from merging.(Coderels map cuis to term types.)
         # Remove columns that are irrelevant to CUI identification.
         dfnewcoderels = dfnewcoderels.drop_duplicates(subset=['start_id','properties_codeid'])[['start_id','properties_codeid']]
+
+        debug = os.path.join(self.sab_jkg_dir, 'dfnewcoderels_after_drop_duplicates.tsv')
+        dfnewcoderels.to_csv(debug, sep='\t', index=False)
 
         """
         CUSTOM EDGE PROPERTIES
