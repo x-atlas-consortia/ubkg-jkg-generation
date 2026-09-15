@@ -2054,8 +2054,8 @@ class Sabjkgimport:
         # Identify and remove self-referential edges.
         self.ulog.print_and_logger_info('Removing self-referential edges from JKGEN edge file.')
         df_self_edge = self.jkgen.edges[self.jkgen.edges['start_cui'] == self.jkgen.edges['end_cui']]
-        self_edge_file = os.path.join(self.sab_jkg_dir, 'self_referential_edges_jkgen.csv')
-        df_self_edge.to_csv(self_edge_file, index=False)
+        self_edge_file = os.path.join(self.sab_jkg_dir, 'self_referential_edges_jkgen.tsv')
+        df_self_edge.to_csv(self_edge_file, sep='\t',index=False)
         self._unload_item(item_to_unload=df_self_edge)
 
         # Remove self-referential edges.
