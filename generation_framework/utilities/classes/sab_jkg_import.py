@@ -991,9 +991,6 @@ class Sabjkgimport:
 
         df_new_coderels = df_nodes_exploded_on_cuis
 
-        debug = os.path.join(self.sab_jkg_dir,'df_new_coderels_pt.tsv')
-        df_new_coderels.to_csv(debug, sep='\t', index=False)
-
         """
         Identify coderels that do not already exist in the JKG JSON.
         These correspond to new concepts introduced by the JKGEN node file.
@@ -1089,8 +1086,6 @@ class Sabjkgimport:
         # Filter to codes with synonyms.
         df_exploded_on_cuis_synonyms = df_exploded_on_cuis_synonyms[df_exploded_on_cuis_synonyms['node_synonym']!='']
 
-        debug = os.path.join(self.sab_jkg_dir, 'df_exploded_on_cuis_synonyms.tsv')
-        df_exploded_on_cuis_synonyms.to_csv(debug, sep='\t', index=False)
 
         # Terms of type SY do not get the definition.
         list_new_coderels.extend(
@@ -1503,7 +1498,9 @@ class Sabjkgimport:
         """
         3. Identify direct UMLS CUIs--dbxrefs that start with 'umls:'.
            a. Filter to only those dbxrefs that start with UMLS.
-           b. Create a "map" of dbxref to lists of UMLS CUIs. 
+           b. Filter to only those UMLS dbxrefs that are in the existing JKG JSON--i.e., those 
+              that are not obsolete or suppressed (e.g., from merging between releases of the UMLS).
+           c. Create a "map" of dbxref to lists of UMLS CUIs. 
               Group by node_id and collect UMLS CUIs into lists.
         """
         # 3a.
@@ -1512,15 +1509,43 @@ class Sabjkgimport:
         df_direct_umls = df_direct_umls[df_direct_umls['node_dbxrefs'].str.lower().str.startswith('umls:')]
         df_direct_umls['node_dbxrefs'] = df_direct_umls['node_dbxrefs'].apply(lambda x: str(x).upper())
 
-        # 3b.
-        # The map is a dict in format
-        # {'UBERON:0001794':[UMLS:c1512783]...}
+        """
+        3b. Filter out obsolete or suppressed UMLS CUIs.
+        """
 
-        direct_umls_map = (
-            df_direct_umls.groupby('node_id', sort=False)['node_dbxrefs']
-            .apply(lambda x: x.dropna().unique().tolist())
-            .to_dict()
-        )
+        if self.jkgjson.coderels.empty:
+            direct_umls_map = {}
+        else:
+            df_direct_umls = (df_direct_umls.merge(self.jkgjson.coderels,
+                                          how='left',
+                                          left_on='node_dbxrefs',
+                                          right_on='start_id')
+                        .rename(columns={'node_label_x': 'node_label'}))
+
+            """
+            Keep only direct UMLS CUIs dbxrefs that are not suppressed/obsolete. 
+            The script will mint new concepts for these codes.
+            """
+
+            df_direct_umls = df_direct_umls[df_direct_umls['start_id'].notnull()].copy()
+
+            # Log coderels that refer to suppressed/obsolete UMLS CUIs.
+            df_obsolete_umls = df_direct_umls[df_direct_umls['start_id'].isnull()].copy()
+            outfile = os.path.join(self.sab_jkg_dir,'obsolete_umls_cuis.tsv')
+            df_obsolete_umls.to_csv(outfile, sep='\t', index=False)
+
+
+            """
+            3c.
+            The map is a dict in format
+            {'UBERON:0001794':[UMLS:c1512783]...}
+            """
+            direct_umls_map = (
+                df_direct_umls.groupby('node_id', sort=False)['node_dbxrefs']
+                .apply(lambda x: x.dropna().unique().tolist())
+                .to_dict()
+            )
+
         utimer.stop()
         utimer = UbkgTimer(display_msg="** Identifying other CUIs")
 
@@ -1542,8 +1567,10 @@ class Sabjkgimport:
             other_umls_map = {}
             other_non_umls_map = {}
         else:
-            # Get the other CUIs for each dbxref from coderels.
-            # The merge renames the node label, so restore the header.
+            """
+            Get the other CUIs for each dbxref from coderels.
+            The merge renames the node label, so restore the header.
+            """
             df_other = (df_exploded.merge(self.jkgjson.coderels,
                                           how='left',
                                           left_on='node_dbxrefs',
@@ -1931,15 +1958,9 @@ class Sabjkgimport:
         # advantage of Pandas DataFrame merging.
         dfnewcoderels = pd.DataFrame(self.list_new_coderels)
 
-        debug = os.path.join(self.sab_jkg_dir,'dfnewcoderels_before_drop_duplicates.tsv')
-        dfnewcoderels.to_csv(debug, sep='\t', index=False)
-
         # Drop duplicates from merging.(Coderels map cuis to term types.)
         # Remove columns that are irrelevant to CUI identification.
         dfnewcoderels = dfnewcoderels.drop_duplicates(subset=['start_id','properties_codeid'])[['start_id','properties_codeid']]
-
-        debug = os.path.join(self.sab_jkg_dir, 'dfnewcoderels_after_drop_duplicates.tsv')
-        dfnewcoderels.to_csv(debug, sep='\t', index=False)
 
         """
         CUSTOM EDGE PROPERTIES

@@ -58,7 +58,7 @@ will specify two types of dbxrefs:
 
 ## Code-Concept links 
 The concepts to which a code links depends on a number of factors:
-1. If the code is in a vocabulary managed by the UMLS, it will link to a UMLS CUI.
+1. If the code is in a vocabulary managed by the UMLS, it will link to a UMLS CUI, unless the CUI is not in the JKG JSON. (A UMLS CUI that is not in the JKG JSON is usually one that was suppressed or made obsolete by a release of the UMLS.)
 2. If the code was ingested into the JKG prior to the current ingestion, it will be linked to a CUI. The CUI may be either a UMLS CUI or a CUI associated with another vocabulary.
 3. If the node file for the current ingestion specifies a dbxref that is a code in another vocabulary, then the code will be lnked to the CUI for the other code.
 
@@ -77,7 +77,7 @@ Nodes referenced in edges should be linked to CUIs in JKG. The ingestion
 script adds to the node list any subjects or objects from the edge file that are not
 specified in the node file. These "edge nodes" will not have cross-references.
 
-## "Preferred concept" assignment
+## "Assigned concept" assignment
 
 The equivalence algorithm will link a node to 
 all of the possible concepts that are cross-references for the node.
@@ -96,16 +96,16 @@ unless corrected.
 2. If a concept associates with multiple codes, assertions that involve the codes will be _self-referential_ with respect to the concept.
 
 To address these issues, the ingestion script identifies a unique concept for each code. This
-"preferred concept" is the concept that is the closest to a UMLS CUI.
+"assigned concept" is the concept that is the closest to a UMLS CUI.
 
 The equivalence algorithm ranks concepts based on their proximity to UMLS. 
 The rank order is:
 
-| Rank | Type                     | Description                                   | Example                                      |
-|:-----|--------------------------|-----------------------------------------------|----------------------------------------------|
-| 1    | direct UMLS CUIs         | cross-references to UMLS CUIs                 | UBERON:0001748 -> UMLS:C0927176              |
-| 2    | transitive UMLS CUIs     | cross-references to codes that have UMLS CUIs | UBERON:0001748 -> FMA:55566 -> UMLS:C0927176 |
-| 3    | transitive non-UMLS CUIs | cross-references to codes that non-UMLS CUIs  | MP:0011739 -> CL:0002084 -> CL:0002084 CUI   |
-| 4    | minted CUI               | new CUI explicitly for the node               |                                              |
+| Rank | Type                     | Description                                       | Example (code -> maps to code or CUI -> maps to CUI) |
+|:-----|--------------------------|---------------------------------------------------|------------------------------------------------------|
+| 1    | direct UMLS CUIs         | cross-references to UMLS CUIs                     | UBERON:0001748 -> UMLS:C0927176                      |
+| 2    | transitive UMLS CUIs     | cross-references to codes that have UMLS CUIs     | UBERON:0001748 -> FMA:55566 -> UMLS:C0927176         |
+| 3    | transitive non-UMLS CUIs | cross-references to codes that have non-UMLS CUIs | MP:0011739 -> CL:0002084 -> CL:0002084 CUI           |
+| 4    | minted CUI               | new CUI explicitly for the node                   |                                                      |
 
-The assertion predicates in the JKGEN edge file are associated only with the "preferred concept" for a node.
+The assertion predicates in the JKGEN edge file are associated only with the "assigned concept" for a node's code.
