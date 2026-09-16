@@ -1496,7 +1496,7 @@ class Sabjkgimport:
 
         utimer = UbkgTimer(display_msg="** Identifying direct UMLS CUIs")
         """
-        3. Identify direct UMLS CUIs--dbxrefs that start with 'umls:'.
+        3. Identify direct UMLS CUIs--dbxrefs that start with 'umls:' or "umls cui:" (DOID)
            a. Filter to only those dbxrefs that start with UMLS.
            b. Filter to only those UMLS dbxrefs that are in the existing JKG JSON--i.e., those 
               that are not obsolete or suppressed (e.g., from merging between releases of the UMLS).
@@ -1506,8 +1506,11 @@ class Sabjkgimport:
         # 3a.
         # In dbxrefs, UMLS CUIs are in lowercase.
         df_direct_umls = df_exploded.copy()
-        df_direct_umls = df_direct_umls[df_direct_umls['node_dbxrefs'].str.lower().str.startswith('umls:')]
+        df_direct_umls = df_direct_umls[df_direct_umls['node_dbxrefs'].str.lower().str.startswith('umls')]
         df_direct_umls['node_dbxrefs'] = df_direct_umls['node_dbxrefs'].apply(lambda x: str(x).upper())
+        # Handle case of DOID.
+        df_direct_umls['node_dbxrefs'] = df_direct_umls['node_dbxrefs'].apply(lambda x: str(x).replace('CUI ', ''))
+
 
         """
         3b. Filter out obsolete or suppressed UMLS CUIs.
@@ -1522,18 +1525,16 @@ class Sabjkgimport:
                                           right_on='start_id')
                         .rename(columns={'node_label_x': 'node_label'}))
 
+            # Log coderels that refer to suppressed/obsolete UMLS CUIs.
+            df_obsolete_umls = df_direct_umls[df_direct_umls['start_id'].isnull()].copy()
+            outfile = os.path.join(self.sab_jkg_dir, 'obsolete_umls_cuis.tsv')
+            df_obsolete_umls.to_csv(outfile, sep='\t', index=False)
+
             """
             Keep only direct UMLS CUIs dbxrefs that are not suppressed/obsolete. 
             The script will mint new concepts for these codes.
             """
-
             df_direct_umls = df_direct_umls[df_direct_umls['start_id'].notnull()].copy()
-
-            # Log coderels that refer to suppressed/obsolete UMLS CUIs.
-            df_obsolete_umls = df_direct_umls[df_direct_umls['start_id'].isnull()].copy()
-            outfile = os.path.join(self.sab_jkg_dir,'obsolete_umls_cuis.tsv')
-            df_obsolete_umls.to_csv(outfile, sep='\t', index=False)
-
 
             """
             3c.
