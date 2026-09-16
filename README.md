@@ -195,17 +195,17 @@ This is a report showing the changes in numbers of nodes in JKG before and after
 
 Example (UBERON)
 
-| type          | before  | after   | updated |
-|---------------|---------|---------|---------|
-| Source        | 108     | 109     | n/a     |
-| Node_Label    | 127     | 127     | n/a     |
-| Rel_Label     | 117     | 589     | n/a     |
-| Concept       | 3239707 | 3248635 | n/a     |
-| Term          | 7855447 | 7630918 | n/a     |
-| CODE rels     | 9086510 | 9145528 | n/a     |
-| non-CODE rels | 9672922 | 9721494 | n/a     |
+| type          | before  | after   |
+|---------------|---------|---------|
+| Source        | 108     | 109     |
+| Node_Label    | 127     | 127     |
+| Rel_Label     | 117     | 589     |
+| Concept       | 3239707 | 3248635 |
+| Term          | 7855447 | 7630918 |
+| CODE rels     | 9086510 | 9145528 |
+| non-CODE rels | 9672922 | 9721494 |
 
-### node_concept_assignments.csv
+### node_concept_assignments.tsv
 This is a file showing the results of the equivalence algorithm for each
 node in the node file.
 
@@ -216,19 +216,29 @@ Relevant columns:
 | node_id      | code for the node in the SAB                                                         | UBERON:0002192                                                                                                                                                                                                                            |
 | node_dbxrefs | list of cross-references                                                             | ['fma:74512', 'tao:0001075', 'emapa:17768', 'vhog:0001756', 'ehdaa2:0000250', 'emapa:17548', 'umls:c0262212', 'zfa:0001075', 'fma:83715', 'mba:116', 'bams:chf', 'ehdaa:7567', 'dhba:12094', 'bams:chfl', 'neuronames:24', 'ncit:c32311'] |
 | cuis         | list of CUIs assigned by the equivalence algorithm                                   | ['UMLS:C0262212', 'UMLS:C2337254']                                                                                                                                                                                                        |
-| assigned_cui | identfier for the unique concept assigned to the node from the equivalence algorithm |                                                                                                                                                                                                                                           |
+| assigned_cui | identfier for the unique concept assigned to the node from the equivalence algorithm | UMLS:C0262212                                                                                                                                                                                                                             |
 
 
-### changed_cuis.csv
-This is a file showing the results of the update algorithm.
+### self_referential_edges.tsv
+Lists edges in the JKGEN edge file that would result in _self-referential edges_ in the JKG--i.e., rels that start and 
+end with the same Concept node. 
 
-Relevant columns:
+Self-referential edges either are present in the 
+edge file or arise from transitive cross-referencing in the equivalence algorithm. 
+The script will not ingest self-referential edges into the JKG JSON.
 
-| column             | description                                                                       | example        |
-|--------------------|-----------------------------------------------------------------------------------|----------------|
-| properties_code_id | code for the node in the node file                                                | CL:0000127     |
-| old_cui            | CUI assigned to the code in a prior ingestion                                     | CL:0000127 CUI |
-| new_cui            | CUI assigned to the node in the current ingestion (via the equivalence algorithm) | UMLS:C0004112  |
+### missing_nodes.tsv
+JKGEN edge files can refer to codes that are not also defined in the nodes file. This is often the case for the object of a preposition that is from a SAB different from the SAB of ingestion.
+The script adds to the list of nodes to create in JKG nodes that are defined in the edge file but not in the node file, noting
+the nodes in  **missing_nodes.tsv**.
+
+### obsolete_umls_cuis.tsv
+JKGEN files can refer to CUIs for UMLS concepts that were not imported into the JKG JSON in the initial export of UMLS data.
+The most likely reason for a CUI not being in the JKG is that the concept was flagged as obsolete (or possibly suppressed) in the
+UMLS Metathesaurus source. 
+
+To avoid reifying obsolete UMLS concepts in the JKG JSON, the script mints new concepts for the nodes that would otherwise
+link to the concepts. The script logs obsolete UMLS concepts in **obsolete_umls_cuis.tsv**.
 
 # ubkgjkg.ini
 **sab2jkgen** and **jkgen2jkg** are configured by means of the **ubkg.ini** file.
