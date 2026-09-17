@@ -717,8 +717,6 @@ class Sabjkgimport:
 
         # Drop duplicates.
         df_nodes= self.jkgen.nodes.drop_duplicates(subset='node_label')
-        outfile = os.path.join(self.jkgjson_dir, 'df_nodes.tsv')
-        df_nodes.to_csv(outfile, sep='\t', index=False)
 
         # Filter to terms that are not already in JKGJSON.
         if not self.jkgjson.term_nodes.empty:
