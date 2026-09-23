@@ -240,6 +240,9 @@ UMLS Metathesaurus source.
 To avoid reifying obsolete UMLS concepts in the JKG JSON, the script mints new concepts for the nodes that would otherwise
 link to the concepts. The script logs obsolete UMLS concepts in **obsolete_umls_cuis.tsv**.
 
+### duplicate_labels.tsv
+In at least one SAB (GLYCANS), more than one node has the same label. The script identifies these nodes in the file **duplicate_labels.tsv**.
+
 # ubkgjkg.ini
 **sab2jkgen** and **jkgen2jkg** are configured by means of the **ubkg.ini** file.
 

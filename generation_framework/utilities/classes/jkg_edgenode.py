@@ -96,17 +96,37 @@ class Jkgedgenode:
         else:
             self.nodes['node_synonyms'] = ''
 
-        # Add columns expected by the script for non-compliant SABs.
-
+        """
+        JKG requires that each node have a label, and thus the node file should have a node_label column. 
+        Some legacy SABs (Data Distillery) have node files without a node, so add a blank column 
+        if necessary.
+        """
         if 'node_label' not in self.nodes.columns:
             self.nodes['node_label'] = ''
 
-        self.nodes['node_label'] = np.where(
-            (self.nodes['node_label'].isna()) | (self.nodes['node_label'] == ''),
-            self.nodes['node_id'],
-            self.nodes['node_label']
-        )
+        #self.nodes['node_label'] = np.where(
+            #(self.nodes['node_label'].isna()) | (self.nodes['node_label'] == ''),
+            #self.nodes['node_id'],
+            #self.nodes['node_label']
+        #)
 
+        """
+        Additional processing of node_label:
+        1. If the node does not have a label, use the node_id as the label.
+        2. Force the label to be a string value, trimmed of leading and trailing whitespace.
+           (Use case: GLYCANS with the GLYTOUCAN codes.)
+        
+        """
+        mask = self.nodes['node_label'].isna() | (self.nodes['node_label'].astype(str).str.strip() == '')
+        self.nodes['node_label'] = self.nodes['node_label'].astype(str).str.strip()
+        self.nodes['node_label'] = np.where(mask, self.nodes['node_id'], self.nodes['node_label'])
+
+        """
+        JKG expects the node file to have a node_dbxref column. 
+        If the node does not have a node_dbxref column, add one.
+        If the node_dbxref column has a value, it should be a pipe-delimited string. Split this into a 
+        list of strings.
+        """
         if 'node_dbxrefs' in self.nodes.columns:
             self.nodes['node_dbxrefs'] = np.where(
                 (self.nodes['node_dbxrefs'].isna()) | (self.nodes['node_dbxrefs'] == ''),
@@ -116,12 +136,20 @@ class Jkgedgenode:
         else:
             self.nodes['node_dbxrefs'] = ''
 
+        """
+        JKG expects the node file to have a node_definition column.
+        If the node does not have a node_definition column, add one.
+        """
         if 'node_definition' not in self.nodes.columns:
             self.nodes['node_definition'] = ''
 
         # Drop duplicate nodes.
         self.nodes = self.nodes.drop_duplicates(subset=['node_id'])
 
+        # Identify nodes that share labels. (Use case: GLYCANS GLYTOUCAN)
+        df_duplicate_labels = self.nodes[self.nodes['node_label'].duplicated()]
+        outfile = os.path.join(self.jkg_path, 'duplicate_node_labels.tsv')
+        df_duplicate_labels.to_csv(outfile, sep='\t')
 
         self.log.print_and_logger_info('*** JKGEN LOAD COMPLETE ***')
 
