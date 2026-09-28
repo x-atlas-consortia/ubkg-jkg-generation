@@ -4,7 +4,7 @@ Sabjkgimport class that adds new nodes and rels objects to an existing
 JKG JSON.
 
 The source of new nodes and rels objects is a set of files in
-JKG Edde/Node (JkGEN) format.
+JKG Edge/Node (JKGEN) format.
 
 """
 

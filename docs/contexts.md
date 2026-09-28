@@ -45,8 +45,7 @@ Note: for hmsn, if new HMFIELD needed, generate new local UBKG to be source for 
 * RIBCA 
 * VCCF 
 * FTU2D 
-* HCOP 
-* UBKGSOURCE
+* HCOP
 
 # Data Distillery
 * CLINVAR 
