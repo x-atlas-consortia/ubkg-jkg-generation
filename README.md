@@ -248,11 +248,35 @@ In at least one SAB (GLYCANS), more than one node has the same label. The script
 
 # Memory management
 Analytical tasks in these scripts (especially **jkgen2jkg**) require reading large amounts of information into memory from 
-files in the local system, such as the JKGJSON. As the source files grow (such as the JKG JSON after multiple ingestinos), 
+files in the local system, such as the JKG.JSON. As the source files grow (such as the JKG JSON after multiple ingestions), 
 memory pressure will increase, and swapping is likely.
 
-To address memory pressure issues, scripts attempt to minimize memory by 
-explicit unloading and garbage collection.
+To address memory pressure issues, scripts attempt to minimize working memory requirements through 
+measures including:
+1. explicit unloading and garbage collection
+2. temporary files
+
+## jkgen2jkg.sh: ijson streaming; pandas; and domain parquet files
+To minimize memory requirements, the **jkgen2jkg.sh** script uses the **ijson** package to stream the entire JKG JSON
+file, distributing each node or rel object into lists by object domain:
+* nodes 
+   * Source 
+   * Node_Label 
+   * Rel_Label 
+   * Concept 
+   * Term
+* rels
+   * non-CODE rels
+   * CODE rels
+
+For each domain, the script then 
+* builds a "flattened" Pandas DataFrame from the domain list, pivoting the nested keys of objects into columns
+* exports the flattened DataFrame to a file in parquet format
+* unloads the DataFrame and list from memory
+
+When the script needs to work with a set of node or rel objects, it reads the corresponding 
+parquet file into a Pandas DataFrame. The script explicitly unloads the DataFrame from memory after 
+the DataFrame is no longer needed.
 
 ## Memory profiling
 The Bash scripts wrap their execution of their corresponding Python scripts with the
