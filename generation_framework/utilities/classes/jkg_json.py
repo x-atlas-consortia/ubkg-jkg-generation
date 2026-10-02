@@ -157,12 +157,6 @@ class Jkgjson:
                                 # Split node objects by type.
                                 labels = item.get("labels", [])
                                 if "Source" in labels:
-                                    # Coerce srl to integer.
-                                    # Note: the UMLS and NDC sources will have a blank string for the srl key.
-                                    # All other sources will have a float value.
-                                    if 'properties_srl' in row.keys():
-                                        if row['properties_srl'] != '':
-                                            row['properties_srl'] = int(row['properties_srl'])
                                     source_node_rows.append(row)
                                 elif "Node_Label" in labels:
                                     node_label_node_rows.append(row)

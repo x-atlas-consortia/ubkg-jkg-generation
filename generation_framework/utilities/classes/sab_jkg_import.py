@@ -1901,13 +1901,7 @@ class Sabjkgimport:
             if k.startswith("properties_"):
                 if properties is None:
                     properties = {}
-                # Coerce srl to integer.
-                # UMLS and NDC have srl=''; others will have a float.
-                if k=="properties_srl" and v != '':
-                    vret = int(v)
-                else:
-                    vret = v
-                properties[k[11:]] = vret  # len("properties_") == 11
+                properties[k[11:]] = v  # len("properties_") == 11
 
             elif k.startswith("start_"):
                 if start_props is None:

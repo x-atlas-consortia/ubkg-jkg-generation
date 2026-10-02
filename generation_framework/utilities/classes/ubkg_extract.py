@@ -414,6 +414,25 @@ class ubkgExtract:
         # Get the PyArrow schema from the first chunk
         schema = pa.Schema.from_pandas(df.iloc[:1])
 
+        """
+            Some columns contain list values that can be empty ([]) in the
+            sampled row used for schema inference. PyArrow cannot determine
+            the element type of an empty list, so it infers a "null" list
+            type (list<null>) for that field. Later chunks containing
+            populated lists of strings then fail to write against that
+            schema with "Invalid null value".
+
+            Explicitly override the inferred type for any known
+            list-of-string columns (e.g., properties_ttyl) to guarantee
+            a consistent, correctly-typed schema regardless of what the
+            sampled row contained.
+            """
+        list_string_cols = {'properties_ttyl'}
+        for col_name in list_string_cols:
+            if col_name in schema.names:
+                idx = schema.get_field_index(col_name)
+                schema = schema.set(idx, pa.field(col_name, pa.list_(pa.string())))
+
         # Stream chunks to the file with a progress bar.
         with pq.ParquetWriter(outpath, schema) as writer:
             # Use tqdm to track progress across chunks
