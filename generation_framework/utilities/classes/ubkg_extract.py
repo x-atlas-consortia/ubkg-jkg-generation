@@ -15,6 +15,9 @@ import gdown
 import fileinput
 import sys
 
+import pyarrow as pa
+import pyarrow.parquet as pq
+
 import polars as pl
 from .ubkg_timer import UbkgTimer
 
@@ -396,4 +399,45 @@ class ubkgExtract:
             # Stop timer.
             utimer.stop()
 
+        return df
+
+    def to_parquet_with_progress_bar(self, df: pd.DataFrame, outpath:str):
+        """
+        Writes a Pandas DataFrame to a Parquet file. chunking writes to incorporate
+        a tqdm progress bar.
+        :param outpath: full path to output
+        :param df: DataFrame to write
+
+        """
+        chunk_size = 100_000
+
+        # Get the PyArrow schema from the first chunk
+        schema = pa.Schema.from_pandas(df.iloc[:1])
+
+        # Stream chunks to the file with a progress bar.
+        with pq.ParquetWriter(outpath, schema) as writer:
+            # Use tqdm to track progress across chunks
+            for i in tqdm(range(0, len(df), chunk_size), desc=f"Writing Parquet: {outpath}"):
+                chunk = df.iloc[i: i + chunk_size]
+                table = pa.Table.from_pandas(chunk, schema=schema)
+                writer.write_table(table)
+
+    def read_parquet_with_progress_bar(self, path:str) -> pd.DataFrame:
+        """
+        Reads a Pandas DataFrame from a Parquet file, incorpoating a tqdm progress bar.
+        :param path: path to file
+        """
+        # Open the parquet file metadata to read its structure
+        parquet_file = pq.ParquetFile(path)
+        num_row_groups = parquet_file.num_row_groups
+
+        # Read row groups sequentially with a terminal progress bar
+        dfs = []
+        for i in tqdm(range(num_row_groups), desc="Reading Row Groups"):
+            # Read a specific row group into a PyArrow Table, then to Pandas
+            row_group_table = parquet_file.read_row_group(i)
+            dfs.append(row_group_table.to_pandas())
+
+        # Combine into a single final DataFrame
+        df = pd.concat(dfs, ignore_index=True)
         return df

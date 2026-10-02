@@ -9,6 +9,7 @@ import ijson
 import polars as pl
 import pandas as pd
 from tqdm import tqdm
+from typing import Any
 
 # Centralized logging object
 from .ubkg_logging import ubkgLogging
@@ -17,6 +18,8 @@ from .ubkg_config import ubkgConfigParser
 # Progress bar wrapper for reads of large JSON files
 from .progressfile import ProgressFile
 from .ubkg_timer import UbkgTimer
+from .ubkg_extract import ubkgExtract
+
 from ..functions.find_repo_root import find_repo_root
 
 
@@ -25,15 +28,26 @@ class Jkgjson:
     def _load_jkg_json(self, max_nodes: int = None, max_rels: int = None):
 
         """
-        Loads the JKG JSON file into a set of Pandas dataframes, in a single
+        Does the following:
+
+        1. Loads the JKG JSON file into a set of Pandas Dataframes, in a single
         pass for:
-        1. Source nodes
-        2. Node_Label nodes
-        3. Rel_Label nodes
-        4. Concept nodes
-        5. Term nodes
-        6. "coderels" or concept-term (code) relationships
-        7. other rels (concept-concept relationshiops)
+
+           - Nodes
+             - Source nodes
+             - Node_Label nodes
+             - Rel_Label nodes
+             - Concept nodes
+             - Term nodes
+           - Relationships (rels)
+             - "coderels" or concept-term (code) relationships
+             - other rels (concept-concept relationships)
+
+           The structure of DataFrames depends on the content:
+           - nodes: one row per node, with 'labels' as a list column and properties flattened as columns
+           - rels: one row per relationship, with start/end/properties flattened as columns
+
+        2. To conserve memory, exports DataFrames to temporary files.
 
         :param max_nodes: maximum number of nodes to load. None loads all nodes.
         :param max_rels: maximum number of rels to load. None loads all rels.
@@ -43,19 +57,16 @@ class Jkgjson:
         This is primarily for debugging purposes to limit the read time of large
         JKG JSON files.
 
-        Builds two types of DataFrames:
-        - nodes: one row per node, with 'labels' as a list column and properties flattened as columns
-        - rels: one row per relationship, with start/end/properties flattened as columns
 
         """
 
-        self.log.print_and_logger_info('*** LOADING JKG JSON FILE ***')
+        self.log.print_and_logger_info('*** READING JKG JSON FILE ***')
         # Treat 0 or None as "load all".
         max_nodes = None if not max_nodes else max_nodes
         max_rels = None if not max_rels else max_rels
 
         if max_nodes is not None and max_rels is not None:
-            self.log.print_and_logger_info(f'Loading only {max_nodes} nodes and {max_rels} rels from {self.jkg_json_filename}.')
+            self.log.print_and_logger_info(f'Reading only {max_nodes} nodes and {max_rels} rels from {self.jkg_json_filename}.')
 
         # Build the full path to JKG JSON file.
         jkg_json_full = os.path.join(self.jkg_json_dir, self.jkg_json_filename)
@@ -182,66 +193,184 @@ class Jkgjson:
 
                             builder = None
 
-            utimer = UbkgTimer(display_msg="-- Loading Source nodes")
+            self.log.print_and_logger_info(f'*** JKG JSON LOAD SUMMARY:')
+            self.log.print_and_logger_info('* NODE OBJECTS')
+            self.log.print_and_logger_info(f"---- Source nodes: {len(source_node_rows):,}")
+            self.log.print_and_logger_info(f"---- Node_Label nodes: {len(node_label_node_rows):,}")
+            self.log.print_and_logger_info(f"---- Relation_Label nodes: {len(rel_label_node_rows):,}")
+            self.log.print_and_logger_info(f"---- Concept nodes: {len(rel_rows):,}")
+            self.log.print_and_logger_info(f"---- Term nodes: {len(term_node_rows):,}")
+            self.log.print_and_logger_info('* REL OBJECTS')
+            self.log.print_and_logger_info(f"---- non-CODE rels: {len(rel_rows):,}")
+            self.log.print_and_logger_info(f"---- CODE rels: {len(code_rel_rows):,}")
 
+            """
+            To conserve memory, export subsets of JKG JSON to temporary files. 
+            """
+
+            # ------
+            # Source nodes
+
+            utimer = UbkgTimer(display_msg="-- Building Source nodes DataFrame")
             self.source_nodes = pd.DataFrame(source_node_rows).fillna('')
-
-            source_node_rows.clear()
-            gc.collect()
             utimer.stop()
 
-            utimer = UbkgTimer(display_msg="-- Loading Node_Label nodes")
+            # Unload node list from memory.
+            self._unload_item(item_to_unload=source_node_rows)
+
+            self.log.print_and_logger_info('-- Exporting Source nodes DataFrame to temporary file')
+            self._export_unload_dataframe(dfexport=self.source_nodes, filename='source_nodes')
+
+
+            # Unload DataFrame from memory.
+            self._unload_item(item_to_unload=self.source_nodes)
+
+            # ------
+            # Node_Label nodes
+
+            utimer = UbkgTimer(display_msg="-- Building Node_Label nodes DataFrame")
             self.node_label_nodes = pd.DataFrame(node_label_node_rows).fillna('')
-            node_label_node_rows.clear()
-            gc.collect()
             utimer.stop()
 
-            utimer = UbkgTimer(display_msg="-- Loading Rel_Label nodes")
+            # Unload node list from memory.
+            self._unload_item(item_to_unload=node_label_node_rows)
+
+            self.log.print_and_logger_info('-- Exporting Node_Label nodes DataFrame to temporary file')
+            self._export_unload_dataframe(dfexport=self.node_label_nodes, filename='node_label_nodes')
+
+            # Unload DataFrame from memory.
+            self._unload_item(item_to_unload=self.node_label_nodes)
+
+            # ------
+            # Rel_Label nodes
+
+            utimer = UbkgTimer(display_msg="-- Building Rel_Label nodes DataFrame")
             self.rel_label_nodes = pd.DataFrame(rel_label_node_rows).fillna('')
-            rel_label_node_rows.clear()
-            gc.collect()
             utimer.stop()
 
-            utimer = UbkgTimer(display_msg="-- Loading Concept nodes")
+            # Unload node list from memory.
+            self._unload_item(item_to_unload=rel_label_node_rows)
+
+            self.log.print_and_logger_info('-- Exporting Rel_Label nodes DataFrame to temporary file')
+            self._export_unload_dataframe(dfexport=self.rel_label_nodes, filename='rel_label_nodes')
+
+            # Unload DataFrame from memory.
+            self._unload_item(item_to_unload=self.rel_label_nodes)
+
+            # ------
+            # Concept nodes
+
+            utimer = UbkgTimer(display_msg="-- Building Concept nodes DataFrame")
             self.concept_nodes = pd.DataFrame(concept_node_rows).fillna('')
-            concept_node_rows.clear()
-            gc.collect()
             utimer.stop()
 
-            utimer = UbkgTimer(display_msg="-- Loading Term nodes")
+            # Unload node list from memory.
+            self._unload_item(item_to_unload=concept_node_rows)
 
-            # Drop duplicate term nodes.
+            self.log.print_and_logger_info('-- Exporting Concept nodes DataFrame to temporary file')
+            self._export_unload_dataframe(dfexport=self.concept_nodes, filename='concept_nodes')
+
+            # Unload DataFrame from memory.
+            self._unload_item(item_to_unload=self.concept_nodes)
+
+            # ------
+            # Term nodes
+            # Special processing: drop duplicates.
+
+            utimer = UbkgTimer(display_msg="-- Building Term nodes DataFrame")
+
+            # When creating DataFrame, drop duplicate term nodes.
             self.term_nodes = pd.DataFrame(term_node_rows).fillna('').drop_duplicates('properties_id')
-            term_node_rows.clear()
-            gc.collect()
             utimer.stop()
 
-            utimer = UbkgTimer(display_msg="-- Loading non-CODE rels")
+            # Unload node list from memory.
+            self._unload_item(item_to_unload=term_node_rows)
+
+            self.log.print_and_logger_info('-- Exporting Term nodes DataFrame to temporary file')
+            self._export_unload_dataframe(dfexport=self.term_nodes, filename='term_nodes')
+
+            # Unload DataFrame from memory.
+            self._unload_item(item_to_unload=self.term_nodes)
+
+            # ------
+            # non-CODE rels
+
+            utimer = UbkgTimer(display_msg="-- Building non-CODE rels DataFrame")
             self.rels = pd.DataFrame(rel_rows).fillna('')
-            rel_rows.clear()
             utimer.stop()
 
-            utimer = UbkgTimer(display_msg="-- Loading CODE rels")
+            # Unload rel list from memory.
+            self._unload_item(item_to_unload=rel_rows)
+
+            self.log.print_and_logger_info('-- Exporting non-CODE rels DataFrame to temporary file')
+            self._export_unload_dataframe(dfexport=self.rels, filename='rels')
+
+            # Unload DataFrame from memory.
+            self._unload_item(item_to_unload=self.rels)
+
+            # ------
+            # CODE rels
+            # Special processing: delete MTH:NOCODE rels
+
+            utimer = UbkgTimer(display_msg="-- Building CODE rels DataFrame")
             self.coderels = pd.DataFrame(code_rel_rows).fillna('')
-            code_rel_rows.clear()
             utimer.stop()
+
+            # Unload CODE rel list from memory.
+            self._unload_item(item_to_unload=code_rel_rows)
 
             # Remove MTH:NOCODE rels
             utimer = UbkgTimer(display_msg="-- Deleting MTH:NOCODE CODE rels")
             self.coderels = self.coderels.loc[self.coderels['properties_codeid'] != 'MTH:NOCODE'].copy()
             utimer.stop()
 
-            self.log.print_and_logger_info(f'*** JKG JSON LOAD SUMMARY:')
-            self.log.print_and_logger_info('* NODE OBJECTS')
-            self.log.print_and_logger_info(f"---- Source nodes: {len(self.source_nodes):,}")
-            self.log.print_and_logger_info(f"---- Node_Label nodes: {len(self.node_label_nodes):,}")
-            self.log.print_and_logger_info(f"---- Relation_Label nodes: {len(self.rel_label_nodes):,}")
-            self.log.print_and_logger_info(f"---- Concept nodes: {len(self.concept_nodes):,}")
-            self.log.print_and_logger_info(f"---- Term nodes: {len(self.term_nodes):,}")
-            self.log.print_and_logger_info('* REL OBJECTS')
-            self.log.print_and_logger_info(f"---- non-CODE rels: {len(self.rels):,}")
-            self.log.print_and_logger_info(f"---- CODE rels: {len(self.coderels):,}")
-            self.log.print_and_logger_info(f"*** JKG JSON LOAD COMPLETE ***")
+            self.log.print_and_logger_info('-- Exporting CODE rels DataFrame to temporary file')
+            self._export_unload_dataframe(dfexport=self.coderels, filename='coderels')
+
+            # Unload DataFrame from memory.
+            self._unload_item(item_to_unload=self.coderels)
+
+
+    def _export_unload_dataframe(self, dfexport:pd.DataFrame, filename: str):
+        """
+        Exports a DataFrame to file and frees memory.
+
+        The use case is a DataFrame that is a subset of nodes from the JKG JSON file.
+        :param dfexport: DataFrame
+        :param filename: name of the export file, without extension
+        """
+        #outfile = os.path.join(self.jkg_json_dir, namedf,'.tsv')
+        #self.uextract.to_csv_with_progress_bar(df=dfexport, path=outfile, sep='\t',index=False)
+        outfile = os.path.join(self.jkg_json_dir, filename + '.parquet')
+        self.uextract.to_parquet_with_progress_bar(df=dfexport, outpath=outfile)
+
+        self._unload_item(item_to_unload=dfexport)
+
+    def load_dataframe(self,filename:str)->pd.DataFrame:
+        """
+        Imports a DataFrame from a temporary file.
+        :param filename: name of the temporary file, without extension
+        :return: DataFrame
+        """
+
+        infile = os.path.join(self.jkg_json_dir, filename + '.parquet')
+        self.log.print_and_logger_info(f'Loading DataFrame from {infile}')
+        #return self.uextract.read_csv_with_progress_bar(path=infile, sep='\t').fillna('')
+        return self.uextract.read_parquet_with_progress_bar(path=infile)
+
+    def _unload_item(self, item_to_unload:Any):
+        """
+        Explicitly unloads an object from memory.
+        :param item_to_unload: object to be unloaded
+
+        """
+
+        if type(item_to_unload) is list:
+            item_to_unload.clear()
+        if type(item_to_unload) is pd.DataFrame:
+            item_to_unload = None
+
+        gc.collect()
 
     def __init__(self, log: ubkgLogging, cfg: ubkgConfigParser,
                  max_nodes: int=0, max_rels: int=0) -> None:
@@ -253,7 +382,10 @@ class Jkgjson:
         self.jkg_json_filename = cfg.get_value(section='jkg_json',key='jkg_json_filename')
         self.jkg_schema_filename = cfg.get_value(section='jkg_json',key='jkg_schema_filename')
 
-        # Load the nodes array from the JKG JSON into Polars dataframes.
+        # For exporting and importing DataFrames of subsets of the JKG JSON.
+        self.uextract = ubkgExtract(ulog=self.log)
+
+        # Read the JKG JSON file and separate the different types of nodes and rels into DataFrames.
         self._load_jkg_json(max_nodes=max_nodes, max_rels=max_rels)
 
 

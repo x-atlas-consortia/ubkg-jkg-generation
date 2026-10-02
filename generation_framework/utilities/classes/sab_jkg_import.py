@@ -61,14 +61,20 @@ class Sabjkgimport:
         # Load the JKGEN edge and node files for the new SAB.
         self._load_jkgen()
 
-        # Load the nodes and rels arrays from the original JKG JSON.
+        """
+        Read nodes and rels arrays from the JKG JSON and export to temporary files.
+        """
         self.jkgjson = Jkgjson(log=ulog, cfg=cfg)
 
-        # Verify that the SAB does not already exist in the JKG JSON.
+        """
+        Verify that the SAB does not already exist in the JKG JSON.
+        """
+        self.jkgjson.source_nodes = self.jkgjson.load_dataframe(filename='source_nodes')
         if not self.jkgjson.source_nodes.empty:
             if self.sab.upper() in self.jkgjson.source_nodes['properties_sab'].values:
                 self.ulog.print_and_logger_error(f"The SAB '{self.sab.upper()}' already exists in the JKG JSON.")
                 exit(1)
+        self._unload_item(item_to_unload=self.jkgjson.source_nodes)
 
         # Input/Output directory for JKG JSON.
         self.jkgjson_dir = os.path.join(self.repo_root,
@@ -118,7 +124,6 @@ class Sabjkgimport:
         self._report_node_counts()
         self._report_node_counts(to_file=True)
 
-
     def _update_node_counts(self, node_type: str, state: str, count: int):
         """
         Updates the list of node count tuples
@@ -147,8 +152,6 @@ class Sabjkgimport:
 
         if to_file:
             outfilepath = os.path.join(self.sab_jkg_dir,'node_counts.tsv')
-
-
 
         self.ulog.print_and_logger_info("*** COMPARISONS OF NODE COUNTS ***")
         self.ulog.print_and_logger_info(f'SAB: {self.sab.upper()}')
@@ -223,6 +226,7 @@ class Sabjkgimport:
         """
         Explicitly unloads an object from memory.
         :param item_to_unload: object to be unloaded
+        :param item_name: name of the object to be unloaded
 
         """
         if type(item_to_unload) is list:
@@ -287,6 +291,7 @@ class Sabjkgimport:
         """
 
         # Build and write the updated list of Source nodes.
+        self.ulog.print_and_logger_info('* SOURCE NODES')
         self._build_and_write_source_nodes()
 
         # Node_Labels
@@ -302,8 +307,13 @@ class Sabjkgimport:
         
         Apply the equivalence class algorithm to
         identify the CUIs to which to assign new nodes.
+        The algorithm uses the DataFrame of existing coderel nodes from the JKG JSON.
+        Load the DataFrame from temporary storage for the algorithm, then unload it.
+        
         """
+        self.jkgjson.coderels = self.jkgjson.load_dataframe(filename='coderels')
         self.jkgen.nodes['cuis'] = self._get_cuis_for_nodes()
+        self._unload_item(item_to_unload=self.jkgjson.coderels)
 
         """
         A blank list for self.jkgen['cuis'] means that the equivalence class
@@ -318,17 +328,14 @@ class Sabjkgimport:
         """
         self._get_preferred_cui()
 
-
         # Write the results of the algorithm in the JKGEN directory.
         cuifile = os.path.join(self.sab_jkg_dir, 'node_concept_assignments.tsv')
         self.jkgen.nodes.to_csv(cuifile, sep='\t',index=False)
 
         self.ulog.print_and_logger_info('* CONCEPT NODES')
-        # Concept nodes.
         self._build_and_write_concept_nodes()
 
         self.ulog.print_and_logger_info('* TERM NODES')
-        # Term nodes.
         self._build_and_write_term_nodes()
 
     def _unflatten_dataframe_and_write_list(self, df_flat: pd.DataFrame, progress_display: str="", unload_frame:bool=False):
@@ -391,15 +398,23 @@ class Sabjkgimport:
 
         """
 
-        self.ulog.print_and_logger_info('* SOURCE NODES')
-        # Convert the DataFrame of flattened original source nodes
-        # to a list of unflattened (nested) objects.
+        """
+        Load the Source nodes from a temporary file.
+        """
+        self.jkgjson.source_nodes = self.jkgjson.load_dataframe(filename='source_nodes')
+
+        """
+        Convert the DataFrame of flattened original source nodes
+        to a list of unflattened (nested) objects.
+        """
         list_unflat_sources = self._convert_flat_dataframe_to_unflat_list(df_flat=self.jkgjson.source_nodes, progress_display='existing Source nodes (JKG JSON)')
         self._update_node_counts(node_type="Source", state="before", count=len(list_unflat_sources))
 
-        # Build the source node for the SAB.
-        # (Although there is only one source, treat as a
-        # list with one element for purposes of combination.)
+        """
+        Build the source node for the SAB.
+        (Although there is only one source, treat as a
+        list with one element for purposes of combination.)
+        """
         new_source = self._build_sab_source_node()
 
         # Add the new source node to the list of nested source nodes.
@@ -408,6 +423,10 @@ class Sabjkgimport:
         # Write the complete nested list to output.
         self._update_node_counts(node_type="Source", state="after", count=len(list_unflat_sources))
         self.jkgjson_writer.write_list(list_name='all Source nodes (JKGJSON + JKGEN)', list_content=list_unflat_sources)
+
+        self._unload_item(item_to_unload=list_unflat_sources)
+        self._unload_item(item_to_unload=self.jkgjson.source_nodes)
+
 
     def _build_sab_source_node(self) -> list[dict]:
 
@@ -462,6 +481,11 @@ class Sabjkgimport:
 
         """
 
+        """
+        Load the Node_Label nodes from a temporary file.
+        """
+        self.jkgjson.node_label_nodes = self.jkgjson.load_dataframe(filename='node_label_nodes')
+
         write_delimiters = len(self.jkgjson.node_label_nodes) > 0
         if write_delimiters:
             self.jkgjson_writer.write_comma()
@@ -490,6 +514,11 @@ class Sabjkgimport:
 
         """
 
+        """
+        Load the Rel_Label nodes from a temporary file.
+        """
+        self.jkgjson.rel_label_nodes = self.jkgjson.load_dataframe(filename='rel_label_nodes')
+
         # Build list of unflattened objects for new Rel_Label nodes.
         list_new_unflat_rel_labels = self._build_new_rel_label_nodes()
 
@@ -499,7 +528,7 @@ class Sabjkgimport:
                                                                            progress_display='existing Rel_Label nodes (JKG JSON)')
         self._update_node_counts(node_type="Rel_Label", state="before", count=len(list_unflat_rel_labels))
 
-        # Add the list of new nested concept nodes to the list of original nested concept nodes.
+        # Add the list of new nested Rel_Label nodes to the list of original nested Rel_Label nodes.
         list_unflat_rel_labels.extend(list_new_unflat_rel_labels)
         self._update_node_counts(node_type="Rel_Label", state="after", count=len(list_unflat_rel_labels))
 
@@ -584,6 +613,11 @@ class Sabjkgimport:
 
         """
 
+        """
+        Load the existing concepts from the JKG JSON.
+        """
+        self.jkgjson.concept_nodes = self.jkgjson.load_dataframe(filename='concept_nodes')
+
         # Build list of unflattened objects for new concept nodes.
         list_new_unflat_concepts = self._build_new_concept_nodes()
 
@@ -605,6 +639,8 @@ class Sabjkgimport:
 
         # Write the complete nested list to output.
         self.jkgjson_writer.write_list(list_name='all Concept nodes (JKG JSON + JKGEN)', list_content=list_unflat_concepts)
+        self._unload_item(item_to_unload=self.jkgjson.concept_nodes)
+
 
     def _build_new_concept_nodes(self) -> list[dict]:
         """
@@ -670,6 +706,11 @@ class Sabjkgimport:
         3. Writes the combined list to output.
 
         """
+
+        """
+        Load the existing terms from the JKG JSON.
+        """
+        self.jkgjson.term_nodes = self.jkgjson.load_dataframe(filename='term_nodes')
 
         # Convert the DataFrame of flattened original term nodes
         # to a list of unflattened (nested) objects.
@@ -810,62 +851,35 @@ class Sabjkgimport:
 
         """
 
-        # Count of CODE rels from JKG JSON.
-        self._update_node_counts(node_type="CODE rels", state="before", count=len(self.jkgjson.coderels))
+        """
+        WRITE EXISTING NON-CODE RELS TO OUTPUT.
+        """
+        # Load DataFrame of existing rels from the temporary file.
+        self.jkgjson.rels = self.jkgjson.load_dataframe(filename='rels')
 
-        """
-        Build list of new coderels for the nodes and their synonyms.
-        The list of coderels is also used in analysis of non-CODE rels and 
-        so is retained in memory longer than other lists.
-        """
-
-        self.list_new_coderels = self._build_new_coderels()
-
-        # Count of CODE rels after.
-        all_coderel_count = len(self.list_new_coderels) + len(self.jkgjson.coderels)
-        self._update_node_counts(node_type="CODE rels", state="after", count=all_coderel_count)
-
-        """
-        Use the new coderels to update any existing rels from
-        prior ingestions for which the CUIs were updated in 
-        the current ingestion.
-        """
-        #self._update_node_cuis_in_rels()
-
-        """
-        WRITE EXISTING RELS TO OUTPUT.
-        """
         # Keep track of the number of existing rels.
         num_existing_rels = len(self.jkgjson.rels)
+        self._update_node_counts(node_type="non-CODE rels", state="before", count=num_existing_rels)
 
-        # Do not delete self-referential edges.
-        #self.jkgjson.rels = self.jkgjson.rels[self.jkgjson.rels['start_id'] != self.jkgjson.rels['end_id']]
-
+        # Unflatten DataFrame of existing non-CODE rels and write to the JKG JSON.
         self._unflatten_dataframe_and_write_list(df_flat=self.jkgjson.rels, progress_display='existing non-CODE rels')
 
         # Unload DataFrame of existing rels.
         self._unload_item(item_to_unload=self.jkgjson.rels)
 
         """
-        BUILD AND WRITE NEW RELS TO OUTPUT.
-        
-        Build new rels, using both edges from JKGEN and
-        new coderels.
+        BUILD AND WRITE NEW NON-CODE RELS TO OUTPUT.
+      
         """
-
         list_new_rels = self._build_new_non_coderels()
-
-        # Obtain count of rels before updates.
-        self._update_node_counts(node_type="non-CODE rels", state="before", count=len(self.jkgjson.rels))
-
-        self._update_node_counts(node_type="non-CODE rels", state="after", count=len(self.jkgjson.rels) + len(list_new_rels))
+        num_new_rels = len(list_new_rels)
+        num_all_rels = num_existing_rels + num_new_rels
+        self._update_node_counts(node_type="non-CODE rels", state="after", count=num_all_rels)
 
         """
         Determine whether to add delimiters between 
         list of existing rels and list of new rels.
         """
-
-        num_new_rels = len(list_new_rels)
         if num_new_rels > 0 and num_existing_rels > 0:
             self.jkgjson_writer.write_comma()
             self.jkgjson_writer.write_line_feed()
@@ -883,14 +897,28 @@ class Sabjkgimport:
         WRITE EXISTING CODERELS TO OUTPUT.
         """
 
+        # Load the DataFrame of existing CODE rels from the temporary file.
+        self.jkgjson.coderels = self.jkgjson.load_dataframe(filename='coderels')
+        # Count of CODE rels from JKG JSON.
+        num_existing_coderels = len(self.jkgjson.coderels)
+        self._update_node_counts(node_type="CODE rels", state="before", count=num_existing_coderels)
+
         """
         Determine whether to add delimiters between the 
         new rels list and the existing coderels list.
         """
-        num_existing_coderels = len(self.jkgjson.coderels)
         if num_existing_coderels > 0 and num_new_rels > 0:
             self.jkgjson_writer.write_comma()
             self.jkgjson_writer.write_line_feed()
+
+        """
+        Build list of new coderels for the nodes and their synonyms.
+        """
+        self.list_new_coderels = self._build_new_coderels()
+
+        # Count of CODE rels after.
+        num_all_coderels = len(self.list_new_coderels) + num_existing_coderels
+        self._update_node_counts(node_type="CODE rels", state="after", count=num_all_coderels)
 
         self._unflatten_dataframe_and_write_list(df_flat=self.jkgjson.coderels, progress_display='existing CODE rels')
 
@@ -899,7 +927,6 @@ class Sabjkgimport:
 
         """
         WRITE NEW CODERELS TO OUTPUT.
-        The new coderels were built earlier in the workflow.
         """
 
         """
@@ -989,32 +1016,6 @@ class Sabjkgimport:
 
         df_new_coderels = df_nodes_exploded_on_cuis
 
-        """
-        Identify coderels that do not already exist in the JKG JSON.
-        These correspond to new concepts introduced by the JKGEN node file.
-        
-        Deprecated logic, kept in comments until it is certain that this 
-        is no longer needed.
-        
-        Keeping all coderels allows for the addition of coderels for 
-        existing concepts that are updated in subsequent ingestions.
-        
-        """
-        #if self.jkgjson.coderels.empty:
-            # Defensive. It is unlikely that the original JKG JSON would not have any concepts.
-            #df_new_coderels = df_nodes_exploded_on_cuis
-        #else:
-            #df_new_coderels = (
-                #df_nodes_exploded_on_cuis.merge(
-                    #self.jkgjson.coderels[['properties_codeid', 'start_id']],
-                    #how='left',
-                    #left_on=['node_id', 'cui'],
-                    #$right_on=['properties_codeid', 'start_id'],
-                    #indicator=True
-                #)
-                #.query('_merge == "left_only"')
-                #.drop(columns=['properties_codeid', 'start_id', '_merge'])
-            #)
 
         """
             The nodes DataFrame is flattened.
@@ -1144,219 +1145,6 @@ class Sabjkgimport:
                      'properties_id'
                      }
 
-    def _update_node_cuis_in_rels(self):
-        """
-
-        AUGUST 2026 - DEPRECATED.
-        With the reversion to the "preferred cui" assignment logic,
-        this function is no longer relevant.
-
-        ---
-        Updates existing rels from previous ingestions
-        that involve nodes for which CUI-code links were updated
-        by the current ingestion.
-
-        A code from a vocabulary can be specified as a node
-        into JKG in more than one ingestion.
-
-        It is often the case that one SAB's node file will refer to
-        a code that does not have a CUI in the existing coderels data.
-        The equivalence class algorithm will create a new concept
-        for this code with a default CUI in format "<code>".
-        This CUI is used to build rels objects for concept-concept
-        relationships involving the code as defined in the edge file.
-
-        If the code's SAB is subsequently ingested, the node file
-        for the SAB may specify cross-references for the code that
-        result in new CUI assignments. It is then necessary to
-        replace all existing rels that involve the code's CUI with
-        new rels that use the cross-referenced CUIs.
-
-        For example:
-        1. SAB1 specifies
-           - node in node file with node_id codeSAB2:code2
-           - edge in edge file with SAB1:code1 -[rel1]-> SAB2:code2
-           Because SAB2 was not ingested prior to SAB1,
-           SAB2:code2 is linked to a concept with
-           CUI= "SAB2:code2". The rel uses SAB2:code2.
-        2. SAB2 specifies node with
-           - node_id SAB2:code2
-           - node_dbxrefs that links SAB2:code2 to the CUIs
-             CUI1 and CUI2.
-
-           The rel involving CUI "SAB2:code2" must be
-           replaced with two rels in which "SAB2:code2" is replaced
-           with one of the two new cross-referenced CUIs.
-
-        """
-
-        if self.jkgjson.coderels.empty:
-            self._update_node_counts(node_type="non-CODE rels", state="updated", count=0)
-            return
-
-        list_updated = 0
-
-        # Set of rel field names that are not for custom node properties.
-        base_cols = {
-            'start_id',
-            'end_id',
-            'label',
-            'old_cui',
-            'new_cui',
-            'properties_codeid'
-        }
-
-        # Convert lists of new coderels to a dataframe for merging.
-        df_new_coderels = pd.DataFrame(self.list_new_coderels)
-
-        """
-        GET CHANGES TO CUIS IN OLD CODERELS
-        
-        Obtain CUIs identified in prior ingestions in JKG JSON
-        that are also in nodes in the current ingestion (via JKGEN).
-        """
-        df_changed_cuis = ((df_new_coderels.merge(self.jkgjson.coderels,
-                                              how='inner',
-                                              on='properties_codeid')
-                           .rename(columns={'start_id_x': 'new_cui',
-                                            'start_id_y': 'old_cui'}))
-                           .drop_duplicates(subset=['old_cui','new_cui','properties_codeid']))
-
-
-        # Unload the DataFrame of new coderels.
-        self._unload_item(item_to_unload=df_new_coderels)
-
-        df_changed_cuis = df_changed_cuis[['old_cui','new_cui','properties_codeid']]
-        cuifile = os.path.join(self.sab_jkg_dir, 'updated_cuis.csv')
-        df_changed_cuis.to_csv(cuifile, index=False)
-
-        # Filter to those CUIs were minted from the node id.
-        df_changed_cuis = df_changed_cuis[df_changed_cuis['old_cui']==df_changed_cuis['properties_codeid']]
-        gc.collect()
-
-        """
-        For some data sources, no nodes have cross-references.
-        Examples include Data Distillery datasets.
-        
-        """
-        if df_changed_cuis.empty:
-            self._update_node_counts(node_type="non-CODE rels", state="updated", count=0)
-            return
-
-        """
-            REPLACE RELS WITH CHANGED END CUIS. 
-        """
-
-        # Get rels from the JKG JSON for which the end CUI changed.
-        df_rels_changed_cuis_end = (self.jkgjson.rels.merge(df_changed_cuis,
-                                                             how='inner',
-                                                             left_on='end_id',
-                                                             right_on='old_cui'))
-
-        log_updated = len(df_rels_changed_cuis_end)
-
-        # Identify the custom node properties.
-        custom_prop_cols = [c for c in df_rels_changed_cuis_end.columns if c not in base_cols]
-
-        """
-        For each rel for which the end CUI changed,
-        add new rels for each new end CUI.
-        """
-        list_new_rels_end = []
-        list_new_rels_end.extend(
-            [
-                {
-                    "label": row.label,
-                    "start_id": row.start_id,
-                    "end_id": row.new_cui, # new CUI
-                    **{c: getattr(row, c) for c in custom_prop_cols}
-                }
-                for row in tqdm(df_rels_changed_cuis_end.itertuples(), total=len(df_rels_changed_cuis_end),
-                                desc="-- Updating rels with changed end CUIs")
-            ]
-        )
-        # Unload the DataFrame of rels with changed end CUIs.
-        self._unload_item(item_to_unload=df_rels_changed_cuis_end)
-
-        # Convert the flattened list of new rels to a DataFrame for concatenating.
-        df_new_rels_end = pd.DataFrame(list_new_rels_end)
-        # Unload the flattened list of new rels.
-        self._unload_item(item_to_unload=list_new_rels_end)
-
-        # Add the DataFrame of new rels to the DataFrame of original rels.
-        self.jkgjson.rels = pd.concat([self.jkgjson.rels, df_new_rels_end])
-        # Unlaod the DataFrame of new rels.
-        self._unload_item(item_to_unload=df_new_rels_end)
-
-        # Delete the original rels that use the old CUIs.
-
-        #self.jkgjson.rels = self.jkgjson.rels[~self.jkgjson.rels['end_id'].isin(df_rels_changed_cuis_end['old_cui'])]
-
-        # Delete the original coderels that use the old CUIs.
-        self.jkgjson.coderels = self.jkgjson.coderels[~self.jkgjson.coderels['start_id'].isin(df_rels_changed_cuis_end['old_cui'])]
-
-        gc.collect()
-
-        """
-            REPLACE RELS WITH CHANGED START CUIS. 
-            
-            Note: some rels may have changed both the start and end 
-            CUIs. 
-        """
-
-        # Get rels from the JKG JSON for which the start CUI changed.
-        df_rels_changed_cuis_start = (self.jkgjson.rels.merge(df_changed_cuis,
-                                                            how='inner',
-                                                            left_on='start_id',
-                                                            right_on='old_cui'))
-
-        # Update count of updated rels.
-        # If both the start and end CUIs were updated, then a rel will be counted more than once.
-        log_updated = len(df_rels_changed_cuis_end) + len(df_rels_changed_cuis_start)
-        self._update_node_counts(node_type="non-CODE rels", state="updated", count=log_updated)
-
-        # Unload the DataFrame of changes in CUIs.
-        self._unload_item(item_to_unload=df_changed_cuis)
-
-        custom_prop_cols = [c for c in df_rels_changed_cuis_start.columns if c not in base_cols]
-
-        # For each rel for which the start CUI changed,
-        # add new rels for each new start CUI.
-
-        list_new_rels_start = []
-        list_new_rels_start.extend(
-            [
-                {
-                    "label": row.label,
-                    "start_id": row.start_id,
-                    "end_id": row.new_cui,  # new CUI
-                    **{c: getattr(row, c) for c in custom_prop_cols}
-                }
-                for row in tqdm(df_rels_changed_cuis_start.itertuples(), total=len(df_rels_changed_cuis_end),
-                                desc="-- Updating rels with changed start CUIs")
-            ]
-        )
-
-        # Unload the DataFrame of rels with changed end CUIs.
-        self._unload_item(item_to_unload=df_rels_changed_cuis_start)
-
-        # Convert the flattened list of new rels to a DataFrame for concatenating.
-        df_new_rels_start = pd.DataFrame(list_new_rels_start)
-        # Unload the flattened list of new rels.
-        self._unload_item(item_to_unload=list_new_rels_start)
-
-        # Add the DataFrame of new rels to the DataFrame of original rels.
-        self.jkgjson.rels = pd.concat([self.jkgjson.rels, df_new_rels_start])
-        # Unload the DataFrame of new rels.
-        self._unload_item(item_to_unload=df_new_rels_start)
-
-        # Delete the original rels with the old CUIs.
-        self.jkgjson.rels = self.jkgjson.rels[~self.jkgjson.rels['start_id'].isin(df_rels_changed_cuis_start['old_cui'])]
-        gc.collect()
-
-        # Delete the original coderels that use the old CUIs.
-        self.jkgjson.coderels = self.jkgjson.coderels[
-            ~self.jkgjson.coderels['start_id'].isin(df_rels_changed_cuis_start['old_cui'])]
 
     def _parse_cui_list(self, val):
         """
@@ -1955,11 +1743,11 @@ class Sabjkgimport:
 
         # Convert list of new coderels to a DataFrame to take
         # advantage of Pandas DataFrame merging.
-        dfnewcoderels = pd.DataFrame(self.list_new_coderels)
+        #dfnewcoderels = pd.DataFrame(self.list_new_coderels)
 
         # Drop duplicates from merging.(Coderels map cuis to term types.)
         # Remove columns that are irrelevant to CUI identification.
-        dfnewcoderels = dfnewcoderels.drop_duplicates(subset=['start_id','properties_codeid'])[['start_id','properties_codeid']]
+        #dfnewcoderels = dfnewcoderels.drop_duplicates(subset=['start_id','properties_codeid'])[['start_id','properties_codeid']]
 
         """
         CUSTOM EDGE PROPERTIES
@@ -1989,13 +1777,7 @@ class Sabjkgimport:
         # Custom property columns.
         custom_prop_cols = [c for c in self.jkgen.edges.columns if c not in base_cols]
 
-        # Explode nodes DataFrame on CUI.
-        #df_nodes_exploded_on_cuis = (
-            #self.jkgen.nodes
-            #.explode('cuis')
-            #.rename(columns={'cuis': 'cui'})
-            #.reset_index(drop=True)
-        #)
+
         """
         IDENTIFY SUBJECT CUIS
         
@@ -2004,11 +1786,6 @@ class Sabjkgimport:
        
         """
 
-        #self.jkgen.edges = self.jkgen.edges.merge(
-            #df_nodes_exploded_on_cuis,
-            #how='inner',
-            #left_on='subject',
-            #right_on='node_id').rename(columns={'cui': 'start_cui'})
         self.jkgen.edges = self.jkgen.edges.merge(
             self.jkgen.nodes,
             how='inner',
@@ -2028,11 +1805,6 @@ class Sabjkgimport:
         
         """
 
-        #self.jkgen.edges = self.jkgen.edges.merge(
-            #df_nodes_exploded_on_cuis,
-            #how='inner',
-            #left_on='object',
-            #right_on='node_id').rename(columns={'cui': 'end_cui'})
         self.jkgen.edges = self.jkgen.edges.merge(
             self.jkgen.nodes,
             how='inner',
@@ -2046,7 +1818,7 @@ class Sabjkgimport:
             self.jkgen.edges = self.jkgen.edges.rename(columns=rename_map)
 
         # Unload the DataFrame of new code rels used for merges.
-        self._unload_item(item_to_unload=dfnewcoderels)
+        #self._unload_item(item_to_unload=dfnewcoderels)
 
         utimer.stop()
 
