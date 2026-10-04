@@ -427,7 +427,7 @@ class ubkgExtract:
             a consistent, correctly-typed schema regardless of what the
             sampled row contained.
             """
-        list_string_cols = {'properties_ttyl'}
+        list_string_cols = {'properties_ttyl','labels'}
         for col_name in list_string_cols:
             if col_name in schema.names:
                 idx = schema.get_field_index(col_name)
@@ -452,11 +452,27 @@ class ubkgExtract:
 
         # Read row groups sequentially with a terminal progress bar
         dfs = []
-        for i in tqdm(range(num_row_groups), desc="Reading Row Groups"):
+        for i in tqdm(range(num_row_groups), desc=f"Reading Row Groups from {path}"):
             # Read a specific row group into a PyArrow Table, then to Pandas
             row_group_table = parquet_file.read_row_group(i)
             dfs.append(row_group_table.to_pandas())
 
         # Combine into a single final DataFrame
         df = pd.concat(dfs, ignore_index=True)
+
+        """
+        Per-row-group Arrow-to-Pandas conversion can yield inconsistent
+        dtypes for list-of-string columns, particularly when a row
+        group's values are all null/empty. After concatenation, the
+        resulting column may be object/NaN rather than a list of
+        strings. Explicitly normalize known list-of-string columns so
+        downstream code can rely on a consistent list type.
+        """
+        list_string_cols = {'properties_ttyl', 'labels'}
+
+        for col_name in list_string_cols:
+            if col_name in df.columns:
+                df[col_name] = df[col_name].apply(
+                    lambda v: list(v) if isinstance(v, (list, np.ndarray))
+                    else ([] if v is None or (isinstance(v, float) and pd.isna(v)) else v))
         return df

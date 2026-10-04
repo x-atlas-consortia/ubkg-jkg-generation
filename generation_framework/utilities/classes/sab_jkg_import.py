@@ -74,7 +74,7 @@ class Sabjkgimport:
             if self.sab.upper() in self.jkgjson.source_nodes['properties_sab'].values:
                 self.ulog.print_and_logger_error(f"The SAB '{self.sab.upper()}' already exists in the JKG JSON.")
                 exit(1)
-        self._unload_item(item_to_unload=self.jkgjson.source_nodes)
+        self._unload_item(item_to_unload=self.jkgjson.source_nodes,item_name='JKG JSON: source_nodes')
 
         # Input/Output directory for JKG JSON.
         self.jkgjson_dir = os.path.join(self.repo_root,
@@ -222,13 +222,15 @@ class Sabjkgimport:
         self.list_new_jkg_json_coderels = []
         self.list_new_jkg_json_rels = []
 
-    def _unload_item(self, item_to_unload:Any):
+    def _unload_item(self, item_to_unload:Any, item_name: str):
         """
         Explicitly unloads an object from memory.
         :param item_to_unload: object to be unloaded
         :param item_name: name of the object to be unloaded
 
         """
+
+        self.ulog.print_and_logger_info(f"Unloading {item_name}")
         if type(item_to_unload) is list:
             item_to_unload.clear()
         if type(item_to_unload) is pd.DataFrame:
@@ -313,7 +315,7 @@ class Sabjkgimport:
         """
         self.jkgjson.coderels = self.jkgjson.load_dataframe(filename='coderels')
         self.jkgen.nodes['cuis'] = self._get_cuis_for_nodes()
-        self._unload_item(item_to_unload=self.jkgjson.coderels)
+        self._unload_item(item_to_unload=self.jkgjson.coderels, item_name='JKG JSON: coderels')
 
         """
         A blank list for self.jkgen['cuis'] means that the equivalence class
@@ -354,7 +356,7 @@ class Sabjkgimport:
         """
         list_unflat = self._convert_flat_dataframe_to_unflat_list(df_flat=df_flat,
                                                                   progress_display=progress_display)
-        self._unload_item(item_to_unload=df_flat)
+        self._unload_item(item_to_unload=df_flat, item_name=progress_display)
 
         self.jkgjson_writer.write_list(list_name=progress_display, list_content=list_unflat)
 
@@ -424,8 +426,8 @@ class Sabjkgimport:
         self._update_node_counts(node_type="Source", state="after", count=len(list_unflat_sources))
         self.jkgjson_writer.write_list(list_name='all Source nodes (JKGJSON + JKGEN)', list_content=list_unflat_sources)
 
-        self._unload_item(item_to_unload=list_unflat_sources)
-        self._unload_item(item_to_unload=self.jkgjson.source_nodes)
+        self._unload_item(item_to_unload=list_unflat_sources, item_name="list_unflat_sources")
+        self._unload_item(item_to_unload=self.jkgjson.source_nodes, item_name="JKG JSON: source_nodes")
 
 
     def _build_sab_source_node(self) -> list[dict]:
@@ -499,7 +501,7 @@ class Sabjkgimport:
         self._update_node_counts(node_type='Node_Labels', state="after", count=len(self.jkgjson.node_label_nodes))
 
         # Unload the Node_Label nodes.
-        self._unload_item(item_to_unload=self.jkgjson.node_label_nodes)
+        self._unload_item(item_to_unload=self.jkgjson.node_label_nodes, item_name="JKG JSON: node_label_nodes")
 
     def _build_and_write_rel_label_nodes(self):
         """
@@ -532,7 +534,7 @@ class Sabjkgimport:
         list_unflat_rel_labels.extend(list_new_unflat_rel_labels)
         self._update_node_counts(node_type="Rel_Label", state="after", count=len(list_unflat_rel_labels))
 
-        self._unload_item(item_to_unload=list_new_unflat_rel_labels)
+        self._unload_item(item_to_unload=list_new_unflat_rel_labels, item_name="_build_and_write_rel_label_nodes: list_new_unflat_rel_labels")
 
         write_delimiters = len(list_unflat_rel_labels) > 0
         if write_delimiters:
@@ -544,7 +546,7 @@ class Sabjkgimport:
                                        list_content=list_unflat_rel_labels)
 
         # Unload the Rel_Label nodes DataFrame.
-        self._unload_item(item_to_unload=self.jkgjson.rel_label_nodes)
+        self._unload_item(item_to_unload=self.jkgjson.rel_label_nodes, item_name="JKG JSON: rel_labels_nodes")
 
     def _build_new_rel_label_nodes(self) -> list[dict]:
         """
@@ -598,7 +600,7 @@ class Sabjkgimport:
                 }
             }
             for row in
-            tqdm(df_new.itertuples(index=False), total=len(df_new), desc="-- Building new Rel_Label nodes (JKGEN)")
+            tqdm(df_new.itertuples(index=False), total=len(df_new), desc="Building new Rel_Label nodes (JKGEN)")
         ]
 
     def _build_and_write_concept_nodes(self):
@@ -630,7 +632,7 @@ class Sabjkgimport:
         list_unflat_concepts.extend(list_new_unflat_concepts)
         self._update_node_counts(node_type="Concept", state="after", count=len(list_unflat_concepts))
 
-        self._unload_item(item_to_unload=list_new_unflat_concepts)
+        self._unload_item(item_to_unload=list_new_unflat_concepts, item_name='_build_and_write_concept_nodes: list_new_unflat_concepts')
 
         write_delimiters = len(list_unflat_concepts) > 0
         if write_delimiters:
@@ -639,8 +641,7 @@ class Sabjkgimport:
 
         # Write the complete nested list to output.
         self.jkgjson_writer.write_list(list_name='all Concept nodes (JKG JSON + JKGEN)', list_content=list_unflat_concepts)
-        self._unload_item(item_to_unload=self.jkgjson.concept_nodes)
-
+        self._unload_item(item_to_unload=self.jkgjson.concept_nodes, item_name='JKG JSON: concept_nodes')
 
     def _build_new_concept_nodes(self) -> list[dict]:
         """
@@ -662,11 +663,19 @@ class Sabjkgimport:
             .rename(columns={'cuis': 'cui'})
         ).dropna() # from edge nodes added to nodes list
 
+        """
+        Load the existing coderels from the JKG JSON.
+        """
+        self.jkgjson.coderels = self.jkgjson.load_dataframe(filename='coderels')
+
         # 2. Compute existing CUIs once as a set — O(1) lookups
         if self.jkgjson.coderels.empty:
             existing_cuis = set()
         else:
             existing_cuis = set(self.jkgjson.coderels['start_id'])
+
+        # Unload coderels
+        self._unload_item(item_to_unload=self.jkgjson.coderels, item_name='JKG JSON: coderels')
 
         # 3. Filter to only new CUIs in a single pass
         df_new = df_exploded[~df_exploded['cui'].isin(existing_cuis)]
@@ -677,9 +686,8 @@ class Sabjkgimport:
         #5. Drop duplicate pref_terms.
         df_new = df_new.drop_duplicates(subset='cui', keep='first')
 
-        
         # Unload exploded DataFrame.
-        self._unload_item(item_to_unload=df_exploded)
+        self._unload_item(item_to_unload=df_exploded, item_name='_build_new_concept_nodes: df_exploded')
 
         # 4. Build the result. Wrap in tqdm.
         sab_upper = self.sab.upper()
@@ -692,7 +700,7 @@ class Sabjkgimport:
                     "sab": sab_upper
                 }
             }
-            for row in tqdm(df_new.itertuples(index=False), total=len(df_new), desc="-- Building new concept nodes (JKG JSON)")
+            for row in tqdm(df_new.itertuples(index=False), total=len(df_new), desc="Building new concept nodes (JKG JSON)")
         ]
 
     def _build_and_write_term_nodes(self):
@@ -722,13 +730,13 @@ class Sabjkgimport:
         list_new_unflat_terms = self._build_new_term_nodes()
 
         # Unload the DataFrame of term nodes.
-        self._unload_item(item_to_unload=self.jkgjson.term_nodes)
+        self._unload_item(item_to_unload=self.jkgjson.term_nodes, item_name='JKG JSON: term_nodes')
 
         # Add the list of new nested term nodes to the list of original nested term nodes.
         list_unflat_terms.extend(list_new_unflat_terms)
         
         # Unload the list of new term nodes.
-        self._unload_item(item_to_unload=list_new_unflat_terms)
+        self._unload_item(item_to_unload=list_new_unflat_terms, item_name='_build_and_write_term_nodes: list_new_unflat_terms')
 
         write_delimiters = len(list_unflat_terms) > 0
         if write_delimiters:
@@ -776,7 +784,7 @@ class Sabjkgimport:
                         "id": row.node_label
                     }
                 }
-                for row in tqdm(df_nodes.itertuples(), total=len(df_nodes), desc="-- Building new Term nodes for node preferred terms (JKGEN)")
+                for row in tqdm(df_nodes.itertuples(), total=len(df_nodes), desc="Building new Term nodes for node preferred terms (JKGEN)")
             ]
         )
 
@@ -826,7 +834,7 @@ class Sabjkgimport:
                     }
                 }
                 for row in
-                tqdm(df_exploded_syn.itertuples(), total=len(df_exploded_syn), desc="-- Building new Term nodes for node synonyms (JKGEN)")
+                tqdm(df_exploded_syn.itertuples(), total=len(df_exploded_syn), desc="Building new Term nodes for node synonyms (JKGEN)")
             ]
         )
 
@@ -865,7 +873,7 @@ class Sabjkgimport:
         self._unflatten_dataframe_and_write_list(df_flat=self.jkgjson.rels, progress_display='existing non-CODE rels')
 
         # Unload DataFrame of existing rels.
-        self._unload_item(item_to_unload=self.jkgjson.rels)
+        self._unload_item(item_to_unload=self.jkgjson.rels, item_name='JKG JSON: non-CODE rels')
 
         """
         BUILD AND WRITE NEW NON-CODE RELS TO OUTPUT.
@@ -888,10 +896,10 @@ class Sabjkgimport:
 
         # Convert list of flattened new rels objects to a list of "unflattened" (nested) new rels objects.
         list_unflat_new_rels = self._unflatten_objects(list_flat_objects=list_new_rels, progress_display=progress_display)
-        self._unload_item(item_to_unload=list_new_rels)
+        self._unload_item(item_to_unload=list_new_rels,item_name=progress_display)
 
         self.jkgjson_writer.write_list(list_name=progress_display, list_content=list_unflat_new_rels)
-        self._unload_item(item_to_unload=list_unflat_new_rels)
+        self._unload_item(item_to_unload=list_unflat_new_rels, item_name='_build_and_write_rels_array: list_unflat_new_rels')
 
         """
         WRITE EXISTING CODERELS TO OUTPUT.
@@ -923,7 +931,7 @@ class Sabjkgimport:
         self._unflatten_dataframe_and_write_list(df_flat=self.jkgjson.coderels, progress_display='existing CODE rels')
 
         # Unload DataFrame of existing coderels.
-        self._unload_item(item_to_unload=self.jkgjson.coderels)
+        self._unload_item(item_to_unload=self.jkgjson.coderels, item_name='JKG JSON: coderels')
 
         """
         WRITE NEW CODERELS TO OUTPUT.
@@ -944,10 +952,10 @@ class Sabjkgimport:
 
         list_unflat_new_coderels=self._unflatten_objects(list_flat_objects=self.list_new_coderels, progress_display=progress_display)
         # Unload list of new coderels.
-        self._unload_item(item_to_unload=self.list_new_coderels)
+        self._unload_item(item_to_unload=self.list_new_coderels, item_name='_build_and_write_rels_array: list_new_coderels')
 
         self.jkgjson_writer.write_list(list_name=progress_display, list_content=list_unflat_new_coderels)
-        self._unload_item(item_to_unload=list_unflat_new_coderels)
+        self._unload_item(item_to_unload=list_unflat_new_coderels,item_name='_build_and_write_rels_array: list_unflat_new_coderels')
 
     def _add_assigned_cui(self,cuis, assigned_cui)->list[str]:
         """
@@ -1059,13 +1067,13 @@ class Sabjkgimport:
                 }
                 for row in tqdm(df_new_coderels.itertuples(),
                                 total=len(df_nodes_exploded_on_cuis),
-                                desc="-- Building Coderel objects for new concepts (term type = PT)")
+                                desc="Building Coderel objects for new concepts (term type = PT)")
 
             ]
         )
 
         # Unload the exploded DataFrame.
-        self._unload_item(item_to_unload=df_nodes_exploded_on_cuis)
+        self._unload_item(item_to_unload=df_nodes_exploded_on_cuis,item_name='_build_new_coderels: df_nodes_exploded_on_cuis')
 
         """
         Build the flattened coderels that correspond to the SY term type for
@@ -1102,7 +1110,7 @@ class Sabjkgimport:
                 }
                 for row in tqdm(df_exploded_on_cuis_synonyms.itertuples(),
                                 total=len(df_exploded_on_cuis_synonyms),
-                                desc="-- Building Coderel objects for new concepts (term type = SY)")
+                                desc="Building Coderel objects for new concepts (term type = SY)")
 
             ]
         )
@@ -1396,11 +1404,11 @@ class Sabjkgimport:
             )
 
             # Unload analysis DataFrames that are no longer needed.
-            self._unload_item(item_to_unload=df_exploded)
-            self._unload_item(item_to_unload=df_direct_umls)
-            self._unload_item(item_to_unload=df_other)
-            self._unload_item(item_to_unload=df_other_umls)
-            self._unload_item(item_to_unload=df_other_non_umls)
+            self._unload_item(item_to_unload=df_exploded,item_name='get_cui_for_nodes: df_exploded')
+            self._unload_item(item_to_unload=df_direct_umls,item_name='get_cui_for_nodes: df_direct_umls')
+            self._unload_item(item_to_unload=df_other,item_name='get_cui_for_nodes: df_other')
+            self._unload_item(item_to_unload=df_other_umls,item_name='get_cui_for_nodes: df_other_umls')
+            self._unload_item(item_to_unload=df_other_non_umls,item_name='get_cui_for_nodes: df_other_non_umls')
 
             utimer.stop()
 
@@ -1452,10 +1460,10 @@ class Sabjkgimport:
                 .to_dict()
             )
 
-            self._unload_item(item_to_unload=df_node_as_cui)
-            self._unload_item(item_to_unload=df_node_to_cui)
-            self._unload_item(item_to_unload=df_node_cui)
-            self._unload_item(item_to_unload=df_nodes_with_cuis)
+            self._unload_item(item_to_unload=df_node_as_cui,item_name='get_cui_for_nodes: df_node_as_cui')
+            self._unload_item(item_to_unload=df_node_to_cui,item_name='get_cui_for_nodes: df_node_to_cui')
+            self._unload_item(item_to_unload=df_node_cui,item_name='get_cui_for_nodes: df_node_cui')
+            self._unload_item(item_to_unload=df_nodes_with_cuis,item_name='get_cui_for_nodes: df_nodes_with_cuis')
 
             """
             Identify CUIs for the node_id. Select the first CUI from lists 
@@ -1827,13 +1835,15 @@ class Sabjkgimport:
         df_self_edge = self.jkgen.edges[self.jkgen.edges['start_cui'] == self.jkgen.edges['end_cui']]
         self_edge_file = os.path.join(self.sab_jkg_dir, 'self_referential_edges_jkgen.tsv')
         df_self_edge.to_csv(self_edge_file, sep='\t',index=False)
-        self._unload_item(item_to_unload=df_self_edge)
+        self._unload_item(item_to_unload=df_self_edge,item_name='_build_new_non_coderels: df_self_edge')
+
 
         # Remove self-referential edges.
         self.jkgen.edges=self.jkgen.edges[self.jkgen.edges['start_cui'] != self.jkgen.edges['end_cui']]
 
         # Vectorized build, using packing operator.
         # Note that the key for node objects is "label", not "labels".
+
         return self.jkgen.edges.apply(lambda row: {
             "label": row['predicate'],
             "start_id": row['start_cui'],
@@ -1866,7 +1876,7 @@ class Sabjkgimport:
         out = []
 
         # Reduce tqdm update frequency to address "stuttering" in terminal output.
-        for flat in tqdm(list_flat_objects, mininterval=0.5, miniters=100, desc=f"-- Unflattening {progress_display}"):
+        for flat in tqdm(list_flat_objects, mininterval=0.5, miniters=100, desc=f"Unflattening {progress_display}"):
             unflat = self._unflatten_object(flat_object=flat)
             out.append(unflat)
 
