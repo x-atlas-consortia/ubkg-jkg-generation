@@ -215,7 +215,6 @@ class Jkgjson:
             self.log.print_and_logger_info('Exporting Source nodes DataFrame to temporary file')
             self._export_unload_dataframe(dfexport=self.source_nodes, filename='source_nodes')
 
-
             # Unload DataFrame from memory.
             self._unload_item(item_to_unload=self.source_nodes)
 

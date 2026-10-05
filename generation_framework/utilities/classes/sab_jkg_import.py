@@ -330,6 +330,20 @@ class Sabjkgimport:
         """
         self._get_preferred_cui()
 
+        """
+        Drop duplicates of preferred CUIs. 
+        One case of a duplicate preferred CUI is if a node_id is a UMLS CUI and another node was assigned
+        the CUI as a preferred one.
+        """
+        self.jkgen.nodes = self.jkgen.nodes.drop_duplicates(subset=['assigned_cui'])
+
+        """
+        Drop node assignments in which the node_id is a UMLS CUI.
+        These nodes are usually added explicitly from subject or object nodes mentioned
+        in the edge file.
+        """
+        self.jkgen.nodes = self.jkgen.nodes[~self.jkgen.nodes['node_id'].str.contains('UMLS')]
+
         # Write the results of the algorithm in the JKGEN directory.
         cuifile = os.path.join(self.sab_jkg_dir, 'node_concept_assignments.tsv')
         self.jkgen.nodes.to_csv(cuifile, sep='\t',index=False)
