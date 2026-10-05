@@ -108,4 +108,4 @@ The rank order is:
 | 3    | transitive non-UMLS CUIs | cross-references to codes that have non-UMLS CUIs | MP:0011739 -> CL:0002084 -> CL:0002084 CUI           |
 | 4    | minted CUI               | new CUI explicitly for the node                   |                                                      |
 
-The assertion predicates in the JKGEN edge file are associated only with the "assigned concept" for a node's code.
+The assertion predicates in the JKGEN edge file are associated only with the "assigned concept" for a node identifier. Note that a node's identifier can actually be a UMLS CUI.
