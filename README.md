@@ -187,8 +187,8 @@ integrating information from non-UMLS data sources.
 To maximize linkages between concepts and codes in the UBKG-JKG, **jkgen2jkg** implements the UBKG-JKG [equivalence algorithm](https://github.com/x-atlas-consortia/ubkg-jkg-generation/blob/main/docs/UBKG-JKG%20equivalence%20algorithm.md)
 
 ## Analytic outputs
-**jkgen2jkg** creates the output files in the _sab_jkg_ directory of a SAB, summarizing
-the state of the ingestion of the SAB.
+**jkgen2jkg** creates a number of analytic output files in the _sab_jkg_ directory of a SAB. 
+Analytic files summarize the results of the ingestion of the SAB.
 
 ### node_counts.tsv
 This is a report showing the changes in numbers of nodes in JKG before and after ingestion of the SAB.
@@ -241,7 +241,7 @@ To avoid reifying obsolete UMLS concepts in the JKG JSON, the script mints new c
 link to the concepts. The script logs obsolete UMLS concepts in **obsolete_umls_cuis.tsv**.
 
 ### duplicate_labels.tsv
-In at least one SAB (GLYCANS), more than one node has the same label. The script identifies these nodes in the file **duplicate_labels.tsv**.
+In at least one SAB (EDAM, GLYCANS), more than one node has the same label. The script identifies these nodes in the file **duplicate_labels.tsv**.
 
 # ubkgjkg.ini
 **sab2jkgen** and **jkgen2jkg** are configured by means of the **ubkg.ini** file.

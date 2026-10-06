@@ -51,7 +51,9 @@ Values for Term nodes are obtained from two fields of the JKGEN node file:
 * _node_label_, which corresponds to both the preferred term of a concept and the preferred term (_tty_=**PT**) for a coderel (CODE relationship)
 * _node_synonyms_, a pipe-delimited array of strings that corresponds to synonym terms for coderels (_tty_=**SY**)
 
-In general, nodes in a node file will share synonyms and possibly even labels.
+In general, nodes in a node file will share synonyms and labels. SABs for which nodes share labels include:
+* EDAM
+* GLYCANS (the GLYTOUCANS nodes)
 
 **jkgen2jkg** creates a Term node for field values from the node file if the following are true:
 * The value of _node_label_ does not already correspond to a Term node in the JKG JSON.
