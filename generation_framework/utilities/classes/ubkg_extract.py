@@ -433,6 +433,20 @@ class ubkgExtract:
                 idx = schema.get_field_index(col_name)
                 schema = schema.set(idx, pa.field(col_name, pa.list_(pa.string())))
 
+        # Explicitly type known string properties.
+        string_cols = {'properties_evidence_class','unit'}
+        for col_name in string_cols:
+            if col_name in schema.names:
+                idx = schema.get_field_index(col_name)
+                schema = schema.set(idx, pa.field(col_name, pa.string()))
+
+        # Explicitly type known float properties.
+        float_cols = {'value','lowerbound','upperbound'}
+        for col_name in float_cols:
+            if col_name in schema.names:
+                idx = schema.get_field_index(col_name)
+                schema = schema.set(idx, pa.field(col_name, pa.float64()))
+
         # Stream chunks to the file with a progress bar.
         with pq.ParquetWriter(outpath, schema) as writer:
             # Use tqdm to track progress across chunks
@@ -450,11 +464,33 @@ class ubkgExtract:
         parquet_file = pq.ParquetFile(path)
         num_row_groups = parquet_file.num_row_groups
 
+        # Columns that must be explicitly typed to avoid per-row-group
+        # Arrow-to-Pandas dtype inconsistency (e.g. all-null row groups
+        # inferring the wrong type).
+        string_cols = {'properties_evidence_class', 'unit'}
+        float_cols = {'value', 'lowerbound', 'upperbound'}
+
         # Read row groups sequentially with a terminal progress bar
         dfs = []
         for i in tqdm(range(num_row_groups), desc=f"Reading Row Groups from {path}"):
             # Read a specific row group into a PyArrow Table, then to Pandas
             row_group_table = parquet_file.read_row_group(i)
+
+            # Explicitly cast known columns so every row group agrees on type,
+            # regardless of nulls/emptiness within that particular row group.
+            cast_fields = []
+            for field in row_group_table.schema:
+                if field.name in string_cols:
+                    cast_fields.append(pa.field(field.name, pa.string()))
+                elif field.name in float_cols:
+                    cast_fields.append(pa.field(field.name, pa.float64()))
+                else:
+                    cast_fields.append(field)
+
+            if cast_fields:
+                target_schema = pa.schema(cast_fields)
+                row_group_table = row_group_table.cast(target_schema)
+
             dfs.append(row_group_table.to_pandas())
 
         # Combine into a single final DataFrame
@@ -475,4 +511,6 @@ class ubkgExtract:
                 df[col_name] = df[col_name].apply(
                     lambda v: list(v) if isinstance(v, (list, np.ndarray))
                     else ([] if v is None or (isinstance(v, float) and pd.isna(v)) else v))
+
+
         return df
