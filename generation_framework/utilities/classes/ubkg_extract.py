@@ -410,6 +410,30 @@ class ubkgExtract:
 
         """
         chunk_size = 100_000
+        # Column names organized by type:
+        # Lists of strings
+        list_string_cols = {'properties_ttyl', 'labels'}
+        # Strings
+        string_cols = {'properties_evidence_class', 'unit'}
+        # Floats
+        float_cols = {'value', 'lowerbound', 'upperbound'}
+
+        def _coerce_scalar_to_str(v):
+            # Preserve nulls as None so Arrow treats them as nulls, not the string "None"/"nan"
+            if v is None or (isinstance(v, float) and pd.isna(v)):
+                return None
+            return str(v)
+
+        def _normalize_string_cols(frame: pd.DataFrame) -> pd.DataFrame:
+            for col_name in string_cols:
+                if col_name in frame.columns:
+                    frame[col_name] = frame[col_name].apply(_coerce_scalar_to_str)
+            return frame
+
+        # Normalize the full DataFrame up front so both schema inference and
+        # each chunk write see consistent string-typed values (e.g. an int
+        # like 7 or 7.0 becomes "7" rather than failing/being misread).
+        df = _normalize_string_cols(df.copy())
 
         # Get the PyArrow schema from the first chunk
         schema = pa.Schema.from_pandas(df.iloc[:1])
@@ -427,21 +451,19 @@ class ubkgExtract:
             a consistent, correctly-typed schema regardless of what the
             sampled row contained.
             """
-        list_string_cols = {'properties_ttyl','labels'}
+
         for col_name in list_string_cols:
             if col_name in schema.names:
                 idx = schema.get_field_index(col_name)
                 schema = schema.set(idx, pa.field(col_name, pa.list_(pa.string())))
 
         # Explicitly type known string properties.
-        string_cols = {'properties_evidence_class','unit'}
         for col_name in string_cols:
             if col_name in schema.names:
                 idx = schema.get_field_index(col_name)
                 schema = schema.set(idx, pa.field(col_name, pa.string()))
 
         # Explicitly type known float properties.
-        float_cols = {'value','lowerbound','upperbound'}
         for col_name in float_cols:
             if col_name in schema.names:
                 idx = schema.get_field_index(col_name)
