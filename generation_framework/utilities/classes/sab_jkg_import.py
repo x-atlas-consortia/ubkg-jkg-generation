@@ -164,37 +164,29 @@ class Sabjkgimport:
         w_type = 20
         w_before = 20
         w_after = 20
-        w_updated = 20
+        w_difference = 20
         w_border = 90
 
         if to_file:
             with open(outfilepath, 'w') as outfile:
-                outfile.write(f'type\tbefore\tafter\tupdated\n')
+                outfile.write(f'type\tbefore\tafter\tdifference\n')
         else:
-            self.ulog.print_and_logger_info(f"{'type':<{w_type}} {'before':>{w_before}} {'after':>{w_after}} {'updated':>{w_updated}}")
+            self.ulog.print_and_logger_info(f"{'type':<{w_type}} {'before':>{w_before}} {'after':>{w_after}} {'difference':>{w_difference}}")
             self.ulog.print_and_logger_info("-" * w_border)
 
         for k, v in data.items():
             before = v.get("before", 0)
-            updated = v.get("updated", 0)
             after = v.get("after", 0)
-            if k == 'non-CODE rels':
-                if to_file:
-                    with open(outfilepath, 'a') as outfile:
-                        #outfile.write(f'{k}\t{before}\t{after}\t{updated}\n')
-                        outfile.write(f'{k}\t{before}\t{after}\n')
-                else:
-                    self.ulog.print_and_logger_info(
-                        f"{k:<{w_type}} {before:>{w_before},} {after:>{w_after},}")
-            else:
-                if to_file:
-                    with open(outfilepath, 'a') as outfile:
-                        outfile.write(f'{k}\t{before}\t{after}\n')
-                else:
-                    self.ulog.print_and_logger_info(
-                        f"{k:<{w_type}} {before:>{w_before},} {after:>{w_after},}")
+            difference = int(after - before)
 
-        self.ulog.print_and_logger_info("-" * w_border)
+            if to_file:
+                with open(outfilepath, 'a') as outfile:
+                    outfile.write(f'{k}\t{before}\t{after}\t{difference}\n')
+            else:
+                self.ulog.print_and_logger_info(
+                    f"{k:<{w_type}} {before:>{w_before},} {after:>{w_after},} {difference:>{w_difference}}")
+
+                self.ulog.print_and_logger_info("-" * w_border)
 
     def _initialize_lists(self):
         """
