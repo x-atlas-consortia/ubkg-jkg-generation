@@ -184,9 +184,20 @@ class Sabjkgimport:
                     outfile.write(f'{k}\t{before}\t{after}\t{difference}\n')
             else:
                 self.ulog.print_and_logger_info(
-                    f"{k:<{w_type}} {before:>{w_before},} {after:>{w_after},} {difference:>{w_difference}}")
+                    f"{k:<{w_type}} {before:>{w_before},} {after:>{w_after},} {difference:>{w_difference},}")
 
                 self.ulog.print_and_logger_info("-" * w_border)
+
+        # JKG JSON file size before and after
+        file_size_before = self.jkgjson.file_size
+        file_size_after = os.path.getsize(os.path.join(self.jkgjson.jkg_json_dir, self.jkgjson.jkg_json_filename))
+        file_size_difference = int(file_size_after - file_size_before)
+        header = 'JKG JSON file'
+        if to_file:
+            outfile.write(f'{header}\t{file_size_before}\t{file_size_after}\t{file_size_difference}\n')
+        else:
+            self.ulog.print_and_logger_info(
+                f"{header:<{w_type}} {file_size_before:>{w_before},} {file_size_after:>{w_after},} {file_size_difference:>{w_difference},}")
 
     def _initialize_lists(self):
         """

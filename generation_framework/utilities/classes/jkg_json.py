@@ -74,7 +74,7 @@ class Jkgjson:
             self.log.print_and_logger_error(f"JKG JSON file {jkg_json_full} not found.")
             exit(1)
         # Get the file size of JKG JSON for tqdm.
-        file_size = os.path.getsize(jkg_json_full)
+        self.file_size = os.path.getsize(jkg_json_full)
 
         # Node types:
         # - Source
@@ -98,7 +98,7 @@ class Jkgjson:
         with open(jkg_json_full, "rb") as f:
 
             with tqdm(desc=f"Reading from {self.jkg_json_filename}",
-                      total=file_size,
+                      total=self.file_size,
                       unit="B", unit_scale=True, unit_divisor=1024) as pbar:
 
                 # Wrap the ijson streaming read with a progress bar.
