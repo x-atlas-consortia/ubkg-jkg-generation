@@ -200,128 +200,183 @@ class Jkgjson:
 
             """
             To conserve memory, export subsets of JKG JSON to temporary files. 
+            
+            To reduce memory pressure, export subsets in order of size of export 
+            rather than the order in which they appear in the JKG JSON file:
+            1. CODE rels
+            2. rels
+            3. Concept nodes
+            4. Term nodes
+            5. Rel_Label nodes
+            6. Source nodes
+            7. Node_Label nodes
+            
+            Note that the order by size is almost the exact reverse of the order of appearance.
             """
 
-            # ------
-            # Source nodes
-
-            utimer = UbkgTimer(display_msg="Building Source nodes DataFrame")
-            self.source_nodes = pd.DataFrame(source_node_rows).fillna('')
-            utimer.stop()
-
-            # Unload node list from memory.
-            self._unload_item(item_to_unload=source_node_rows)
-
-            self.log.print_and_logger_info('Exporting Source nodes DataFrame to temporary file')
-            self._export_unload_dataframe(dfexport=self.source_nodes, filename='source_nodes')
-
-            # Unload DataFrame from memory.
-            self._unload_item(item_to_unload=self.source_nodes)
-
-            # ------
-            # Node_Label nodes
-
-            utimer = UbkgTimer(display_msg="Building Node_Label nodes DataFrame")
-            self.node_label_nodes = pd.DataFrame(node_label_node_rows).fillna('')
-            utimer.stop()
-
-            # Unload node list from memory.
-            self._unload_item(item_to_unload=node_label_node_rows)
-
-            self.log.print_and_logger_info('Exporting Node_Label nodes DataFrame to temporary file')
-            self._export_unload_dataframe(dfexport=self.node_label_nodes, filename='node_label_nodes')
-
-            # Unload DataFrame from memory.
-            self._unload_item(item_to_unload=self.node_label_nodes)
-
-            # ------
-            # Rel_Label nodes
-
-            utimer = UbkgTimer(display_msg="Building Rel_Label nodes DataFrame")
-            self.rel_label_nodes = pd.DataFrame(rel_label_node_rows).fillna('')
-            utimer.stop()
-
-            # Unload node list from memory.
-            self._unload_item(item_to_unload=rel_label_node_rows)
-
-            self.log.print_and_logger_info('Exporting Rel_Label nodes DataFrame to temporary file')
-            self._export_unload_dataframe(dfexport=self.rel_label_nodes, filename='rel_label_nodes')
-
-            # Unload DataFrame from memory.
-            self._unload_item(item_to_unload=self.rel_label_nodes)
-
-            # ------
-            # Concept nodes
-
-            utimer = UbkgTimer(display_msg="Building Concept nodes DataFrame")
-            self.concept_nodes = pd.DataFrame(concept_node_rows).fillna('')
-            utimer.stop()
-
-            # Unload node list from memory.
-            self._unload_item(item_to_unload=concept_node_rows)
-
-            self.log.print_and_logger_info('Exporting Concept nodes DataFrame to temporary file')
-            self._export_unload_dataframe(dfexport=self.concept_nodes, filename='concept_nodes')
-
-            # Unload DataFrame from memory.
-            self._unload_item(item_to_unload=self.concept_nodes)
-
-            # ------
-            # Term nodes
-            # Special processing: drop duplicates.
-
-            utimer = UbkgTimer(display_msg="Building Term nodes DataFrame")
-
-            # When creating DataFrame, drop duplicate term nodes.
-            self.term_nodes = pd.DataFrame(term_node_rows).fillna('').drop_duplicates('properties_id')
-            utimer.stop()
-
-            # Unload node list from memory.
-            self._unload_item(item_to_unload=term_node_rows)
-
-            self.log.print_and_logger_info('Exporting Term nodes DataFrame to temporary file')
-            self._export_unload_dataframe(dfexport=self.term_nodes, filename='term_nodes')
-
-            # Unload DataFrame from memory.
-            self._unload_item(item_to_unload=self.term_nodes)
-
-            # ------
-            # non-CODE rels
-
-            utimer = UbkgTimer(display_msg="Building non-CODE rels DataFrame")
-            self.rels = pd.DataFrame(rel_rows).fillna('')
-            utimer.stop()
-
-            # Unload rel list from memory.
-            self._unload_item(item_to_unload=rel_rows)
-
-            self.log.print_and_logger_info('Exporting non-CODE rels DataFrame to temporary file')
-            self._export_unload_dataframe(dfexport=self.rels, filename='rels')
-
-            # Unload DataFrame from memory.
-            self._unload_item(item_to_unload=self.rels)
-
-            # ------
             # CODE rels
-            # Special processing: delete MTH:NOCODE rels
+            self._export_coderels(rows=code_rel_rows)
 
-            utimer = UbkgTimer(display_msg="Building CODE rels DataFrame")
-            self.coderels = pd.DataFrame(code_rel_rows).fillna('')
-            utimer.stop()
+            # non-CODE rels
+            self._export_non_coderels(rows=rel_rows)
 
-            # Unload CODE rel list from memory.
-            self._unload_item(item_to_unload=code_rel_rows)
+            # Concept nodes
+            self._export_concept_nodes(rows=concept_node_rows)
 
-            # Remove MTH:NOCODE rels
-            utimer = UbkgTimer(display_msg="Deleting MTH:NOCODE CODE rels")
-            self.coderels = self.coderels.loc[self.coderels['properties_codeid'] != 'MTH:NOCODE'].copy()
-            utimer.stop()
+            # Term nodes
+            self._export_term_nodes(rows=term_node_rows)
 
-            self.log.print_and_logger_info('Exporting CODE rels DataFrame to temporary file')
-            self._export_unload_dataframe(dfexport=self.coderels, filename='coderels')
+            # Rel_Label nodes
+            self._export_rel_label_nodes(rows=rel_label_node_rows)
 
-            # Unload DataFrame from memory.
-            self._unload_item(item_to_unload=self.coderels)
+            # Source nodes
+            self._export_source_nodes(rows=source_node_rows)
+
+            # Node_Label nodes
+            self._export_node_label_nodes(rows=node_label_node_rows)
+
+    def _export_coderels(self, rows:list):
+        """
+        Export coderels DataFrame to temporary file.
+
+        :param rows: list of rows to export
+
+        Special processing: delete MTH:NOCODE rels
+
+        """
+        utimer = UbkgTimer(display_msg="Building CODE rels DataFrame")
+        self.coderels = pd.DataFrame(rows).fillna('')
+        utimer.stop()
+
+        # Unload CODE rel list from memory.
+        self._unload_item(item_to_unload=rows)
+
+        # Remove MTH:NOCODE rels
+        utimer = UbkgTimer(display_msg="Deleting MTH:NOCODE CODE rels")
+        self.coderels = self.coderels.loc[self.coderels['properties_codeid'] != 'MTH:NOCODE'].copy()
+        utimer.stop()
+
+        self.log.print_and_logger_info('Exporting CODE rels DataFrame to temporary file')
+        self._export_unload_dataframe(dfexport=self.coderels, filename='coderels')
+
+        # Unload DataFrame from memory.
+        self._unload_item(item_to_unload=self.coderels)
+
+    def _export_non_coderels(self, rows:list):
+        """
+        Export non-coderels DataFrame to temporary file.
+        :param rows: list of rows to export
+        """
+        utimer = UbkgTimer(display_msg="Building non-CODE rels DataFrame")
+        self.rels = pd.DataFrame(rows).fillna('')
+        utimer.stop()
+
+        # Unload rel list from memory.
+        self._unload_item(item_to_unload=rows)
+
+        self.log.print_and_logger_info('Exporting non-CODE rels DataFrame to temporary file')
+        self._export_unload_dataframe(dfexport=self.rels, filename='rels')
+
+        # Unload DataFrame from memory.
+        self._unload_item(item_to_unload=self.rels)
+
+    def _export_concept_nodes(self, rows:list):
+        """
+        Export concept nodes DataFrame to temporary file.
+        :param rows: list of rows to export
+
+        """
+        utimer = UbkgTimer(display_msg="Building Concept nodes DataFrame")
+        self.concept_nodes = pd.DataFrame(rows).fillna('')
+        utimer.stop()
+
+        # Unload node list from memory.
+        self._unload_item(item_to_unload=rows)
+
+        self.log.print_and_logger_info('Exporting Concept nodes DataFrame to temporary file')
+        self._export_unload_dataframe(dfexport=self.concept_nodes, filename='concept_nodes')
+
+        # Unload DataFrame from memory.
+        self._unload_item(item_to_unload=self.concept_nodes)
+
+    def _export_term_nodes(self, rows:list):
+        """
+        Export term nodes DataFrame to temporary file.
+        Special processing: drop duplicates.
+
+        :param rows: list of rows to export
+        """
+        utimer = UbkgTimer(display_msg="Building Term nodes DataFrame")
+
+        # When creating DataFrame, drop duplicate term nodes.
+        self.term_nodes = pd.DataFrame(rows).fillna('').drop_duplicates('properties_id')
+        utimer.stop()
+
+        # Unload node list from memory.
+        self._unload_item(item_to_unload=rows)
+
+        self.log.print_and_logger_info('Exporting Term nodes DataFrame to temporary file')
+        self._export_unload_dataframe(dfexport=self.term_nodes, filename='term_nodes')
+
+        # Unload DataFrame from memory.
+        self._unload_item(item_to_unload=self.term_nodes)
+
+    def _export_rel_label_nodes(self, rows:list):
+        """
+        Export rel label nodes DataFrame to temporary file.
+        :param rows: list of rows to export
+
+        """
+        utimer = UbkgTimer(display_msg="Building Rel_Label nodes DataFrame")
+        self.rel_label_nodes = pd.DataFrame(rows).fillna('')
+        utimer.stop()
+
+        # Unload node list from memory.
+        self._unload_item(item_to_unload=rows)
+
+        self.log.print_and_logger_info('Exporting Rel_Label nodes DataFrame to temporary file')
+        self._export_unload_dataframe(dfexport=self.rel_label_nodes, filename='rel_label_nodes')
+
+        # Unload DataFrame from memory.
+        self._unload_item(item_to_unload=self.rel_label_nodes)
+
+    def _export_source_nodes(self, rows:list):
+        """
+        Export source nodes DataFrame to temporary file.
+        :param rows: list of rows to export
+
+        """
+        utimer = UbkgTimer(display_msg="Building Source nodes DataFrame")
+        self.source_nodes = pd.DataFrame(rows).fillna('')
+        utimer.stop()
+
+        # Unload node list from memory.
+        self._unload_item(item_to_unload=rows)
+
+        self.log.print_and_logger_info('Exporting Source nodes DataFrame to temporary file')
+        self._export_unload_dataframe(dfexport=self.source_nodes, filename='source_nodes')
+
+        # Unload DataFrame from memory.
+        self._unload_item(item_to_unload=self.source_nodes)
+
+    def _export_node_label_nodes(self, rows:list):
+        """
+        Export node label nodes DataFrame to temporary file.
+        :param rows: list of rows to export
+
+        """
+        utimer = UbkgTimer(display_msg="Building Node_Label nodes DataFrame")
+        self.node_label_nodes = pd.DataFrame(rows).fillna('')
+        utimer.stop()
+
+        # Unload node list from memory.
+        self._unload_item(item_to_unload=rows)
+
+        self.log.print_and_logger_info('Exporting Node_Label nodes DataFrame to temporary file')
+        self._export_unload_dataframe(dfexport=self.node_label_nodes, filename='node_label_nodes')
+
+        # Unload DataFrame from memory.
+        self._unload_item(item_to_unload=self.node_label_nodes)
 
 
     def _export_unload_dataframe(self, dfexport:pd.DataFrame, filename: str):
