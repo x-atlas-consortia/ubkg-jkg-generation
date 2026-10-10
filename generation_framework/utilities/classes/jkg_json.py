@@ -417,6 +417,7 @@ class Jkgjson:
 
         """
 
+        self.log.print_and_logger_info(f'Unloading item...')
         if type(item_to_unload) is list:
             item_to_unload.clear()
         if type(item_to_unload) is pd.DataFrame:

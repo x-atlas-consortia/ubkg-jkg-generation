@@ -74,6 +74,7 @@ class Sabjkgimport:
             if self.sab.upper() in self.jkgjson.source_nodes['properties_sab'].values:
                 self.ulog.print_and_logger_error(f"The SAB '{self.sab.upper()}' already exists in the JKG JSON.")
                 exit(1)
+        # Source node DataFrame no longer needed.
         self._unload_item(item_to_unload=self.jkgjson.source_nodes,item_name='JKG JSON: source_nodes')
 
         # Input/Output directory for JKG JSON.
@@ -194,7 +195,8 @@ class Sabjkgimport:
         file_size_difference = int(file_size_after - file_size_before)
         header = 'JKG JSON file'
         if to_file:
-            outfile.write(f'{header}\t{file_size_before}\t{file_size_after}\t{file_size_difference}\n')
+            with open(outfilepath, 'a') as outfile:
+                outfile.write(f'{header}\t{file_size_before}\t{file_size_after}\t{file_size_difference}\n')
         else:
             self.ulog.print_and_logger_info(
                 f"{header:<{w_type}} {file_size_before:>{w_before},} {file_size_after:>{w_after},} {file_size_difference:>{w_difference},}")
@@ -227,7 +229,7 @@ class Sabjkgimport:
 
     def _unload_item(self, item_to_unload:Any, item_name: str):
         """
-        Explicitly unloads an object from memory.
+        Explicitly unloads an object from memory and performs garbage collection.
         :param item_to_unload: object to be unloaded
         :param item_name: name of the object to be unloaded
 
@@ -349,8 +351,9 @@ class Sabjkgimport:
         Does the following:
         1. Converts a DataFrame of "flattened" information in JKG JSON format to
            a list of "unflattened" (nested) objects.
-        2. Writes the unflattened list to output.
-        3. Optionally unloads the input DataFrame from memory.
+        2. Unloads the input DataFrame from memory.
+        3. Writes the unflattened list to output.
+
 
         :param df_flat: DataFrame of "flattened" information in JKG JSON format
         :param progress_display: name used for the tqdm progress bar
@@ -359,7 +362,6 @@ class Sabjkgimport:
         """
         list_unflat = self._convert_flat_dataframe_to_unflat_list(df_flat=df_flat,
                                                                   progress_display=progress_display)
-        self._unload_item(item_to_unload=df_flat, item_name=progress_display)
 
         self.jkgjson_writer.write_list(list_name=progress_display, list_content=list_unflat)
 
@@ -374,7 +376,7 @@ class Sabjkgimport:
         of "unflattened" dicts, reconstituting to the nested
         structure.
 
-        Optionally unloads the input DataFrame from memory.
+        Unloads the input DataFrame from memory.
 
         :param df_flat: DataFrame to convert
         :param progress_display: display for progress bar
@@ -387,6 +389,9 @@ class Sabjkgimport:
         list_flat = df_flat.to_dict(orient='records')
         if len(list_flat) == 0:
             list_flat = []
+
+        # Unload the DataFrame.
+        self._unload_item(item_to_unload=df_flat, item_name=progress_display)
 
         # Convert list of flattened objects to list of "unflattened" (nested) objects.
         return self._unflatten_objects(list_flat_objects=list_flat,
@@ -412,11 +417,14 @@ class Sabjkgimport:
         Convert the DataFrame of flattened original source nodes
         to a list of unflattened (nested) objects.
         """
-        list_unflat_sources = self._convert_flat_dataframe_to_unflat_list(df_flat=self.jkgjson.source_nodes, progress_display='existing Source nodes (JKG JSON)')
+        list_unflat_sources = self._convert_flat_dataframe_to_unflat_list(df_flat=self.jkgjson.source_nodes,
+                                                                          progress_display='existing Source nodes (JKG JSON)')
+
+        # Update node counts.
         self._update_node_counts(node_type="Source", state="before", count=len(list_unflat_sources))
 
         """
-        Build the source node for the SAB.
+        Build the new source node for the SAB.
         (Although there is only one source, treat as a
         list with one element for purposes of combination.)
         """
@@ -428,9 +436,8 @@ class Sabjkgimport:
         # Write the complete nested list to output.
         self._update_node_counts(node_type="Source", state="after", count=len(list_unflat_sources))
         self.jkgjson_writer.write_list(list_name='all Source nodes (JKGJSON + JKGEN)', list_content=list_unflat_sources)
-
+        # After writing the list to output, unload it.
         self._unload_item(item_to_unload=list_unflat_sources, item_name="list_unflat_sources")
-        self._unload_item(item_to_unload=self.jkgjson.source_nodes, item_name="JKG JSON: source_nodes")
 
 
     def _build_sab_source_node(self) -> list[dict]:
@@ -496,20 +503,23 @@ class Sabjkgimport:
             self.jkgjson_writer.write_comma()
             self.jkgjson_writer.write_line_feed()
 
+        """
+        Convert the Node_Label DataFrame to an unflattened list and write to output,
+        """
         self._unflatten_dataframe_and_write_list(df_flat=self.jkgjson.node_label_nodes,
                                                  progress_display='existing Node_Label nodes (JKG JSON)')
 
-        # No net new node labels.
+        """
+        Update node counts. 
+        Node labels come from the UMLS, so the count of nodes is constant.
+        """
         self._update_node_counts(node_type='Node_Labels', state="before", count=len(self.jkgjson.node_label_nodes))
         self._update_node_counts(node_type='Node_Labels', state="after", count=len(self.jkgjson.node_label_nodes))
-
-        # Unload the Node_Label nodes.
-        self._unload_item(item_to_unload=self.jkgjson.node_label_nodes, item_name="JKG JSON: node_label_nodes")
 
     def _build_and_write_rel_label_nodes(self):
         """
         Does the following:
-        1. Builds a list of unflattened Rel_Label nodes for Rel_Labels linked
+        1. Builds a list of unflattened (nested) Rel_Label nodes for Rel_Labels linked
            to predicate labels from the JKGEN edge file that are not already
            in the array of Rel_Label nodes in JKG JSON.
         2. Unflattens the list of exiting Rel_Label node objects from the JKG JSON.
@@ -524,32 +534,43 @@ class Sabjkgimport:
         """
         self.jkgjson.rel_label_nodes = self.jkgjson.load_dataframe(filename='rel_label_nodes')
 
+        """
+        Convert the DataFrame of flattened original Rel_Label nodes
+        to a list of unflattened (nested) objects.
+        """
+        list_unflat_rel_labels = (
+            self._convert_flat_dataframe_to_unflat_list(df_flat=self.jkgjson.rel_label_nodes,
+                                                        progress_display='existing Rel_Label nodes (JKG JSON)'))
+
         # Build list of unflattened objects for new Rel_Label nodes.
         list_new_unflat_rel_labels = self._build_new_rel_label_nodes()
 
-        # Convert the DataFrame of flattened original Rel_Label nodes
-        # to a list of unflattened (nested) objects.
-        list_unflat_rel_labels = self._convert_flat_dataframe_to_unflat_list(df_flat=self.jkgjson.rel_label_nodes,
-                                                                           progress_display='existing Rel_Label nodes (JKG JSON)')
+        # Update "before" count of Rel_Label nodes.
         self._update_node_counts(node_type="Rel_Label", state="before", count=len(list_unflat_rel_labels))
 
-        # Add the list of new nested Rel_Label nodes to the list of original nested Rel_Label nodes.
+        # Add the list of new unflattened Rel_Label nodes to the list of original unflattened Rel_Label nodes.
         list_unflat_rel_labels.extend(list_new_unflat_rel_labels)
+
+        # Unload the list of new unflattened Rel_Label nodes.
+        self._unload_item(item_to_unload=list_new_unflat_rel_labels,
+                          item_name="_build_and_write_rel_label_nodes: list_new_unflat_rel_labels")
+
+        # Update "after" count of Rel_Label nodes.
         self._update_node_counts(node_type="Rel_Label", state="after", count=len(list_unflat_rel_labels))
 
-        self._unload_item(item_to_unload=list_new_unflat_rel_labels, item_name="_build_and_write_rel_label_nodes: list_new_unflat_rel_labels")
-
+        # Add necessary delimiters to the JKG JSON.
         write_delimiters = len(list_unflat_rel_labels) > 0
         if write_delimiters:
             self.jkgjson_writer.write_comma()
             self.jkgjson_writer.write_line_feed()
 
-        # Write the complete nested list to output.
+        # Write the complete nested list of Rel_Label nodes to output.
         self.jkgjson_writer.write_list(list_name='all Rel_Label nodes (JKG JSON + JKGEN)',
                                        list_content=list_unflat_rel_labels)
 
-        # Unload the Rel_Label nodes DataFrame.
-        self._unload_item(item_to_unload=self.jkgjson.rel_label_nodes, item_name="JKG JSON: rel_labels_nodes")
+        # Unload the complete nested list of Rel_Label nodes.
+        self._unload_item(item_to_unload=list_unflat_rel_labels,
+                          item_name="_build_and_write_rel_label_nodes: list_unflat_rel_labels")
 
     def _build_new_rel_label_nodes(self) -> list[dict]:
         """
@@ -623,28 +644,41 @@ class Sabjkgimport:
         """
         self.jkgjson.concept_nodes = self.jkgjson.load_dataframe(filename='concept_nodes')
 
+        """
+        Convert the DataFrame of flattened original concept nodes
+        to a list of unflattened (nested) objects.
+        """
+        list_unflat_concepts = self._convert_flat_dataframe_to_unflat_list(df_flat=self.jkgjson.concept_nodes,
+                                                                           progress_display='existing Concept nodes (JKG JSON)')
+
+        # Update "before" count of Concept nodes.
+        self._update_node_counts(node_type="Concept", state="before", count=len(list_unflat_concepts))
+
         # Build list of unflattened objects for new concept nodes.
         list_new_unflat_concepts = self._build_new_concept_nodes()
 
-        # Convert the DataFrame of flattened original concept nodes
-        # to a list of unflattened (nested) objects.
-        list_unflat_concepts = self._convert_flat_dataframe_to_unflat_list(df_flat=self.jkgjson.concept_nodes, progress_display='existing Concept nodes (JKG JSON)')
-        self._update_node_counts(node_type="Concept", state="before", count=len(list_unflat_concepts))
-
         # Add the list of new nested concept nodes to the list of original nested concept nodes.
         list_unflat_concepts.extend(list_new_unflat_concepts)
+
+        # Update the "after" count of Concept nodes.
         self._update_node_counts(node_type="Concept", state="after", count=len(list_unflat_concepts))
 
+        # Unload the list of new unflattened Concept node objects.
         self._unload_item(item_to_unload=list_new_unflat_concepts, item_name='_build_and_write_concept_nodes: list_new_unflat_concepts')
 
+        # Write necessary delimiters to the JKG JSON.
         write_delimiters = len(list_unflat_concepts) > 0
         if write_delimiters:
             self.jkgjson_writer.write_comma()
             self.jkgjson_writer.write_line_feed()
 
         # Write the complete nested list to output.
-        self.jkgjson_writer.write_list(list_name='all Concept nodes (JKG JSON + JKGEN)', list_content=list_unflat_concepts)
-        self._unload_item(item_to_unload=self.jkgjson.concept_nodes, item_name='JKG JSON: concept_nodes')
+        self.jkgjson_writer.write_list(list_name='all Concept nodes (JKG JSON + JKGEN)',
+                                       list_content=list_unflat_concepts)
+
+        # Unload the complete nested list.
+        self._unload_item(item_to_unload=list_unflat_concepts,
+                          item_name='_build_and_write_concept_nodes: list_unflat_concepts')
 
     def _build_new_concept_nodes(self) -> list[dict]:
         """
@@ -723,32 +757,41 @@ class Sabjkgimport:
         """
         self.jkgjson.term_nodes = self.jkgjson.load_dataframe(filename='term_nodes')
 
-        # Convert the DataFrame of flattened original term nodes
-        # to a list of unflattened (nested) objects.
+        """
+        Convert the DataFrame of flattened original term nodes
+        to a list of unflattened (nested) objects.
+        """
         list_unflat_terms = self._convert_flat_dataframe_to_unflat_list(df_flat=self.jkgjson.term_nodes,
                                                                         progress_display='existing Term nodes (JKG JSON)')
+
+        # Update "before" count of Term nodes.
         self._update_node_counts(node_type="Term", state="before", count=len(list_unflat_terms))
 
         # Build list of unflattened objects for new term nodes.
         list_new_unflat_terms = self._build_new_term_nodes()
 
-        # Unload the DataFrame of term nodes.
-        self._unload_item(item_to_unload=self.jkgjson.term_nodes, item_name='JKG JSON: term_nodes')
-
         # Add the list of new nested term nodes to the list of original nested term nodes.
         list_unflat_terms.extend(list_new_unflat_terms)
+
+        # Update "after" count of Term nodes.
+        self._update_node_counts(node_type="Term", state="after", count=len(list_unflat_terms))
         
         # Unload the list of new term nodes.
-        self._unload_item(item_to_unload=list_new_unflat_terms, item_name='_build_and_write_term_nodes: list_new_unflat_terms')
+        self._unload_item(item_to_unload=list_new_unflat_terms,
+                          item_name='_build_and_write_term_nodes: list_new_unflat_terms')
 
+        # Write necessary delimiters to the JKG JSON.
         write_delimiters = len(list_unflat_terms) > 0
         if write_delimiters:
             self.jkgjson_writer.write_comma()
             self.jkgjson_writer.write_line_feed()
 
         # Write the complete nested list to output.
-        self._update_node_counts(node_type="Term", state="after", count=len(list_unflat_terms))
         self.jkgjson_writer.write_list(list_name='all Term nodes (JKG JSON + JKGEN)', list_content=list_unflat_terms)
+
+        # Unload the complete nested list.
+        self._unload_item(item_to_unload=list_unflat_terms,
+                          item_name='_build_and_write_term_nodes: list_unflat_terms')
 
     def _build_new_term_nodes(self) -> list[dict]:
         """
@@ -868,29 +911,25 @@ class Sabjkgimport:
         # Load DataFrame of existing rels from the temporary file.
         self.jkgjson.rels = self.jkgjson.load_dataframe(filename='rels')
 
-        # Keep track of the number of existing rels.
+        # Update "before" count of non-CODE rels.
         num_existing_rels = len(self.jkgjson.rels)
         self._update_node_counts(node_type="non-CODE rels", state="before", count=num_existing_rels)
 
         # Unflatten DataFrame of existing non-CODE rels and write to the JKG JSON.
         self._unflatten_dataframe_and_write_list(df_flat=self.jkgjson.rels, progress_display='existing non-CODE rels')
 
-        # Unload DataFrame of existing rels.
-        self._unload_item(item_to_unload=self.jkgjson.rels, item_name='JKG JSON: non-CODE rels')
-
         """
         BUILD AND WRITE NEW NON-CODE RELS TO OUTPUT.
       
         """
         list_new_rels = self._build_new_non_coderels()
+
+        # Update "after" count of non-CODE rels.
         num_new_rels = len(list_new_rels)
         num_all_rels = num_existing_rels + num_new_rels
         self._update_node_counts(node_type="non-CODE rels", state="after", count=num_all_rels)
 
-        """
-        Determine whether to add delimiters between 
-        list of existing rels and list of new rels.
-        """
+        # Write necessary delimiters to the JKG JSON
         if num_new_rels > 0 and num_existing_rels > 0:
             self.jkgjson_writer.write_comma()
             self.jkgjson_writer.write_line_feed()
@@ -910,14 +949,12 @@ class Sabjkgimport:
 
         # Load the DataFrame of existing CODE rels from the temporary file.
         self.jkgjson.coderels = self.jkgjson.load_dataframe(filename='coderels')
-        # Count of CODE rels from JKG JSON.
+
+        # Update "before" count of CODE rels.
         num_existing_coderels = len(self.jkgjson.coderels)
         self._update_node_counts(node_type="CODE rels", state="before", count=num_existing_coderels)
 
-        """
-        Determine whether to add delimiters between the 
-        new rels list and the existing coderels list.
-        """
+        # Write necessary delimiters to the JKG JSON.
         if num_existing_coderels > 0 and num_new_rels > 0:
             self.jkgjson_writer.write_comma()
             self.jkgjson_writer.write_line_feed()
@@ -927,23 +964,20 @@ class Sabjkgimport:
         """
         self.list_new_coderels = self._build_new_coderels()
 
-        # Count of CODE rels after.
+        # Update "after" count of CODE rels.
         num_all_coderels = len(self.list_new_coderels) + num_existing_coderels
         self._update_node_counts(node_type="CODE rels", state="after", count=num_all_coderels)
 
+        """
+        Convert DataFrame of existing CODE rels to an unflattened (nested) list and write to output.
+        """
         self._unflatten_dataframe_and_write_list(df_flat=self.jkgjson.coderels, progress_display='existing CODE rels')
-
-        # Unload DataFrame of existing coderels.
-        self._unload_item(item_to_unload=self.jkgjson.coderels, item_name='JKG JSON: coderels')
 
         """
         WRITE NEW CODERELS TO OUTPUT.
         """
 
-        """
-        Determine whether to add delimiters between
-        the list of existing coderels and list of new coderels.
-        """
+        # Write necessary delimiters to the JKG JSON.
 
         num_new_coderels = len(self.list_new_coderels)
         if num_new_coderels > 0 and num_existing_coderels > 0:
@@ -951,14 +985,21 @@ class Sabjkgimport:
             self.jkgjson_writer.write_line_feed()
 
         progress_display = 'new CODE rels'
+
         # Convert list of flattened new coderel objects to a list of "unflattened" (nested) new coderel objects.
+        list_unflat_new_coderels=self._unflatten_objects(list_flat_objects=self.list_new_coderels,
+                                                         progress_display=progress_display)
 
-        list_unflat_new_coderels=self._unflatten_objects(list_flat_objects=self.list_new_coderels, progress_display=progress_display)
         # Unload list of new coderels.
-        self._unload_item(item_to_unload=self.list_new_coderels, item_name='_build_and_write_rels_array: list_new_coderels')
+        self._unload_item(item_to_unload=self.list_new_coderels,
+                          item_name='_build_and_write_rels_array: list_new_coderels')
 
+        # Write unflattened list of new coderels.
         self.jkgjson_writer.write_list(list_name=progress_display, list_content=list_unflat_new_coderels)
-        self._unload_item(item_to_unload=list_unflat_new_coderels,item_name='_build_and_write_rels_array: list_unflat_new_coderels')
+
+        # Unload list of new coderels.
+        self._unload_item(item_to_unload=list_unflat_new_coderels,
+                          item_name='_build_and_write_rels_array: list_unflat_new_coderels')
 
     def _add_assigned_cui(self,cuis, assigned_cui)->list[str]:
         """
@@ -1752,13 +1793,6 @@ class Sabjkgimport:
 
         utimer = UbkgTimer(display_msg='Building new non-CODE rels.')
 
-        # Convert list of new coderels to a DataFrame to take
-        # advantage of Pandas DataFrame merging.
-        #dfnewcoderels = pd.DataFrame(self.list_new_coderels)
-
-        # Drop duplicates from merging.(Coderels map cuis to term types.)
-        # Remove columns that are irrelevant to CUI identification.
-        #dfnewcoderels = dfnewcoderels.drop_duplicates(subset=['start_id','properties_codeid'])[['start_id','properties_codeid']]
 
         """
         CUSTOM EDGE PROPERTIES
@@ -1828,8 +1862,6 @@ class Sabjkgimport:
         if rename_map:
             self.jkgen.edges = self.jkgen.edges.rename(columns=rename_map)
 
-        # Unload the DataFrame of new code rels used for merges.
-        #self._unload_item(item_to_unload=dfnewcoderels)
 
         utimer.stop()
 
