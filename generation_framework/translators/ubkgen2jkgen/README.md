@@ -53,3 +53,19 @@ The basic process is:
 9. In the right pane, select the collection that corresponds to the local machine.
 10. Navigate to the folder to which to transfer files.
 11. Initiate the transfer.
+
+### Manual Pre-processing for LINCS
+In the Globus folder for LINCS, both of the original files have extension .tsv. 
+However, the edge file (OWLNETS_edgelist.tsv) is actually an indexed CSV file. 
+
+It is necessary to pre-process the edge and node files manually before ingesting it into JKG. 
+
+The following process is recommended.
+1. Save the original file (OWLNETS_edgelist.tsv) to a copy (OWLNETS_edgelist_orig.tsv).
+2. Open OWLNETS_edgelist.tsv in Excel.
+3. Save the CSV file as a Text-delmited file with the default file extension TXT.
+4. Open the text-delimited file in Excel.
+5. Delete the index column.
+6. Save the file.
+7. Rename OWLNETS_edgelist.tsv to jkg_edge.tsv.
+8. Rename OWLNETS_node_metadata.tsv to jkg_node.tsv.

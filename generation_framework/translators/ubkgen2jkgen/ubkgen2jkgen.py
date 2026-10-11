@@ -56,10 +56,11 @@ def containsedgenodefiles(path: str) -> bool:
     # 1. Edges/nodes files
     # 2. An OWL file
 
-    filelist = ['OWLNETS_node_metadata.txt', 'nodes.txt', 'nodes.tsv', 'OWLNETS_node_metadata.tsv',
-                'OWLNETS_edgelist.txt', 'edges.txt', 'edges.tsv', 'OWLNETS_edgelist.tsv']
+    filelist = ['OWLNETS_node_metadata.txt', 'nodes.txt', 'nodes.tsv', 'OWLNETS_node_metadata.tsv', 'jkg_node.tsv',
+                'OWLNETS_edgelist.txt', 'edges.txt', 'edges.tsv', 'OWLNETS_edgelist.tsv','jkg_edge.tsv']
 
     for f in os.listdir(path):
+        print(f'Checking {f}')
         fpath = os.path.join(path, f)
         if os.path.isfile(fpath):
             # JULY 2025 exclude irrelevant files such as .DS_Store file.
@@ -237,8 +238,12 @@ def main():
                          jout=jout)
 
     else:
+        if args.sab == 'LINCS':
+            ulog.print_and_logger_error(f'Files in {frompath} are not in edges/nodes format.')
+            ulog.print_and_logger_info('CONVERT OWLNETS_edgelist.tsv to a true TSV as described in LINCS README.txt.')
+        else:
+            ulog.print_and_logger_error(f'Files in {frompath} are not in edges/nodes format.')
 
-        ulog.print_and_logger_error(f'Files in {frompath} are not in edges/nodes format.')
         exit(1)
 
 if __name__ == "__main__":
