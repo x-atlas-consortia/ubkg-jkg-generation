@@ -13,6 +13,7 @@ import os
 import ast
 import gc
 import pandas as pd
+from Cython.Compiler.Pythran import is_type
 from pandas.core.computation.ops import isnumeric
 from tqdm import tqdm
 
@@ -438,7 +439,6 @@ class Sabjkgimport:
         self.jkgjson_writer.write_list(list_name='all Source nodes (JKGJSON + JKGEN)', list_content=list_unflat_sources)
         # After writing the list to output, unload it.
         self._unload_item(item_to_unload=list_unflat_sources, item_name="list_unflat_sources")
-
 
     def _build_sab_source_node(self) -> list[dict]:
 
@@ -1033,6 +1033,111 @@ class Sabjkgimport:
             for cuis, assigned_cui in zip(self.jkgen.nodes['cuis'], self.jkgen.nodes['assigned_cui'])
         ]
 
+    import pandas as pd
+
+    def _missing(self,value):
+        return value is None or pd.isna(value)
+
+    def _optional_string(self,value):
+        return "" if self._missing(value) else str(value)
+
+    def _optional_float(self,value):
+        return None if self._missing(value) else float(value)
+
+    def _build_coderel_row(self,tty:str, row:tuple[Any, ...]):
+        """
+        Builds a single CODE rel dict from an itertuples() row (namedtuple),
+        handling optional fields safely.
+
+        :param tty: the tty (term type) for the coderel--PT or SY
+        :param row: a namedtuple yielded by df_new_coderels.itertuples()
+        :raises Exception: if the row contains a field not in EXPECTED_COLUMNS_*
+        """
+
+        """
+        Define the set of columns expected in df_new_coderels, including optional ones.
+        PT rows are not exploded, so the node_synonyms field is a list.
+        """
+        EXPECTED_COLUMNS_PT = {
+            "cui", "node_label", "node_definition", "node_id",
+            "evidence_class", "value", "lowerbound", "upperbound", "unit",
+            "node_synonyms", "node_dbxrefs","assigned_cui","assignment_comment"
+        }
+        """
+        SY rows are from a DataFrame exploded on the node_synonyms field, with the corresponding
+        field named node_synonym.
+        """
+        EXPECTED_COLUMNS_SY = {
+            "cui", "node_label", "node_definition", "node_id",
+            "evidence_class", "value", "lowerbound", "upperbound", "unit",
+            "node_synonym", "node_dbxrefs", "assigned_cui", "assignment_comment"
+        }
+
+        """
+        Check for unexpected row columns.
+        itertuples() namedtuples expose fields via _fields. 
+        "Index" is added automatically by pandas and is not a data column, so exclude it.
+        """
+        row_fields = set(row._fields) - {"Index"}
+
+        if tty == "PT":
+            unexpected = row_fields - EXPECTED_COLUMNS_PT
+        else:
+            unexpected = row_fields - EXPECTED_COLUMNS_SY
+
+        if unexpected:
+            raise Exception(f"Unexpected field(s) in row for tty={tty}: {sorted(unexpected)}")
+
+        # Optional attribute-related fields
+        has_evidence_class = "evidence_class" in row_fields
+        has_value = "value" in row_fields
+        has_lowerbound = "lowerbound" in row_fields
+        has_upperbound = "upperbound" in row_fields
+        has_unit = "unit" in row_fields
+
+        value = getattr(row, "value", None) if has_value else None
+
+        if tty == "PT":
+            return {
+                "label": "CODE",
+                "start_id": row.cui,
+                "end_id": row.node_label,
+                "properties_sab": self.sab,
+                "properties_def": row.node_definition,
+                "properties_codeid": row.node_id,
+                "properties_tty": tty,
+                # Optional keys: null/None when not present, rather than empty string,
+                # so downstream Parquet/Arrow typing is consistent (nullable column).
+                "attribute": self._optional_string(getattr(row, "evidence_class", None)
+                                                   if has_evidence_class else ""),
+                "valuestr": self._optional_string(value),
+                "value": self._optional_float(value),
+                "lowerbound": self._optional_float(getattr(row, "lowerbound", None) if has_lowerbound else None),
+                "upperbound": self._optional_float(getattr(row, "upperbound", None) if has_upperbound else None),
+                "unit": self._optional_string(getattr(row, "unit", None) if has_unit else "")
+            }
+        else:
+            # Synonym (tty=SY)
+            print(row)
+            return {
+                "label": "CODE",
+                "start_id": row.cui,
+                "end_id": row.node_synonym, # synonym instead of label
+                "properties_sab": self.sab,
+                "properties_def": "", # The synonym does not get the definition.
+                "properties_codeid": row.node_id,
+                "properties_tty": "SY",
+                # Optional keys are null,
+                # so downstream Parquet/Arrow typing is consistent (nullable column).
+                "attribute": "",
+                "valuestr": "",
+                "value": None,
+                "lowerbound": None,
+                "upperbound": None,
+                "unit": "",
+            }
+
+
     def _build_new_coderels(self)-> list[dict]:
         """
         Builds a list of new coderel objects for the JKG JSON rels array from JKGEN nodes.
@@ -1068,12 +1173,16 @@ class Sabjkgimport:
 
         df_new_coderels = df_nodes_exploded_on_cuis
 
-
         """
             The nodes DataFrame is flattened.
              
-            In addition, the nodes file can include optional columns that 
-            correspond to custom node properties.
+            The nodes file can include optional columns that correspond to coderel properties for:
+            attribute
+            valuestr
+            value
+            upperbound
+            lowerbound
+            unit
             
             Add any values from optional columns with a "properties_" prefix to indicate that they will
             be in the eventual nested properties object.
@@ -1082,37 +1191,23 @@ class Sabjkgimport:
 
         """
 
-        # Identify the set of optional columns.
-        excluded_cols = self._get_node_base_cols()
-        optional_cols = [col for col in df_new_coderels.columns if col not in excluded_cols]
-
         """
         Build the flattened coderels that correspond to the PT term type for
         new concepts. These will link a Concept node object
         to a Term node object corresponding to the node label, with
         properties that define the node's code.
-        
-        Use the packing operator to add the custom properties.
-        
+    
+        Write optional properties to the PT term.
         """
 
         list_new_coderels.extend(
             [
-                {
-                    "label": "CODE",
-                    "start_id": row.cui,
-                    "end_id": row.node_label,
-                    "properties_sab": self.sab,
-                    "properties_def": row.node_definition,
-                    "properties_codeid": row.node_id,
-                    "properties_tty": "PT",
-                    # ** unpacks a dict built per-row from the optional columns
-                    **{f"properties_{col}": str(getattr(row, col)) for col in optional_cols}
-                }
-                for row in tqdm(df_new_coderels.itertuples(),
-                                total=len(df_nodes_exploded_on_cuis),
-                                desc="Building Coderel objects for new concepts (term type = PT)")
-
+                self._build_coderel_row(row=row,tty='PT')
+                for row in tqdm(
+                df_new_coderels.itertuples(),
+                total=len(df_nodes_exploded_on_cuis),
+                desc="Building Coderel objects for new concepts (term type = PT)",
+            )
             ]
         )
 
@@ -1141,62 +1236,15 @@ class Sabjkgimport:
         # Terms of type SY do not get the definition.
         list_new_coderels.extend(
             [
-                {
-                    "label": "CODE",
-                    "start_id": row.cui,
-                    "end_id": row.node_synonym,
-                    "properties_sab": self.sab,
-                    "properties_def": "",
-                    "properties_codeid": row.node_id,
-                    "properties_tty": "SY",
-                    # ** unpacks a dict built per-row from the optional columns
-                    **{f"properties_{col}": getattr(row, col) for col in optional_cols}
-                }
-                for row in tqdm(df_exploded_on_cuis_synonyms.itertuples(),
-                                total=len(df_exploded_on_cuis_synonyms),
-                                desc="Building Coderel objects for new concepts (term type = SY)")
-
+                self._build_coderel_row(row=row, tty='SY')
+                for row in tqdm(
+                df_exploded_on_cuis_synonyms.itertuples(),
+                total=len(df_exploded_on_cuis_synonyms),
+                desc="Building Coderel objects for new concepts (term type = SY)",
+            )
             ]
         )
         return list_new_coderels
-
-    def _get_node_base_cols(self)-> set:
-        """
-        Identifies base node property columns for JKGEN nodes.
-
-        The nodes file can have a variable number of columns after the
-        node_dbxrefs column.
-        These columns correspond to custom node properties.
-        Examples of node properties are:
-        - value
-        - lowerbound
-        - upperbound
-        - unit
-
-        """
-
-        # Define the set of base columns that will be excluded
-        # from the list of optional property values.
-        return {'node_id',
-                     'node_label',
-                     'node_definition',
-                     'node_synonyms',
-                     'node_dbxrefs',
-                     'cui',
-                     'assigned_cui',
-                     'assignment_comment',
-                     # Exclude coderel merge artifacts:
-                     'start_id',
-                     'end_id',
-                     'label',
-                     'properties_sab',
-                     'properties_def',
-                     'properties_tty',
-                     'properties_codeid',
-                     'labels',
-                     'properties_id'
-                     }
-
 
     def _parse_cui_list(self, val):
         """
@@ -1783,6 +1831,70 @@ class Sabjkgimport:
                 rename_map[f'{col}_x'] = col
         return rename_map
 
+    def _build_new_non_coderel(self, row:pd.Series, sab:str):
+        """
+        Builds a single edge dict from a row of self.jkgen.edges (a pandas Series,
+        as passed by DataFrame.apply(..., axis=1)).
+
+        :param row: pandas Series representing one row of the edges DataFrame
+        :param sab: source abbreviation to stamp onto the edge
+        :raises Exception: if the row contains a column not in EXPECTED_COLUMNS
+        """
+
+        """
+        The row contains fields from merging.
+        """
+        EXPECTED_COLUMNS = {
+            "subject",
+            "predicate",
+            "object",
+            "node_id_x",
+            "node_label_x",
+            "node_definition_x",
+            "node_synonyms_x",
+            "node_dbxrefs_x",
+            "cuis_x",
+            "start_cui",
+            "start_cui",
+            "assignment_comment_x",
+            "node_id_y",
+            "node_label_y",
+            "node_definition_y",
+            "node_synonyms_y",
+            "node_dbxrefs_y",
+            "cuis_y",
+            "end_cui",
+            "assignment_comment_y"
+        }
+        row_columns = set(row.index)
+
+        unexpected = row_columns - EXPECTED_COLUMNS
+        if unexpected:
+            raise Exception(f"Unexpected field(s) in edge row: {sorted(unexpected)}")
+
+        has_evidence_class = "evidence_class" in row_columns
+        has_value = "value" in row_columns
+        has_lowerbound = "lowerbound" in row_columns
+        has_upperbound = "upperbound" in row_columns
+        has_unit = "unit" in row_columns
+
+        value = row.get("value") if has_value else None
+
+        return {
+            "label": row["predicate"],
+            "start_id": row["start_cui"],
+            "end_id": row["end_cui"],
+            "properties_sab": sab,
+            # Optional attribute columns: null when absent rather than omitted,
+            # for a consistent/nullable schema.
+            "attribute": row.get("evidence_class") if has_evidence_class else None,
+            "valuestr": str(value) if value is not None else None,
+            "value": float(value) if isinstance(value, float) else None,
+            "lowerbound": float(row["lowerbound"]) if has_lowerbound and row["lowerbound"] is not None else None,
+            "upperbound": float(row["upperbound"]) if has_upperbound and row["upperbound"] is not None else None,
+            "unit": str(row["unit"]) if has_unit and row["unit"] is not None else None,
+        }
+
     def _build_new_non_coderels(self) -> list[dict]:
         """
         Translates the edges in a JKGEN edge file to a list of
@@ -1793,11 +1905,10 @@ class Sabjkgimport:
 
         utimer = UbkgTimer(display_msg='Building new non-CODE rels.')
 
-
         """
-        CUSTOM EDGE PROPERTIES
-        The edge file has a variable number of columns that
-        represent edge properties. Include these as flattened
+        OPTIONAL EDGE PROPERTIES
+        The edge file may have columns that
+        represent attribute-related edge properties. Include these as flattened
         members of a "properties" object. 
 
         For each optional column, there will be a corresponding
@@ -1819,9 +1930,8 @@ class Sabjkgimport:
             'properties_codeid',
             'properties_tty'
         }
-        # Custom property columns.
+        # Optional property columns.
         custom_prop_cols = [c for c in self.jkgen.edges.columns if c not in base_cols]
-
 
         """
         IDENTIFY SUBJECT CUIS
@@ -1856,11 +1966,10 @@ class Sabjkgimport:
             left_on='object',
             right_on='node_id').rename(columns={'assigned_cui': 'end_cui'})
 
-
         # Fix any custom property columns that got a _x suffix due to naming collisions.
-        rename_map = self._map_restored_custom_col_names(dfrels=self.jkgen.edges, custom_prop_cols=custom_prop_cols)
-        if rename_map:
-            self.jkgen.edges = self.jkgen.edges.rename(columns=rename_map)
+        #rename_map = self._map_restored_custom_col_names(dfrels=self.jkgen.edges, custom_prop_cols=custom_prop_cols)
+        #if rename_map:
+            #self.jkgen.edges = self.jkgen.edges.rename(columns=rename_map)
 
 
         utimer.stop()
@@ -1872,20 +1981,12 @@ class Sabjkgimport:
         df_self_edge.to_csv(self_edge_file, sep='\t',index=False)
         self._unload_item(item_to_unload=df_self_edge,item_name='_build_new_non_coderels: df_self_edge')
 
-
         # Remove self-referential edges.
         self.jkgen.edges=self.jkgen.edges[self.jkgen.edges['start_cui'] != self.jkgen.edges['end_cui']]
 
-        # Vectorized build, using packing operator.
-        # Note that the key for node objects is "label", not "labels".
-
-        return self.jkgen.edges.apply(lambda row: {
-            "label": row['predicate'],
-            "start_id": row['start_cui'],
-            "end_id": row['end_cui'],
-            "properties_sab": self.sab,
-            **{f"properties_{c}": row[c] for c in custom_prop_cols}
-        }, axis=1).tolist()
+        return self.jkgen.edges.apply(
+            lambda row: self._build_new_non_coderel(row, self.sab), axis=1
+        ).tolist()
 
 
     def _unflatten_objects(self, progress_display: str = "", list_flat_objects: list = "") -> list:

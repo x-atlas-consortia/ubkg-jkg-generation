@@ -6,10 +6,10 @@ Class that manages the JKG JSON.
 import os
 import gc
 import ijson
-import polars as pl
 import pandas as pd
 from tqdm import tqdm
 from typing import Any
+import pyarrow as pa
 
 # Centralized logging object
 from .ubkg_logging import ubkgLogging
@@ -17,21 +17,260 @@ from .ubkg_logging import ubkgLogging
 from .ubkg_config import ubkgConfigParser
 # Progress bar wrapper for reads of large JSON files
 from .progressfile import ProgressFile
+# tqdm-based timer
 from .ubkg_timer import UbkgTimer
+# file i/o
 from .ubkg_extract import ubkgExtract
-
-from ..functions.find_repo_root import find_repo_root
-
+# streaming Parquet writer
+from .parquet_bucket_writer import ParquetBucketWriter
 
 class Jkgjson:
 
-    def _load_jkg_json(self, max_nodes: int = None, max_rels: int = None):
+    def _flatten_jkg_json_object_to_row_dict(self, object_type: str, item: dict)->dict:
+        """
+        Flattens a nested JSON object from the JKG JSON file to a Python dictionary.
+        :param object_type: The type of object to flatten.
+        :param item: an item dict read from ijson
+        :return: a dict corresponding to the flattened JSON object
+        """
+
+        """
+        Flatten according to the JKG JSON schema.
+        Identify keys that do not match the schema.
+        """
+
+        if object_type == "nodes.item":
+
+            row = {"labels": item.get("labels", [])}
+            # Superset of property fields for all node objects.
+            node_property_keys = [
+                "id", # all nodes
+                "sab", # all nodes
+                "name", # Source
+                "description", # Source
+                "source_version", # Source
+                "srl", # Source
+                "ttyl", # Source
+                "node_label", # Node_Label
+                "def", # Node_Label
+                "rel_label", # Rel_Label
+                "pref_term" # Concept
+                ]
+            properties = item.get("properties", {})
+            for k,v in properties.items():
+                if k in node_property_keys:
+                    row[f"properties_{k}"] = v
+                else:
+                    raise Exception(f"Unknown node property: {k}")
+
+        elif object_type == "rels.item":
+            row = {
+                    "label": item.get("label"),
+                    "start_id": item.get("start", {}).get("properties", {}).get("id"),
+                    "end_id": item.get("end", {}).get("properties", {}).get("id")
+                   }
+            # Property fields for CODE rel objects.
+            coderel_property_keys = [
+                "sab",  # all rels
+                "codeid",  # CODE rels
+                "tty",  # CODE rels
+                "def",  # CODE rels,
+                "attribute",
+                "valuestr",
+                "value",
+                "upperbound",
+                "lowerbound",
+                "unit"
+            ]
+            # Property keys for non-CODE rel objects
+            non_coderel_property_keys = [
+                "sab", # all rels
+                "attribute",
+                "valuestr",
+                "value",
+                "upperbound",
+                "lowerbound",
+                "unit"
+                ]
+            properties = item.get("properties", {})
+
+            """
+            The JKG JSON schema specifies an optional set of keys for 
+                attribute
+                valuestr
+                value
+                upperbound
+                lowerbound
+                unit
+            However, because Parquet is a columnar format, the columns must be specified before
+            writing to file.
+            """
+            has_attribute_key = False
+            has_valuestr_key = False
+            has_value_key = False
+            has_upperbound_key = False
+            has_lowerbound_key = False
+            has_unit_key = False
+
+            if item.get("label") == "CODE":
+                rel_property_keys = coderel_property_keys
+                rel_property_name = "CODE rel"
+            else:
+                rel_property_keys = non_coderel_property_keys
+                rel_property_name = "non-CODE rel"
+
+            for k,v in properties.items():
+                if k in rel_property_keys:
+                    row[f"properties_{k}"] = v
+                else:
+                    raise Exception(f"Unknown {rel_property_name} property: {k}")
+
+                if k == "attribute":
+                    has_attribute_key = True
+                if k == "valuestr":
+                    has_valuestr_key = True
+                if k == "value":
+                    has_value_key = True
+                if k == "upperbound":
+                    has_upperbound_key = True
+                if k == "lowerbound":
+                    has_lowerbound_key = True
+                if k == "unit":
+                    has_unit_key = True
+            if not has_attribute_key:
+                row["properties_attribute"] = ""
+            if not has_valuestr_key:
+                row["properties_valuestr"] = ""
+            # value, upperbound, and lowerbound are numeric.
+            if not has_value_key:
+                row["properties_value"] = None
+            if not has_upperbound_key:
+                row["properties_upperbound"] = None
+            if not has_lowerbound_key:
+                row["properties_lowerbound"] = None
+            if not has_unit_key:
+                row["properties_unit"] = ""
+        else:
+            raise Exception(f"Unknown JSON object type : {object_type}")
+
+        return row
+
+    def _define_schemas(self):
+
+        # Defines Parquet schemas per file type.
+
+        # Source
+        SOURCE_SCHEMA = pa.schema([
+            ("labels", pa.list_(pa.string())),
+            ("properties_id", pa.string()),
+            ("properties_name", pa.string()),
+            ("properties_description", pa.string()),
+            ("properties_sab", pa.string()),
+            ("properties_source_version", pa.string()),
+            ("properties_srl", pa.string()),
+            ("properties_ttyl", pa.list_(pa.string()))
+        ])
+
+        # Node_Label
+        NODE_LABEL_SCHEMA = pa.schema([
+            ("labels", pa.list_(pa.string())),
+            ("properties_id", pa.string()),
+            ("properties_def", pa.string()),
+            ("properties_node_label", pa.string()),
+            ("properties_sab", pa.string()),
+        ])
+
+        # Rel_Label
+        REL_LABEL_SCHEMA = pa.schema([
+            ("labels", pa.list_(pa.string())),
+            ("properties_id", pa.string()),
+            ("properties_def", pa.string()),
+            ("properties_rel_label", pa.string()),
+            ("properties_sab", pa.string())
+        ])
+
+        # Concept
+        CONCEPT_SCHEMA = pa.schema([
+            ("labels", pa.list_(pa.string())),
+            ("properties_id", pa.string()),
+            ("properties_pref_term", pa.string()),
+            ("properties_sab", pa.string())
+        ])
+
+        # Term
+        TERM_SCHEMA = pa.schema([
+            ("labels", pa.list_(pa.string())),
+            ("properties_id", pa.string())
+        ])
+
+        # coderel
+        CODEREL_SCHEMA = pa.schema([
+            ("label", pa.string()),
+            ("start_id", pa.string()),
+            ("end_id", pa.string()),
+            ("properties_sab", pa.string()),
+            ("properties_def", pa.string()),
+            ("properties_tty", pa.string()),
+            ("properties_codeid", pa.string()),
+            ("properties_attribute", pa.string()),
+            ("properties_valuestr", pa.string()),
+            ("properties_value", pa.float64()),
+            ("properties_lowerbound", pa.float64()),
+            ("properties_upperbound", pa.float64()),
+            ("properties_unit", pa.string())
+        ])
+
+        # rel
+        REL_SCHEMA = pa.schema([
+            ("label", pa.string()),
+            ("start_id", pa.string()),
+            ("end_id", pa.string()),
+            ("properties_sab", pa.string()),
+            ("properties_attribute", pa.string()),
+            ("properties_valuestr", pa.string()),
+            ("properties_value", pa.float64()),
+            ("properties_lowerbound", pa.float64()),
+            ("properties_upperbound", pa.float64()),
+            ("properties_unit", pa.string())
+        ])
+
+        self.SCHEMAS = {
+            "Source": SOURCE_SCHEMA,
+            "Node_Label": NODE_LABEL_SCHEMA,
+            "Rel_Label": REL_LABEL_SCHEMA,
+            "Concept": CONCEPT_SCHEMA,
+            "Term": TERM_SCHEMA,
+            "coderel": CODEREL_SCHEMA,
+            "rel": REL_SCHEMA
+        }
+
+    def _define_paths(self):
+
+        # Paths to Parquet files.
+        source_nodes_path = os.path.join(self.jkg_json_dir, 'source_nodes.parquet')
+        node_label_nodes_path = os.path.join(self.jkg_json_dir, 'node_label_nodes.parquet')
+        rel_label_nodes_path = os.path.join(self.jkg_json_dir, 'rel_label_nodes.parquet')
+        concept_nodes_path = os.path.join(self.jkg_json_dir, 'concept_nodes.parquet')
+        term_nodes_path = os.path.join(self.jkg_json_dir, 'term_nodes.parquet')
+        rel_rows_path = os.path.join(self.jkg_json_dir, 'rels.parquet')
+        code_rel_rows_path = os.path.join(self.jkg_json_dir, 'coderels.parquet')
+
+        self.paths = {
+            "Source": source_nodes_path,
+            "Node_Label": node_label_nodes_path,
+            "Rel_Label": rel_label_nodes_path,
+            "Concept": concept_nodes_path,
+            "Term": term_nodes_path,
+            "rel": rel_rows_path,
+            "coderel": code_rel_rows_path
+        }
+
+    def _load_jkg_json(self):
 
         """
         Does the following:
 
-        1. Loads the JKG JSON file into a set of Pandas Dataframes, in a single
-        pass for:
+        1. Streams the JKG JSON file, separating objects into Parquet files:
 
            - Nodes
              - Source nodes
@@ -43,355 +282,160 @@ class Jkgjson:
              - "coderels" or concept-term (code) relationships
              - other rels (concept-concept relationships)
 
-           The structure of DataFrames depends on the content:
+           The structure of streamed rows depends on the content:
            - nodes: one row per node, with 'labels' as a list column and properties flattened as columns
            - rels: one row per relationship, with start/end/properties flattened as columns
 
-        2. To conserve memory, exports DataFrames to temporary files.
-
-        :param max_nodes: maximum number of nodes to load. None loads all nodes.
-        :param max_rels: maximum number of rels to load. None loads all rels.
-
-        Note that because the nodes array is before the rels array in the JKG JSON,
-        the entire nodes array will be read, even if max_nodes is set.
-        This is primarily for debugging purposes to limit the read time of large
-        JKG JSON files.
-
-
         """
 
-        self.log.print_and_logger_info('*** READING JKG JSON FILE ***')
-        # Treat 0 or None as "load all".
-        max_nodes = None if not max_nodes else max_nodes
-        max_rels = None if not max_rels else max_rels
-
-        if max_nodes is not None and max_rels is not None:
-            self.log.print_and_logger_info(f'Reading only {max_nodes} nodes and {max_rels} rels from {self.jkg_json_filename}.')
+        self.log.print_and_logger_info('*** STREAMING JKG JSON FILE to a set of Parquet files ***')
 
         # Build the full path to JKG JSON file.
         jkg_json_full = os.path.join(self.jkg_json_dir, self.jkg_json_filename)
-        if not(os.path.exists(jkg_json_full)):
+        if not (os.path.exists(jkg_json_full)):
             self.log.print_and_logger_error(f"JKG JSON file {jkg_json_full} not found.")
             exit(1)
+
         # Get the file size of JKG JSON for tqdm.
         self.file_size = os.path.getsize(jkg_json_full)
 
-        # Node types:
-        # - Source
-        # - Node_Label
-        # - Rel_Label
-        # - Term
-        # - Concept
-        source_node_rows = []
-        node_label_node_rows = []
-        rel_label_node_rows = []
-        concept_node_rows = []
-        term_node_rows = []
+        """
+        SET UP STREAMING PARQUET BUCKET WRITERS.
+        Each JSON object streamed from the JKG JSON will be converted to a flattened row and added to a
+        "bucket" that corresponds to the object's type. The bucket's writer will write batches of row
+        content to a Parquet file for the object type.
+        """
 
-        # Rel types
-        # These are not specified explicitly in the JKG Schema.
-        # - coderels--concept-term (code) relationships
-        # - rels--concept-concept relationships
-        code_rel_rows = []
-        rel_rows = []
+        node_buckets = {
+            "Source": ParquetBucketWriter(path=self.paths["Source"],schema=self.SCHEMAS["Source"]),
+            "Node_Label": ParquetBucketWriter(path=self.paths["Node_Label"],schema=self.SCHEMAS["Node_Label"]),
+            "Rel_Label": ParquetBucketWriter(path=self.paths["Rel_Label"],schema=self.SCHEMAS["Rel_Label"]),
+            "Concept": ParquetBucketWriter(path=self.paths["Concept"],schema=self.SCHEMAS["Concept"]),
+            "Term": ParquetBucketWriter(path=self.paths["Term"],schema=self.SCHEMAS["Term"]),
+        }
+        rel_bucket = ParquetBucketWriter(path=self.paths["rel"],schema=self.SCHEMAS["rel"])
+        code_rel_bucket = ParquetBucketWriter(path=self.paths["coderel"],schema=self.SCHEMAS["coderel"])
 
-        with open(jkg_json_full, "rb") as f:
+        # Initialize object type counts.
+        counts = {k: 0 for k in node_buckets}
+        rel_count = 0
+        code_rel_count = 0
 
-            with tqdm(desc=f"Reading from {self.jkg_json_filename}",
-                      total=self.file_size,
-                      unit="B", unit_scale=True, unit_divisor=1024) as pbar:
+        # Stream through the JKG JSON file.
+        try:
 
-                # Wrap the ijson streaming read with a progress bar.
-                pf = ProgressFile(f, pbar)
+            with open(jkg_json_full, "rb") as f:
 
-                # Iterate parse events and use ijson.ObjectBuilder to reconstruct each item.
-                builder = None
-                current_key = None
+                # tqdm progress indicator
+                with tqdm(desc=f"Reading from {self.jkg_json_filename}",
+                          total=self.file_size,
+                          unit="B", unit_scale=True, unit_divisor=1024) as pbar:
 
-                for prefix, event, value in ijson.parse(pf):
+                    # Wrap the ijson streaming read with a custom tqdm progress bar.
+                    pf = ProgressFile(f, pbar)
 
-                    # Stop early if both limits are reached.
-                    num_nodes = len(source_node_rows) \
-                                + len(node_label_node_rows) \
-                                + len(rel_label_node_rows) \
-                                +len(concept_node_rows) \
-                                + len(term_node_rows)
-                    num_rels = len(code_rel_rows) + len(rel_rows)
+                    # Iterate parse events (i.e., read the file). Use ijson.ObjectBuilder to reconstruct each item.
+                    builder = None
 
-                    nodes_done = max_nodes is not None and num_nodes >= max_nodes
-                    rels_done = max_rels is not None and num_rels >= max_rels
-                    if nodes_done and rels_done:
-                        break
+                    for prefix, event, value in ijson.parse(pf):
 
-                    # Detect which top-level array we are in.
-                    if prefix == "nodes" and event == "start_array":
-                        current_key = "nodes"
-                    elif prefix == "rels" and event == "start_array":
-                        current_key = "rels"
-
-                    # Skip building if this array's limit is already reached.
-                    if prefix == "nodes.item" and event == "start_map":
-                        if max_nodes is None or num_nodes < max_nodes:
-                            builder = ijson.ObjectBuilder()
-                    elif prefix == "rels.item" and event == "start_map":
-                        if max_rels is None or num_rels < max_rels:
+                        """
+                        If the parse event corresponds to the start of a node or rel object,
+                        instantiate an ijson ObjectBuilder object.
+                        """
+                        if prefix in ["nodes.item","rels.item"] and event == "start_map":
                             builder = ijson.ObjectBuilder()
 
-                    if builder is not None:
-                        # Process the node/rel information.
-                        builder.event(event, value)
+                        if builder is not None:
+                            # Process the node or rel information.
+                            builder.event(event, value)
 
-                        # End of the current item.
-                        # Flatten the item into a row.
+                            """
+                            If this is the end parsing event of the current item, 
+                            flatten the object into a row.
+                            """
+                            object_type = prefix
 
-                        if event == "end_map" and prefix in ("nodes.item", "rels.item"):
-                            item = builder.value
-                            if prefix == "nodes.item":
+                            if event == "end_map" and object_type in ("nodes.item", "rels.item"):
 
-                                # Flatten the properties object using the unpacking operator.
-                                properties = item.get("properties", {})
-                                row = {
-                                    "labels": item.get("labels", []),
-                                    **{f"properties_{k}": v for k, v in properties.items()}
-                                }
-                                # Split node objects by type.
-                                labels = item.get("labels", [])
-                                if "Source" in labels:
-                                    source_node_rows.append(row)
-                                elif "Node_Label" in labels:
-                                    node_label_node_rows.append(row)
-                                elif "Rel_Label" in labels:
-                                    rel_label_node_rows.append(row)
-                                elif "Concept" in labels:
-                                    concept_node_rows.append(row)
-                                elif "Term" in labels:
-                                    term_node_rows.append(row)
+                                row = self._flatten_jkg_json_object_to_row_dict(item=builder.value, object_type=object_type)
+
+                                if object_type == "nodes.item":
+                                    # Split node objects by type.
+
+                                    labels = row.get("labels", [])
+                                    matched = False
+
+                                    for label_key in ("Source", "Node_Label", "Rel_Label", "Concept", "Term"):
+                                        if label_key in labels:
+                                            """
+                                            Add the row to the buffer of the appropriate bucket writer. 
+                                            The bucket writer will manage writes to the corresponding Parquet file..
+                                            """
+                                            node_buckets[label_key].add(row)
+                                            counts[label_key] += 1
+                                            matched = True
+                                            break
+                                    if not matched:
+                                        raise Exception(f"Unknown node type: {labels}")
+
                                 else:
-                                    raise Exception(f"Unknown node type: {labels}")
 
-                            elif prefix == "rels.item":
-                                properties = item.get("properties", {})
-                                # Flatten the properties object using the unpacking operator.
-                                row = {
-                                    "label": item.get("label"),
-                                    "start_id": item.get("start", {}).get("properties", {}).get("id"),
-                                    "end_id": item.get("end", {}).get("properties", {}).get("id"),
-                                    **{f"properties_{k}": v for k, v in properties.items()}
-                                }
-                                # Split coderels from other rels.
-                                label = item.get("label","")
-                                if label=="CODE":
-                                    code_rel_rows.append(row)
-                                else:
-                                    rel_rows.append(row)
+                                    """
+                                    Split coderels from non-CODE rels.
+                                    Add row to the buffer of the appropriate bucket writer. 
+                                    """
 
-                            builder = None
+                                    if row.get("label") == "CODE":
+                                        # Exclude MTH:NOCODE codes from the UMLS.
+                                        if row.get("properties_codeid") != "MTH:NOCODE":
+                                            code_rel_bucket.add(row)
+                                            code_rel_count += 1
+                                    else:
 
-            self.log.print_and_logger_info(f'*** JKG JSON LOAD SUMMARY:')
-            self.log.print_and_logger_info('* NODE OBJECTS')
-            self.log.print_and_logger_info(f"---- Source nodes: {len(source_node_rows):,}")
-            self.log.print_and_logger_info(f"---- Node_Label nodes: {len(node_label_node_rows):,}")
-            self.log.print_and_logger_info(f"---- Relation_Label nodes: {len(rel_label_node_rows):,}")
-            self.log.print_and_logger_info(f"---- Concept nodes: {len(concept_node_rows):,}")
-            self.log.print_and_logger_info(f"---- Term nodes: {len(term_node_rows):,}")
-            self.log.print_and_logger_info('* REL OBJECTS')
-            self.log.print_and_logger_info(f"---- non-CODE rels: {len(rel_rows):,}")
-            self.log.print_and_logger_info(f"---- CODE rels: {len(code_rel_rows):,}")
+                                        rel_bucket.add(row)
+                                        rel_count += 1
 
-            """
-            To conserve memory, export subsets of JKG JSON to temporary files. 
-            
-            To reduce memory pressure, export subsets in order of size of export 
-            rather than the order in which they appear in the JKG JSON file:
-            1. CODE rels
-            2. rels
-            3. Concept nodes
-            4. Term nodes
-            5. Rel_Label nodes
-            6. Source nodes
-            7. Node_Label nodes
-            
-            Note that the order by size is almost the exact reverse of the order of appearance.
-            """
+                                builder = None
+        finally:
+            # Close open writer buckets so that bucket writers correctly write Parquet footers in files..
+            for bucket in node_buckets.values():
+                bucket.close()
+            rel_bucket.close()
+            code_rel_bucket.close()
 
-            # CODE rels
-            self._export_coderels(rows=code_rel_rows)
-
-            # non-CODE rels
-            self._export_non_coderels(rows=rel_rows)
-
-            # Concept nodes
-            self._export_concept_nodes(rows=concept_node_rows)
-
-            # Term nodes
-            self._export_term_nodes(rows=term_node_rows)
-
-            # Rel_Label nodes
-            self._export_rel_label_nodes(rows=rel_label_node_rows)
-
-            # Source nodes
-            self._export_source_nodes(rows=source_node_rows)
-
-            # Node_Label nodes
-            self._export_node_label_nodes(rows=node_label_node_rows)
-
-    def _export_coderels(self, rows:list):
-        """
-        Export coderels DataFrame to temporary file.
-
-        :param rows: list of rows to export
-
-        Special processing: delete MTH:NOCODE rels
+        # Report counts.
+        self.log.print_and_logger_info(f'*** JKG JSON LOAD SUMMARY:')
+        self.log.print_and_logger_info('* NODE OBJECTS')
+        self.log.print_and_logger_info(f"---- Source nodes: {counts['Source']:,}")
+        self.log.print_and_logger_info(f"---- Node_Label nodes: {counts['Node_Label']:,}")
+        self.log.print_and_logger_info(f"---- Rel_Label nodes: {counts['Rel_Label']:,}")
+        self.log.print_and_logger_info(f"---- Concept nodes: {counts['Concept']:,}")
+        self.log.print_and_logger_info(f"---- Term nodes: {counts['Term']:,}")
+        self.log.print_and_logger_info('* REL OBJECTS')
+        self.log.print_and_logger_info(f"---- non-CODE rels: {rel_count:,}")
+        self.log.print_and_logger_info(f"---- CODE rels: {code_rel_count:,}")
 
         """
-        utimer = UbkgTimer(display_msg="Building CODE rels DataFrame")
-        self.coderels = pd.DataFrame(rows).fillna('')
-        utimer.stop()
-
-        # Unload CODE rel list from memory.
-        self._unload_item(item_to_unload=rows)
-
-        # Remove MTH:NOCODE rels
-        utimer = UbkgTimer(display_msg="Deleting MTH:NOCODE CODE rels")
-        self.coderels = self.coderels.loc[self.coderels['properties_codeid'] != 'MTH:NOCODE'].copy()
-        utimer.stop()
-
-        self.log.print_and_logger_info('Exporting CODE rels DataFrame to temporary file')
-        self._export_unload_dataframe(dfexport=self.coderels, filename='coderels')
-
-        # Unload DataFrame from memory.
-        self._unload_item(item_to_unload=self.coderels)
-
-    def _export_non_coderels(self, rows:list):
+        Remove duplicate term nodes by:
+        1. Re-reading from the Parquet file of term node information into a Pandas DataFrame.
+        2. Dropping duplicates.
+        3. Writing the de-duplicated Pandas DataFrame back to the Parquet file.
         """
-        Export non-coderels DataFrame to temporary file.
-        :param rows: list of rows to export
-        """
-        utimer = UbkgTimer(display_msg="Building non-CODE rels DataFrame")
-        self.rels = pd.DataFrame(rows).fillna('')
-        utimer.stop()
-
-        # Unload rel list from memory.
-        self._unload_item(item_to_unload=rows)
-
-        self.log.print_and_logger_info('Exporting non-CODE rels DataFrame to temporary file')
-        self._export_unload_dataframe(dfexport=self.rels, filename='rels')
-
-        # Unload DataFrame from memory.
-        self._unload_item(item_to_unload=self.rels)
-
-    def _export_concept_nodes(self, rows:list):
-        """
-        Export concept nodes DataFrame to temporary file.
-        :param rows: list of rows to export
-
-        """
-        utimer = UbkgTimer(display_msg="Building Concept nodes DataFrame")
-        self.concept_nodes = pd.DataFrame(rows).fillna('')
-        utimer.stop()
-
-        # Unload node list from memory.
-        self._unload_item(item_to_unload=rows)
-
-        self.log.print_and_logger_info('Exporting Concept nodes DataFrame to temporary file')
-        self._export_unload_dataframe(dfexport=self.concept_nodes, filename='concept_nodes')
-
-        # Unload DataFrame from memory.
-        self._unload_item(item_to_unload=self.concept_nodes)
-
-    def _export_term_nodes(self, rows:list):
-        """
-        Export term nodes DataFrame to temporary file.
-        Special processing: drop duplicates.
-
-        :param rows: list of rows to export
-        """
-        utimer = UbkgTimer(display_msg="Building Term nodes DataFrame")
-
-        # When creating DataFrame, drop duplicate term nodes.
-        self.term_nodes = pd.DataFrame(rows).fillna('').drop_duplicates('properties_id')
-        utimer.stop()
-
-        # Unload node list from memory.
-        self._unload_item(item_to_unload=rows)
-
-        self.log.print_and_logger_info('Exporting Term nodes DataFrame to temporary file')
-        self._export_unload_dataframe(dfexport=self.term_nodes, filename='term_nodes')
-
-        # Unload DataFrame from memory.
-        self._unload_item(item_to_unload=self.term_nodes)
-
-    def _export_rel_label_nodes(self, rows:list):
-        """
-        Export rel label nodes DataFrame to temporary file.
-        :param rows: list of rows to export
-
-        """
-        utimer = UbkgTimer(display_msg="Building Rel_Label nodes DataFrame")
-        self.rel_label_nodes = pd.DataFrame(rows).fillna('')
-        utimer.stop()
-
-        # Unload node list from memory.
-        self._unload_item(item_to_unload=rows)
-
-        self.log.print_and_logger_info('Exporting Rel_Label nodes DataFrame to temporary file')
-        self._export_unload_dataframe(dfexport=self.rel_label_nodes, filename='rel_label_nodes')
-
-        # Unload DataFrame from memory.
-        self._unload_item(item_to_unload=self.rel_label_nodes)
-
-    def _export_source_nodes(self, rows:list):
-        """
-        Export source nodes DataFrame to temporary file.
-        :param rows: list of rows to export
-
-        """
-        utimer = UbkgTimer(display_msg="Building Source nodes DataFrame")
-        self.source_nodes = pd.DataFrame(rows).fillna('')
-        utimer.stop()
-
-        # Unload node list from memory.
-        self._unload_item(item_to_unload=rows)
-
-        self.log.print_and_logger_info('Exporting Source nodes DataFrame to temporary file')
-        self._export_unload_dataframe(dfexport=self.source_nodes, filename='source_nodes')
-
-        # Unload DataFrame from memory.
-        self._unload_item(item_to_unload=self.source_nodes)
-
-    def _export_node_label_nodes(self, rows:list):
-        """
-        Export node label nodes DataFrame to temporary file.
-        :param rows: list of rows to export
-
-        """
-        utimer = UbkgTimer(display_msg="Building Node_Label nodes DataFrame")
-        self.node_label_nodes = pd.DataFrame(rows).fillna('')
-        utimer.stop()
-
-        # Unload node list from memory.
-        self._unload_item(item_to_unload=rows)
-
-        self.log.print_and_logger_info('Exporting Node_Label nodes DataFrame to temporary file')
-        self._export_unload_dataframe(dfexport=self.node_label_nodes, filename='node_label_nodes')
-
-        # Unload DataFrame from memory.
-        self._unload_item(item_to_unload=self.node_label_nodes)
+        self.log.print_and_logger_info("Dropping duplicates from terms Parquet file.")
+        dfterms = self.load_dataframe(filename='term_nodes')
+        dfterms = dfterms.drop_duplicates('properties_id')
+        self._export_unload_dataframe(dfexport=dfterms,filename='term_nodes')
 
 
     def _export_unload_dataframe(self, dfexport:pd.DataFrame, filename: str):
         """
-        Exports a DataFrame to file and frees memory.
+        Exports a DataFrame to a Parquet file and frees memory.
 
-        The use case is a DataFrame that is a subset of nodes from the JKG JSON file.
+        The use case is a DataFrame containing a subset of nodes from the JKG JSON file.
         :param dfexport: DataFrame
         :param filename: name of the export file, without extension
         """
-        #if filename == 'concept_nodes':
-            #outfile = os.path.join(self.jkg_json_dir, filename + '.tsv')
-            #self.uextract.to_csv_with_progress_bar(df=dfexport, path=outfile, sep='\t',index=False)
-            #print('DEBUG EXIT')
-            #exit(1)
 
         outfile = os.path.join(self.jkg_json_dir, filename + '.parquet')
         self.uextract.to_parquet_with_progress_bar(df=dfexport, outpath=outfile)
@@ -400,14 +444,13 @@ class Jkgjson:
 
     def load_dataframe(self,filename:str)->pd.DataFrame:
         """
-        Imports a DataFrame from a temporary file.
+        Imports a DataFrame from a temporary Parquet file.
         :param filename: name of the temporary file, without extension
         :return: DataFrame
         """
 
         infile = os.path.join(self.jkg_json_dir, filename + '.parquet')
         self.log.print_and_logger_info(f'Loading DataFrame from {infile}')
-        #return self.uextract.read_csv_with_progress_bar(path=infile, sep='\t').fillna('')
         return self.uextract.read_parquet_with_progress_bar(path=infile)
 
     def _unload_item(self, item_to_unload:Any):
@@ -417,7 +460,7 @@ class Jkgjson:
 
         """
 
-        self.log.print_and_logger_info(f'Unloading item...')
+        self.log.print_and_logger_info(f'Unloading {type(item_to_unload)}.')
         if type(item_to_unload) is list:
             item_to_unload.clear()
         if type(item_to_unload) is pd.DataFrame:
@@ -425,8 +468,7 @@ class Jkgjson:
 
         gc.collect()
 
-    def __init__(self, log: ubkgLogging, cfg: ubkgConfigParser,
-                 max_nodes: int=0, max_rels: int=0) -> None:
+    def __init__(self, log: ubkgLogging, cfg: ubkgConfigParser) -> None:
         self.log = log
         self.cfg = cfg
 
@@ -438,8 +480,14 @@ class Jkgjson:
         # For exporting and importing DataFrames of subsets of the JKG JSON.
         self.uextract = ubkgExtract(ulog=self.log)
 
-        # Read the JKG JSON file and separate the different types of nodes and rels into DataFrames.
-        self._load_jkg_json(max_nodes=max_nodes, max_rels=max_rels)
+        # Define Parquet schemas and output paths
+        self._define_schemas()
+        self._define_paths()
+
+        # Stream the JKG JSON file and separate the different types of nodes and rels into Parquet files.
+        self._load_jkg_json()
+
+
 
 
 
