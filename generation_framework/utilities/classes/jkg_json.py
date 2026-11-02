@@ -47,6 +47,7 @@ class Jkgjson:
                 "id", # all nodes
                 "sab", # all nodes
                 "name", # Source
+                "source", # Source (URL)
                 "description", # Source
                 "source_version", # Source
                 "srl", # Source
@@ -61,6 +62,7 @@ class Jkgjson:
                 if k in node_property_keys:
                     row[f"properties_{k}"] = v
                 else:
+                    print(row)
                     raise Exception(f"Unknown node property: {k}")
 
         elif object_type == "rels.item":
@@ -167,6 +169,7 @@ class Jkgjson:
             ("properties_description", pa.string()),
             ("properties_sab", pa.string()),
             ("properties_source_version", pa.string()),
+            ("properties_source", pa.string()),
             ("properties_srl", pa.string()),
             ("properties_ttyl", pa.list_(pa.string()))
         ])

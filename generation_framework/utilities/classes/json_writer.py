@@ -15,6 +15,7 @@ be significant for the two format options.
 import json
 import textwrap
 from tqdm import tqdm
+import math
 
 class JsonWriter:
 
@@ -95,11 +96,11 @@ class JsonWriter:
                 else:
                     if self.write_pretty:
                         # Pretty-print the node.
-                        node_json = json.dumps(node, ensure_ascii=False, indent=self.indent_spaces, default=str)
+                        node_json = json.dumps(self._json_safe(node), ensure_ascii=False, indent=self.indent_spaces, default=str, allow_nan=False)
                         node_indented = textwrap.indent(node_json, self.node_indent)
                     else:
                         # Use minimal separator spacing, with a small indent.
-                        node_json = json.dumps(node, ensure_ascii=False, separators=(',', ':'), default=str)
+                        node_json = json.dumps(self._json_safe(node), ensure_ascii=False, separators=(',', ':'), default=str, allow_nan=False)
                         node_indented = self.node_indent + node_json
 
                 # Write comma+newline before each node except the first
@@ -107,6 +108,19 @@ class JsonWriter:
                     f.write(",\n")
 
                 f.write(node_indented)
+
+    def _json_safe(self,value):
+
+        """
+        Converts input values to values safe for JSON serialization.
+        """
+        if isinstance(value, dict):
+            return {k: self._json_safe(v) for k, v in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [self._json_safe(v) for v in value]
+        if isinstance(value, (int, float)):
+            return value if math.isfinite(value) else None
+        return value
 
     def write_list(self, list_name: str, list_content):
         """
@@ -145,10 +159,10 @@ class JsonWriter:
                     node_indented = node.strip()
                 else:
                     if self.write_pretty:
-                        node_json = json.dumps(node, ensure_ascii=False, indent=self.indent_spaces, default=str)
+                        node_json = json.dumps(self._json_safe(node), ensure_ascii=False, indent=self.indent_spaces, default=str, allow_nan=False)
                         node_indented = textwrap.indent(node_json, self.node_indent)
                     else:
-                        node_json = json.dumps(node, ensure_ascii=False, separators=(',', ':'), default=str)
+                        node_json = json.dumps(self._json_safe(node), ensure_ascii=False, separators=(',', ':'), default=str, allow_nan=False)
                         node_indented = self.node_indent + node_json
                     del node_json  # free intermediate string reference immediately
 

@@ -1036,13 +1036,38 @@ class Sabjkgimport:
     import pandas as pd
 
     def _missing(self,value):
+        """
+        Boolean check: is the value missing (None or NaN)?
+        :param value:
+        :return:
+        """
         return value is None or pd.isna(value)
 
     def _optional_string(self,value):
+        """
+        Formats optional string values with a default.
+        :param value:
+        :return:
+        """
         return "" if self._missing(value) else str(value)
 
     def _optional_float(self,value):
+        """
+        Formats optional float values with a default.
+        :param value:
+        :return:
+        """
         return None if self._missing(value) else float(value)
+
+    def _nullable_float(self,value):
+        """
+        Formats optional float values with a default.
+        :param value:
+        :return:
+        """
+        if value is None or pd.isna(value) or value=='':
+            return None
+        return float(value)
 
     def _build_coderel_row(self,tty:str, row:tuple[Any, ...]):
         """
@@ -1059,7 +1084,7 @@ class Sabjkgimport:
         PT rows are not exploded, so the node_synonyms field is a list.
         """
         EXPECTED_COLUMNS_PT = {
-            "cui", "node_label", "node_definition", "node_id",
+            "cuis", "node_label", "node_definition", "node_id",
             "evidence_class", "value", "lowerbound", "upperbound", "unit",
             "node_synonyms", "node_dbxrefs","assigned_cui","assignment_comment"
         }
@@ -1068,7 +1093,7 @@ class Sabjkgimport:
         field named node_synonym.
         """
         EXPECTED_COLUMNS_SY = {
-            "cui", "node_label", "node_definition", "node_id",
+            "cuis", "node_label", "node_definition", "node_id",
             "evidence_class", "value", "lowerbound", "upperbound", "unit",
             "node_synonym", "node_dbxrefs", "assigned_cui", "assignment_comment"
         }
@@ -1100,7 +1125,8 @@ class Sabjkgimport:
         if tty == "PT":
             return {
                 "label": "CODE",
-                "start_id": row.cui,
+                #"start_id": row.cui,
+                "start_id": row.assigned_cui,
                 "end_id": row.node_label,
                 "properties_sab": self.sab,
                 "properties_def": row.node_definition,
@@ -1108,20 +1134,18 @@ class Sabjkgimport:
                 "properties_tty": tty,
                 # Optional keys: null/None when not present, rather than empty string,
                 # so downstream Parquet/Arrow typing is consistent (nullable column).
-                "attribute": self._optional_string(getattr(row, "evidence_class", None)
-                                                   if has_evidence_class else ""),
-                "valuestr": self._optional_string(value),
-                "value": self._optional_float(value),
-                "lowerbound": self._optional_float(getattr(row, "lowerbound", None) if has_lowerbound else None),
-                "upperbound": self._optional_float(getattr(row, "upperbound", None) if has_upperbound else None),
+                "attribute": "evidence_class" if has_evidence_class else "",
+                "valuestr": self._optional_string(getattr(row, "evidence_class", None)) if has_evidence_class else "",
+                "value": self._nullable_float(getattr(row, "value", None)),
+                "lowerbound": self._nullable_float(getattr(row, "lowerbound", None) if has_lowerbound else None),
+                "upperbound": self._nullable_float(getattr(row, "upperbound", None) if has_upperbound else None),
                 "unit": self._optional_string(getattr(row, "unit", None) if has_unit else "")
             }
         else:
             # Synonym (tty=SY)
-            print(row)
             return {
                 "label": "CODE",
-                "start_id": row.cui,
+                "start_id": row.assigned_cui,
                 "end_id": row.node_synonym, # synonym instead of label
                 "properties_sab": self.sab,
                 "properties_def": "", # The synonym does not get the definition.
@@ -1165,13 +1189,14 @@ class Sabjkgimport:
         df_nodes = self.jkgen.nodes.copy()
         df_nodes=df_nodes[~df_nodes['node_id'].str.startswith('UMLS:')]
 
-        df_nodes_exploded_on_cuis = (
-            df_nodes.explode('cuis')
-            .rename(columns={'cuis': 'cui'})
-            .reset_index(drop=True)
-        )
+        #df_nodes_exploded_on_cuis = (
+            #df_nodes.explode('cuis')
+            #.rename(columns={'cuis': 'cui'})
+            #.reset_index(drop=True)
+        #)
 
-        df_new_coderels = df_nodes_exploded_on_cuis
+        #df_new_coderels = df_nodes_exploded_on_cuis
+        df_new_coderels = df_nodes
 
         """
             The nodes DataFrame is flattened.
@@ -1205,14 +1230,14 @@ class Sabjkgimport:
                 self._build_coderel_row(row=row,tty='PT')
                 for row in tqdm(
                 df_new_coderels.itertuples(),
-                total=len(df_nodes_exploded_on_cuis),
+                total=len(df_new_coderels),
                 desc="Building Coderel objects for new concepts (term type = PT)",
             )
             ]
         )
 
         # Unload the exploded DataFrame.
-        self._unload_item(item_to_unload=df_nodes_exploded_on_cuis,item_name='_build_new_coderels: df_nodes_exploded_on_cuis')
+        #self._unload_item(item_to_unload=df_nodes_exploded_on_cuis,item_name='_build_new_coderels: df_nodes_exploded_on_cuis')
 
         """
         Build the flattened coderels that correspond to the SY term type for
@@ -1831,7 +1856,7 @@ class Sabjkgimport:
                 rename_map[f'{col}_x'] = col
         return rename_map
 
-    def _build_new_non_coderel(self, row:pd.Series, sab:str):
+    def _build_new_non_coderelrow(self, row:pd.Series, sab:str):
         """
         Builds a single edge dict from a row of self.jkgen.edges (a pandas Series,
         as passed by DataFrame.apply(..., axis=1)).
@@ -1864,12 +1889,22 @@ class Sabjkgimport:
             "node_dbxrefs_y",
             "cuis_y",
             "end_cui",
-            "assignment_comment_y"
+            "assignment_comment_y",
+            "evidence_class",
+            "lowerbound_x",
+            "lowerbound_y",
+            "unit_x",
+            "unit_y",
+            "upperbound_x",
+            "upperbound_y",
+            "value_x",
+            "value_y",
         }
         row_columns = set(row.index)
 
         unexpected = row_columns - EXPECTED_COLUMNS
         if unexpected:
+            print(row)
             raise Exception(f"Unexpected field(s) in edge row: {sorted(unexpected)}")
 
         has_evidence_class = "evidence_class" in row_columns
@@ -1880,6 +1915,7 @@ class Sabjkgimport:
 
         value = row.get("value") if has_value else None
 
+
         return {
             "label": row["predicate"],
             "start_id": row["start_cui"],
@@ -1887,12 +1923,12 @@ class Sabjkgimport:
             "properties_sab": sab,
             # Optional attribute columns: null when absent rather than omitted,
             # for a consistent/nullable schema.
-            "attribute": row.get("evidence_class") if has_evidence_class else None,
-            "valuestr": str(value) if value is not None else None,
-            "value": float(value) if isinstance(value, float) else None,
-            "lowerbound": float(row["lowerbound"]) if has_lowerbound and row["lowerbound"] is not None else None,
-            "upperbound": float(row["upperbound"]) if has_upperbound and row["upperbound"] is not None else None,
-            "unit": str(row["unit"]) if has_unit and row["unit"] is not None else None,
+            "attribute": "evidence_class" if has_evidence_class else "",
+            "valuestr": str(getattr(row, "evidence_class", None)) if has_evidence_class is not None else "",
+            "value": self._nullable_float(getattr(row, "value", None)),
+            "lowerbound": self._nullable_float(getattr(row, "lowerbound", None)) if has_lowerbound and getattr(row, "lowerbound", None) is not None else None,
+            "upperbound": self._nullable_float(getattr(row, "upperbound", None)) if has_upperbound and getattr(row, "upperbound", None) is not None else None,
+            "unit": str(getattr(row, "unit", None)) if has_unit and row["unit"] is not None else "",
         }
 
     def _build_new_non_coderels(self) -> list[dict]:
@@ -1985,7 +2021,7 @@ class Sabjkgimport:
         self.jkgen.edges=self.jkgen.edges[self.jkgen.edges['start_cui'] != self.jkgen.edges['end_cui']]
 
         return self.jkgen.edges.apply(
-            lambda row: self._build_new_non_coderel(row, self.sab), axis=1
+            lambda row: self._build_new_non_coderelrow(row, self.sab), axis=1
         ).tolist()
 
 
