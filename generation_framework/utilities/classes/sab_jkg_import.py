@@ -917,7 +917,6 @@ class Sabjkgimport:
 
         # Unflatten DataFrame of existing non-CODE rels and write to the JKG JSON.
         self._unflatten_dataframe_and_write_list(df_flat=self.jkgjson.rels, progress_display='existing non-CODE rels')
-
         """
         BUILD AND WRITE NEW NON-CODE RELS TO OUTPUT.
       
@@ -1041,7 +1040,7 @@ class Sabjkgimport:
         :param value:
         :return:
         """
-        return value is None or pd.isna(value)
+        return value is None or pd.isna(value) or value == ""
 
     def _optional_string(self,value):
         """
@@ -1065,9 +1064,12 @@ class Sabjkgimport:
         :param value:
         :return:
         """
-        if value is None or pd.isna(value) or value=='':
+
+        #return None if self._missing(value) else float(value)
+        if self._missing(value):
             return None
-        return float(value)
+        else:
+            return float(value)
 
     def _build_coderel_row(self,tty:str, row:tuple[Any, ...]):
         """
@@ -1120,8 +1122,6 @@ class Sabjkgimport:
         has_upperbound = "upperbound" in row_fields
         has_unit = "unit" in row_fields
 
-        value = getattr(row, "value", None) if has_value else None
-
         if tty == "PT":
             return {
                 "label": "CODE",
@@ -1134,12 +1134,12 @@ class Sabjkgimport:
                 "properties_tty": tty,
                 # Optional keys: null/None when not present, rather than empty string,
                 # so downstream Parquet/Arrow typing is consistent (nullable column).
-                "attribute": "evidence_class" if has_evidence_class else "",
-                "valuestr": self._optional_string(getattr(row, "evidence_class", None)) if has_evidence_class else "",
-                "value": self._nullable_float(getattr(row, "value", None)),
-                "lowerbound": self._nullable_float(getattr(row, "lowerbound", None) if has_lowerbound else None),
-                "upperbound": self._nullable_float(getattr(row, "upperbound", None) if has_upperbound else None),
-                "unit": self._optional_string(getattr(row, "unit", None) if has_unit else "")
+                "properties_attribute": "evidence_class" if has_evidence_class else "",
+                "properties_valuestr": self._optional_string(getattr(row, "value", None)) if has_value else "",
+                "properties_value": self._nullable_float(getattr(row, "value", None)) if has_value else None,
+                "properties_lowerbound": self._nullable_float(getattr(row, "lowerbound", None) if has_lowerbound else None),
+                "properties_upperbound": self._nullable_float(getattr(row, "upperbound", None) if has_upperbound else None),
+                "properties_unit": self._optional_string(getattr(row, "unit", None) if has_unit else "")
             }
         else:
             # Synonym (tty=SY)
@@ -1153,12 +1153,12 @@ class Sabjkgimport:
                 "properties_tty": "SY",
                 # Optional keys are null,
                 # so downstream Parquet/Arrow typing is consistent (nullable column).
-                "attribute": "",
-                "valuestr": "",
-                "value": None,
-                "lowerbound": None,
-                "upperbound": None,
-                "unit": "",
+                "properties_attribute": "",
+                "properties_valuestr": "",
+                "properties_value": None,
+                "properties_lowerbound": None,
+                "properties_upperbound": None,
+                "properties_unit": "",
             }
 
 
@@ -1904,7 +1904,6 @@ class Sabjkgimport:
 
         unexpected = row_columns - EXPECTED_COLUMNS
         if unexpected:
-            print(row)
             raise Exception(f"Unexpected field(s) in edge row: {sorted(unexpected)}")
 
         has_evidence_class = "evidence_class" in row_columns
@@ -1923,12 +1922,12 @@ class Sabjkgimport:
             "properties_sab": sab,
             # Optional attribute columns: null when absent rather than omitted,
             # for a consistent/nullable schema.
-            "attribute": "evidence_class" if has_evidence_class else "",
-            "valuestr": str(getattr(row, "evidence_class", None)) if has_evidence_class is not None else "",
-            "value": self._nullable_float(getattr(row, "value", None)),
-            "lowerbound": self._nullable_float(getattr(row, "lowerbound", None)) if has_lowerbound and getattr(row, "lowerbound", None) is not None else None,
-            "upperbound": self._nullable_float(getattr(row, "upperbound", None)) if has_upperbound and getattr(row, "upperbound", None) is not None else None,
-            "unit": str(getattr(row, "unit", None)) if has_unit and row["unit"] is not None else "",
+            "properties_attribute": "evidence_class" if has_evidence_class else "",
+            "properties_valuestr": str(getattr(row, "evidence_class", None)) if has_evidence_class is not None else "",
+            "properties_value": self._nullable_float(getattr(row, "value", None)) if has_value else None,
+            "properties_lowerbound": self._nullable_float(getattr(row, "lowerbound", None)) if has_lowerbound and getattr(row, "lowerbound", None) is not None else None,
+            "properties_upperbound": self._nullable_float(getattr(row, "upperbound", None)) if has_upperbound and getattr(row, "upperbound", None) is not None else None,
+            "properties_unit": str(getattr(row, "unit", None)) if has_unit and row["unit"] is not None else "",
         }
 
     def _build_new_non_coderels(self) -> list[dict]:
@@ -2049,7 +2048,9 @@ class Sabjkgimport:
 
         # Reduce tqdm update frequency to address "stuttering" in terminal output.
         for flat in tqdm(list_flat_objects, mininterval=0.5, miniters=100, desc=f"Unflattening {progress_display}"):
+
             unflat = self._unflatten_object(flat_object=flat)
+
             out.append(unflat)
 
         return out

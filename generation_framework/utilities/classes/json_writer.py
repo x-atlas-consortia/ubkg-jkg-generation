@@ -118,7 +118,9 @@ class JsonWriter:
             return {k: self._json_safe(v) for k, v in value.items()}
         if isinstance(value, (list, tuple)):
             return [self._json_safe(v) for v in value]
-        if isinstance(value, (int, float)):
+        if isinstance(value, int):
+            return value if math.isfinite(value) else None
+        if isinstance(value, float):
             return value if math.isfinite(value) else None
         return value
 
