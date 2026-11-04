@@ -124,12 +124,13 @@ class JsonWriter:
             return value if math.isfinite(value) else None
         return value
 
-    def write_list(self, list_name: str, list_content):
+    def write_list_generator(self, list_name: str, list_content, total:int):
         """
-        Writes a list to the JSON file as the value of a key, using
+        Writes the contents of an iterable to the JSON file as the value of a key, using
         a TQDM progress bar.
         :param list_content: iterable of elements to write (list, generator, etc.)
         :param list_name: display name for the list
+        :param total: count of elements to write
 
         The use case is: write {"keyname":[list of elements]}
 
@@ -138,50 +139,50 @@ class JsonWriter:
         2. This routine assumes that list_content contains JSON-compliant strings.
         """
 
-        # Support generators/iterators as well as lists, without forcing
-        # the whole collection to be materialized if the caller passes an iterator.
-        try:
-            total = len(list_content)
-        except TypeError:
-            total = None
-
-        if total == 0:
-            return
-
         # Because start_list was called, always append.
         with open(self.outpath, "a", encoding="utf-8") as f:
 
-            # Consume from the front so items can be garbage-collected as we go,
-            # instead of iterating an indexable list that keeps every element alive.
-            iterator = iter(list_content)
+            # Lists/tuples know their length; for iterators the caller may supply total.
+            if total is None:
+                try:
+                    total = len(list_content)
+                except TypeError:
+                    total = None  # unknown: tqdm shows a count only
 
-            for i, node in enumerate(tqdm(iterator, desc=f"-- Writing {list_name}...", total=total)):
+            if total == 0:
+                return
 
-                if isinstance(node, str):
-                    node_indented = node.strip()
-                else:
-                    if self.write_pretty:
-                        node_json = json.dumps(self._json_safe(node), ensure_ascii=False, indent=self.indent_spaces, default=str, allow_nan=False)
-                        node_indented = textwrap.indent(node_json, self.node_indent)
+            with open(self.outpath, "a", encoding="utf-8") as f, \
+                    tqdm(total=total, desc=f"-- Writing {list_name}...") as pbar:
+
+                for i, node in enumerate(tqdm(list_content)):
+
+                    if isinstance(node, str):
+                        node_indented = node.strip()
                     else:
-                        node_json = json.dumps(self._json_safe(node), ensure_ascii=False, separators=(',', ':'), default=str, allow_nan=False)
-                        node_indented = self.node_indent + node_json
-                    del node_json  # free intermediate string reference immediately
+                        if self.write_pretty:
+                            node_json = json.dumps(self._json_safe(node), ensure_ascii=False, indent=self.indent_spaces, default=str, allow_nan=False)
+                            node_indented = textwrap.indent(node_json, self.node_indent)
+                        else:
+                            node_json = json.dumps(self._json_safe(node), ensure_ascii=False, separators=(',', ':'), default=str, allow_nan=False)
+                            node_indented = self.node_indent + node_json
+                        del node_json  # free intermediate string reference immediately
 
-                if i:
-                    f.write(",\n")
+                    if i:
+                        f.write(",\n")
 
-                f.write(node_indented)
+                    f.write(node_indented)
 
-                # Drop references so the item (and its JSON string) can be
-                # collected before the next iteration allocates a new one.
-                del node
-                del node_indented
+                    # Drop references so the item (and its JSON string) can be
+                    # collected before the next iteration allocates a new one.
+                    del node
+                    del node_indented
+                    pbar.update(1)
 
-            # If the caller passed a real list, empty it so the caller's
-            # reference no longer holds every element in memory.
-            if isinstance(list_content, list):
-                list_content.clear()
+                # If the caller passed a real list, empty it so the caller's
+                # reference no longer holds every element in memory.
+                if isinstance(list_content, list):
+                    list_content.clear()
 
     def write_line_feed(self):
         """
