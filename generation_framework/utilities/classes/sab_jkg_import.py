@@ -13,8 +13,6 @@ import os
 import ast
 import gc
 import pandas as pd
-from Cython.Compiler.Pythran import is_type
-from pandas.core.computation.ops import isnumeric
 from tqdm import tqdm
 
 # logging object
@@ -202,32 +200,6 @@ class Sabjkgimport:
             self.ulog.print_and_logger_info(
                 f"{header:<{w_type}} {file_size_before:>{w_before},} {file_size_after:>{w_after},} {file_size_difference:>{w_difference},}")
 
-    def _initialize_lists(self):
-        """
-        Initialize lists of objects for new JKG JSON nodes and rels
-        arrays, by type:
-        1. for nodes:
-           a. sources
-           b. concepts
-           c. terms
-        2. for rels:
-           a. coderels
-           b. rels
-        The objects in each list will be added below the corresponding
-        part of the list in the JKG JSON--e.g., the new sources will be
-        added after the original sources in the nodes array.
-        (The ingested SAB will add no new node_label or rel_label types
-        of node objects.)
-        """
-
-        # Lists related to nodes
-        self.list_new_jkg_json_source_nodes = []
-        self.list_new_jkg_json_concept_nodes = []
-        self.list_new_jkg_json_term_nodes = []
-        # Lists related to rels
-        self.list_new_jkg_json_coderels = []
-        self.list_new_jkg_json_rels = []
-
     def _unload_item(self, item_to_unload:Any, item_name: str):
         """
         Explicitly unloads an object from memory and performs garbage collection.
@@ -309,7 +281,6 @@ class Sabjkgimport:
         # Rel_Labels
         self.ulog.print_and_logger_info('* REL_LABEL NODES')
         self._build_and_write_rel_label_nodes()
-
 
         """
         GET CUIS FOR JKGEN NODES.
